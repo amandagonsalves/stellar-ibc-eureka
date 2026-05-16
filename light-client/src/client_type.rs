@@ -1,5 +1,5 @@
 use ibc_client_cw::api::ClientType;
-use stellar_types::{StellarClientState, StellarConsensusState};
+use stellar_ibc_types::{StellarClientState, StellarConsensusState};
 
 pub struct StellarClient;
 
