@@ -1,0 +1,21 @@
+[package]
+name = "stellar-ibc-light-client"
+version = "0.1.0"
+edition = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
+rust-version = { workspace = true }
+description = "CosmWasm entry points for the Stellar IBC light client (08-wasm)"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+stellar-ibc-types = { workspace = true, default-features = false }
+stellar-ibc-verifier = { workspace = true, default-features = false }
+ibc-core = { workspace = true }
+ibc-client-cw = { workspace = true }
+cosmwasm-std = { workspace = true }
+
+[features]
+default = []
