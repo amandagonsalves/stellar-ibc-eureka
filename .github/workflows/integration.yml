@@ -1,0 +1,65 @@
+name: Integration tests
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  wasm-upload:
+    runs-on: ubuntu-latest
+    env:
+      COMETBFT_VERSION: 0.38.12
+      HERMES_VERSION: 1.13.2
+      RUST_VERSION: 1.81.0
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download Hermes
+        uses: dsaltares/fetch-gh-release-asset@master
+        with:
+          repo: informalsystems/hermes
+          version: "tags/v${{ env.HERMES_VERSION }}"
+          file: "hermes-v${{ env.HERMES_VERSION }}-x86_64-unknown-linux-gnu.tar.gz"
+
+      - name: Setup binaries
+        run: |
+          tar -xzf "hermes-v${HERMES_VERSION}-x86_64-unknown-linux-gnu.tar.gz"
+          chmod +x hermes
+          mkdir -p ~/local/bin
+          mv hermes ~/local/bin
+          echo "${HOME}/local/bin" >> $GITHUB_PATH
+
+      - name: Setup CI scripts
+        working-directory: ci/
+        run: |
+          mkdir -p ~/.hermes
+          cp hermes-config.toml ~/.hermes/config.toml
+
+      - uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo
+            target
+          key: ${{ runner.os }}-rust-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-rust-
+
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+          target: wasm32-unknown-unknown
+
+      - name: Build WASM light client
+        run: cargo build --target wasm32-unknown-unknown --no-default-features -p stellar-ibc-light-client --release
+
+      - name: Validate Hermes
+        run: hermes version
+
+      - name: Run integration tests
+        working-directory: ci/
+        run: bash entrypoint.sh make test
