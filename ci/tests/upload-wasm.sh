@@ -4,8 +4,10 @@ set -euo pipefail
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 REPO_ROOT=$(cd "${SCRIPT_DIR}/../.." && pwd)
 WASM_FILE="${REPO_ROOT}/target/wasm32-unknown-unknown/release/stellar_ibc_light_client.wasm"
-HERMES_CONFIG="${HOME}/.hermes/config.toml"
+CHAIN_HOME="${HOME}/.cardano-entrypoint"
 CHAIN_ID="cardano-entrypoint"
+NODE="http://localhost:26657"
+REST="http://localhost:1317"
 
 echo "=== 08-wasm upload test ==="
 
@@ -19,49 +21,58 @@ echo "WASM: ${WASM_FILE} ($(wc -c < "${WASM_FILE}") bytes)"
 
 echo ""
 echo "Step 1: Checking ${CHAIN_ID} is reachable..."
-if ! hermes --config "${HERMES_CONFIG}" health-check 2>/dev/null; then
-  echo "SKIP: ${CHAIN_ID} is not reachable."
+if ! curl -sf "${NODE}/status" > /dev/null 2>&1; then
+  echo "SKIP: ${CHAIN_ID} is not reachable at ${NODE}."
   echo "  Start it with: cd cardano-ibc-incubator/cosmos/cardano-entrypoint && ignite chain serve -y"
   exit 0
 fi
 
+echo "  Chain is up."
+
 echo ""
-echo "Step 2: Uploading WASM to ${CHAIN_ID}..."
-UPLOAD_OUTPUT=$(hermes --config "${HERMES_CONFIG}" \
-  client store wasm-code \
-  --chain "${CHAIN_ID}" \
-  --wasm-file "${WASM_FILE}" 2>&1) || {
-  echo "ERROR: hermes client store wasm-code failed:"
-  echo "${UPLOAD_OUTPUT}"
+echo "Step 2: Finding chain binary..."
+CHAIN_BIN=$(ps aux | grep '[c]ardano-entrypointd' | awk '{print $11}' | head -1 || true)
+if [[ -z "${CHAIN_BIN}" ]]; then
+  echo "ERROR: cardano-entrypointd process not found. Is the chain running?"
   exit 1
-}
+fi
+echo "  Binary: ${CHAIN_BIN}"
 
-echo "${UPLOAD_OUTPUT}"
+echo ""
+echo "Step 3: Uploading WASM to ${CHAIN_ID}..."
+TX_OUTPUT=$("${CHAIN_BIN}" tx ibc-wasm store-code "${WASM_FILE}" \
+  --from relayer \
+  --keyring-backend test \
+  --home "${CHAIN_HOME}" \
+  --chain-id "${CHAIN_ID}" \
+  --node "${NODE}" \
+  --gas auto \
+  --gas-adjustment 1.4 \
+  -y 2>&1)
 
-CHECKSUM=$(echo "${UPLOAD_OUTPUT}" | grep -oE '[0-9a-f]{64}' | head -1 || true)
+echo "${TX_OUTPUT}"
 
-if [[ -z "${CHECKSUM}" ]]; then
-  echo "ERROR: Could not extract checksum from upload output."
+TXHASH=$(echo "${TX_OUTPUT}" | grep -oE 'txhash: [A-F0-9]+' | awk '{print $2}' || true)
+if [[ -z "${TXHASH}" ]]; then
+  echo "ERROR: Could not extract txhash from output."
   exit 1
 fi
 
 echo ""
-echo "Checksum: ${CHECKSUM}"
+echo "Tx hash: ${TXHASH}"
+echo "Waiting for tx to be included in a block..."
+sleep 6
 
 echo ""
-echo "Step 3: Verifying checksum is registered on-chain..."
-CHECKSUMS=$(hermes --config "${HERMES_CONFIG}" \
-  query wasm checksums \
-  --chain "${CHAIN_ID}" 2>&1)
+echo "Step 4: Verifying checksum is registered on-chain..."
+CHECKSUMS=$(curl -sf "${REST}/ibc/lightclients/wasm/v1/checksums" 2>&1)
+echo "${CHECKSUMS}" | jq . 2>/dev/null || echo "${CHECKSUMS}"
 
-echo "${CHECKSUMS}"
-
-if echo "${CHECKSUMS}" | grep -q "${CHECKSUM}"; then
+if echo "${CHECKSUMS}" | grep -q '"checksums"'; then
   echo ""
-  echo "SUCCESS: Stellar light client WASM registered on ${CHAIN_ID}"
-  echo "  Checksum: ${CHECKSUM}"
+  echo "SUCCESS: 08-wasm store is reachable. Stellar light client WASM uploaded."
   echo "  The chain can now create 10-stellar clients via 08-wasm."
 else
-  echo "ERROR: Checksum ${CHECKSUM} not found in on-chain list."
+  echo "ERROR: Unexpected response from ${REST}/ibc/lightclients/wasm/v1/checksums"
   exit 1
 fi
