@@ -3,12 +3,14 @@ members = [
     "types",
     "verifier",
     "light-client",
+    "gateway",
 ]
 resolver = "2"
 
 [workspace.package]
 edition = "2021"
 license = "Apache-2.0"
+version = "0.1.0"
 repository = "https://github.com/cardano-foundation/stellar-ibc"
 rust-version = "1.81.0"
 
@@ -21,10 +23,35 @@ cosmwasm-schema = { version = "2.1.0", default-features = false }
 stellar-xdr = { version = "22.1.0", default-features = false, features = ["curr", "alloc"] }
 ed25519-dalek = { version = "2.1.1", default-features = false, features = ["alloc"] }
 sha2 = { version = "0.10.8", default-features = false }
-prost = { version = "0.13.1", default-features = false }
 derive_more = { version = "1.0.0", default-features = false, features = ["from", "display"] }
 stellar-ibc-types = { path = "types", default-features = false }
 stellar-ibc-verifier = { path = "verifier", default-features = false }
+soroban-client = "0.5.6"
+soroban-sdk = "26.0.0"
+stellar-strkey = "0.0.16"
+
+tonic = "0.14.6"
+tonic-build = "0.14"
+prost = "0.14.3"
+
+async-trait = "0.1.89"
+tokio = { version = "1.52.3", features = ["time", "rt-multi-thread", "macros", "sync"] }
+axum = "0.8.9"
+
+serde = { version = "1.0.228", features = ["derive"] }
+serde_json = "1.0.149"
+
+sha3 = "0.11.0"
+hex = "0.4"
+
+chrono = "0.4.44"
+regex = "1.12.3"
+thiserror = "1"
+anyhow = "1"
+config = "0.14"
+dotenvy = "0.15"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 [workspace.lints.rust]
 unsafe_code = "forbid"
