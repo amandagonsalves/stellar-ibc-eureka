@@ -3740,25 +3740,10 @@ dependencies = [
  "anyhow",
  "ibc",
  "ibc-derive",
- "prost 0.14.3",
- "serde",
- "soroban-sdk",
- "stellar-ibc-core",
- "stellar-strkey 0.0.16",
- "thiserror 1.0.69",
- "tracing",
-]
-
-[[package]]
-name = "stellar-ibc-core"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "ibc",
- "ibc-core",
- "ibc-derive",
  "prost 0.13.5",
  "serde",
+ "soroban-sdk",
+ "stellar-strkey 0.0.16",
  "thiserror 1.0.69",
  "tracing",
 ]

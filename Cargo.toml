@@ -2,7 +2,6 @@
 members = [
     "crates/ibc",
     "crates/gateway",
-    "crates/core"
 ]
 resolver = "2"
 
@@ -65,7 +64,6 @@ dotenvy = "0.15"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
-stellar-ibc-core = { path = "crates/core" }
 stellar-ibc = { path = "crates/ibc" }
 
 [workspace.lints.rust]
