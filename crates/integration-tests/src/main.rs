@@ -76,7 +76,7 @@ async fn test_submit_payment(client: &RpcClient, source_kp: &Keypair, server: &S
     builder.fee(1000u32);
     builder.add_operation(op);
     let mut tx = builder.build();
-    tx.sign(&[source_kp.clone()]);
+    tx.sign(std::slice::from_ref(source_kp));
 
     let envelope = match tx.to_envelope() {
         Ok(e) => e,
