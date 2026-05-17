@@ -5,8 +5,7 @@ REPO_ROOT   := $(abspath $(SCRIPT_DIR)..)
 TESTS_DIR   := $(SCRIPT_DIR)tests
 WASM_FILE   := $(REPO_ROOT)/target/wasm32-unknown-unknown/release/stellar_ibc_light_client.wasm
 
-# Run all tests. Tests that require a running chain skip automatically
-# when cardano-entrypoint is not reachable on localhost:26657.
+
 test: upload-wasm health-check
 	@echo ""
 	@echo "All tests passed."
@@ -20,9 +19,3 @@ health-check:
 
 hermes-health:
 	@bash $(SCRIPT_DIR)hermes-health.sh
-
-docker-health:
-	@bash $(SCRIPT_DIR)docker-health.sh
-
-docker-health-local:
-	@PROFILE=local bash $(SCRIPT_DIR)docker-health.sh
