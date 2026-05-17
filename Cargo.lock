@@ -3878,6 +3878,7 @@ dependencies = [
  "ibc-derive",
  "prost 0.13.5",
  "serde",
+ "sha2 0.10.9",
  "soroban-sdk",
  "stellar-strkey 0.0.16",
  "thiserror 1.0.69",

@@ -7,6 +7,7 @@ pub mod proto;
 pub mod query;
 pub mod runner;
 pub mod state;
+pub mod state_tracker;
 
 #[tokio::main]
 async fn main() {

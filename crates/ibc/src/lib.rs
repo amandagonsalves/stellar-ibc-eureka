@@ -1,4 +1,5 @@
 pub mod actions;
+pub mod smt;
 pub mod context;
 pub mod error;
 pub mod event;

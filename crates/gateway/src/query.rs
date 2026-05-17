@@ -1,4 +1,7 @@
+use std::sync::Arc;
+
 use tonic::{Request, Response, Status};
+use tokio::sync::Mutex;
 
 use crate::proto::{
     stellar_gateway_query_server::{StellarGatewayQuery, StellarGatewayQueryServer},
@@ -8,16 +11,18 @@ use crate::proto::{
     QueryPacketCommitmentRequest, QueryPacketCommitmentResponse, QueryPacketReceiptRequest,
     QueryPacketReceiptResponse,
 };
+use crate::state_tracker::StateTracker;
 use stellar_hermes_core::rpc::RpcClient;
 
 #[derive(Clone)]
 pub struct QueryHandler {
     pub rpc: RpcClient,
+    pub tracker: Arc<Mutex<StateTracker>>,
 }
 
 impl QueryHandler {
-    pub fn new(rpc: RpcClient) -> Self {
-        Self { rpc }
+    pub fn new(rpc: RpcClient, tracker: Arc<Mutex<StateTracker>>) -> Self {
+        Self { rpc, tracker }
     }
 
     pub fn into_server(self) -> StellarGatewayQueryServer<Self> {
@@ -107,10 +112,18 @@ impl StellarGatewayQuery for QueryHandler {
             StellarValueExt::Basic => (vec![], vec![]),
         };
 
+        let ibc_state_root = self
+            .tracker
+            .lock()
+            .await
+            .root_at(seq)
+            .await
+            .map_err(|e| Status::internal(format!("state root computation failed: {e}")))?;
+
         let stellar_header = crate::proto::StellarHeader {
             ledger_seq: seq,
             ledger_header_xdr: ledger.header_xdr,
-            ibc_state_root: vec![0u8; 32],
+            ibc_state_root: ibc_state_root.to_vec(),
             scp_node_id,
             scp_signature,
         };

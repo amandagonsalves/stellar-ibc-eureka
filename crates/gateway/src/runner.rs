@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use axum::{routing::get, Router};
+use tokio::sync::Mutex;
 
 use crate::{
     api::account::{account, balance},
@@ -8,6 +9,7 @@ use crate::{
     msg::MsgHandler,
     query::QueryHandler,
     state::AppState,
+    state_tracker::StateTracker,
 };
 use stellar_hermes_core::rpc::RpcClient;
 
@@ -15,6 +17,19 @@ pub async fn run(cfg: GatewayConfig) {
     let http_addr = cfg.http_addr();
 
     let rpc = RpcClient::new(cfg.rpc_url.as_str()).expect("could not create a new rpc client");
+
+    let ibc_contract_id = if cfg.ibc_contract_id.is_empty() {
+        None
+    } else {
+        stellar_strkey::Contract::from_string(&cfg.ibc_contract_id)
+            .ok()
+            .map(|c| c.0)
+    };
+
+    let tracker = Arc::new(Mutex::new(StateTracker::new(
+        rpc.clone(),
+        ibc_contract_id,
+    )));
 
     let app_state = Arc::new(AppState::new(rpc.clone(), cfg.signing_key.clone()));
 
@@ -53,11 +68,8 @@ pub async fn run(cfg: GatewayConfig) {
     tonic::transport::Server::builder()
         .add_service(reflection_service)
         .add_service(health_service)
-        .add_service(QueryHandler::new(rpc.clone()).into_server())
+        .add_service(QueryHandler::new(rpc.clone(), tracker).into_server())
         .add_service(MsgHandler::new(rpc.clone()).into_server())
-        // .add_service(ClientServiceServer::new(client_handler))
-        // .add_service(PacketServiceServer::new(packet_handler))
-        // .add_service(CounterpartyServiceServer::new(counterparty_handler))
         .serve(grpc_addr)
         .await
         .expect("gRPC server failed");
