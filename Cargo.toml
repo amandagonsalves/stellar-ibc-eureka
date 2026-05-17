@@ -15,6 +15,8 @@ rust-version = "1.81.0"
 
 [workspace.dependencies]
 ibc = { version = "0.57.0", features = ["serde"] }
+ibc-core = { version = "0.57.0", features = ["serde"] }
+
 ibc-derive = "0.10.1"
 ibc-middleware-module = { version = "0.2.0" }
 ibc-middleware-module-macros = { version = "0.2.0" }

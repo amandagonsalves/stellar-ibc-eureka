@@ -1,16 +1,37 @@
-use crate::error::Error;
-use ibc::core::host::types::{
-    identifiers::ClientId,
-    path::{ClientStatePath, Path},
+use ibc::core::{
+    client::types::Height,
+    host::types::{
+        identifiers::{ClientId, Sequence},
+        path::{ClientConsensusStatePath, ClientStatePath},
+    },
 };
-use stellar_ibc_core::storage::SorobanKey;
 
-pub fn client_state_key(client_id: &ClientId) -> SorobanKey {
-    let path = Path::ClientState(ClientStatePath(client_id.clone()));
-
-    ibc_key(path.to_string()).expect("Creating a key for the client state shouldn't fail")
+pub fn client_state_key(client_id: &ClientId) -> Vec<u8> {
+    ClientStatePath(client_id.clone()).to_string().into_bytes()
 }
 
-pub fn ibc_key(_path: impl AsRef<str>) -> Result<SorobanKey, Error> {
-    Ok(SorobanKey {})
+pub fn consensus_state_key(client_id: &ClientId, height: &Height) -> Vec<u8> {
+    ClientConsensusStatePath {
+        client_id: client_id.clone(),
+        revision_number: height.revision_number(),
+        revision_height: height.revision_height(),
+    }
+    .to_string()
+    .into_bytes()
+}
+
+pub fn packet_commitment_key(client_id: &ClientId, seq: Sequence) -> Vec<u8> {
+    format!("commitments/{client_id}/{seq}").into_bytes()
+}
+
+pub fn packet_receipt_key(client_id: &ClientId, seq: Sequence) -> Vec<u8> {
+    format!("receipts/{client_id}/{seq}").into_bytes()
+}
+
+pub fn next_seq_recv_key(client_id: &ClientId) -> Vec<u8> {
+    format!("nextSeqRecv/{client_id}").into_bytes()
+}
+
+pub fn client_counter_key() -> Vec<u8> {
+    b"clientCounter".to_vec()
 }

@@ -3755,8 +3755,9 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "ibc",
+ "ibc-core",
  "ibc-derive",
- "prost 0.14.3",
+ "prost 0.13.5",
  "serde",
  "thiserror 1.0.69",
  "tracing",

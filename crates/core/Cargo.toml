@@ -12,8 +12,9 @@ crate-type = ["rlib"]
 
 [dependencies]
 ibc = { workspace = true }
+ibc-core = { workspace = true }
 ibc-derive = { workspace = true }
-prost = { workspace = true }
+prost = "0.13"
 thiserror = { workspace = true }
 anyhow = { workspace = true }
 serde = { workspace = true }
