@@ -41,14 +41,21 @@ jobs:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
-            ~/.cargo/bin/cargo-audit
             target
           key: ${{ runner.os }}-cargo-crates-${{ hashFiles('Cargo.lock') }}
           restore-keys: |
             ${{ runner.os }}-cargo-crates-
 
+      - name: Cache cargo-audit binary
+        id: cache-cargo-audit
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/bin/cargo-audit
+          key: ${{ runner.os }}-cargo-audit-0.21
+
       - name: Install cargo-audit
-        run: command -v cargo-audit || cargo install cargo-audit --locked
+        if: steps.cache-cargo-audit.outputs.cache-hit != 'true'
+        run: cargo install cargo-audit --version 0.21 --locked
 
       - name: Audit Rust dependencies
         run: >
