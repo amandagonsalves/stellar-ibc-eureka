@@ -25,6 +25,7 @@ axum = { workspace = true }
 
 soroban-client = { workspace = true }
 stellar-strkey = { workspace = true }
+reqwest = { workspace = true }
 
 anyhow = { workspace = true }
 thiserror = { workspace = true }

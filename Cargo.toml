@@ -49,6 +49,8 @@ async-trait = "0.1.89"
 tokio = { version = "1.52.3", features = ["time", "rt-multi-thread", "macros", "sync"] }
 axum = "0.8.9"
 
+reqwest = { version = "0.12", features = ["json"] }
+
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.149"
 
