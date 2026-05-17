@@ -4,6 +4,8 @@ members = [
     "verifier",
     "light-client",
     "gateway",
+    "gateway/store",
+    "gateway/modules",
 ]
 resolver = "2"
 
@@ -32,6 +34,8 @@ stellar-strkey = "0.0.16"
 
 tonic = "0.14.6"
 tonic-build = "0.14"
+tonic-health = "0.14.1"
+tonic-reflection = "0.14.1"
 prost = "0.14.3"
 
 async-trait = "0.1.89"

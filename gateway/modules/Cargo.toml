@@ -1,0 +1,23 @@
+[package]
+name = "stellar-gateway-modules"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+stellar-gateway-store   = { path = "../store" }
+stellar-ibc-types       = { workspace = true, features = ["std"] }
+stellar-ibc-verifier.workspace = true
+async-trait.workspace = true
+tokio.workspace = true
+tonic.workspace = true
+prost.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+anyhow.workspace = true
+tracing.workspace = true
+
+[build-dependencies]
+tonic-build.workspace = true

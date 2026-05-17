@@ -2789,6 +2789,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "prost-types"
+version = "0.14.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8991c4cbdb8bc5b11f0b074ffe286c30e523de90fee5ba8132f1399f23cb3dd7"
+dependencies = [
+ "prost 0.14.3",
+]
+
+[[package]]
 name = "quote"
 version = "1.0.45"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3617,11 +3626,13 @@ dependencies = [
 name = "stellar-gateway"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "async-trait",
  "axum",
  "chrono",
  "dotenvy",
  "http-body-util",
+ "ibc-core",
  "prost 0.14.3",
  "regex",
  "serde",
@@ -3629,11 +3640,51 @@ dependencies = [
  "sha3 0.11.0",
  "soroban-client",
  "soroban-sdk",
+ "stellar-gateway-modules",
+ "stellar-gateway-store",
+ "stellar-ibc-types",
  "stellar-strkey 0.0.16",
+ "thiserror 1.0.69",
  "tokio",
  "tonic",
+ "tonic-health",
+ "tonic-reflection",
  "tracing",
  "tracing-subscriber",
+]
+
+[[package]]
+name = "stellar-gateway-modules"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "prost 0.14.3",
+ "serde",
+ "serde_json",
+ "stellar-gateway-store",
+ "stellar-ibc-types",
+ "stellar-ibc-verifier",
+ "thiserror 1.0.69",
+ "tokio",
+ "tonic",
+ "tonic-build",
+ "tracing",
+]
+
+[[package]]
+name = "stellar-gateway-store"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "serde",
+ "serde_json",
+ "soroban-client",
+ "stellar-strkey 0.0.16",
+ "stellar-xdr 22.2.0",
+ "thiserror 1.0.69",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]
@@ -4030,6 +4081,7 @@ dependencies = [
  "futures-core",
  "pin-project-lite",
  "tokio",
+ "tokio-util",
 ]
 
 [[package]]
@@ -4072,6 +4124,56 @@ dependencies = [
  "tower-layer",
  "tower-service",
  "tracing",
+]
+
+[[package]]
+name = "tonic-build"
+version = "0.14.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c68f61875ac5293cf72e6c8cf0158086428c82c37229e98c840878f1706b0322"
+dependencies = [
+ "prettyplease",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.117",
+]
+
+[[package]]
+name = "tonic-health"
+version = "0.14.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fcfab99db777fba2802f0dfa861d1628d1ae916fb199d29819941f139ae85082"
+dependencies = [
+ "prost 0.14.3",
+ "tokio",
+ "tokio-stream",
+ "tonic",
+ "tonic-prost",
+]
+
+[[package]]
+name = "tonic-prost"
+version = "0.14.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "50849f68853be452acf590cde0b146665b8d507b3b8af17261df47e02c209ea0"
+dependencies = [
+ "bytes",
+ "prost 0.14.3",
+ "tonic",
+]
+
+[[package]]
+name = "tonic-reflection"
+version = "0.14.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "acccd136a4bf19810a1fde9c74edc6129b42a66b44d0c1c8aaa67aeb49a146a7"
+dependencies = [
+ "prost 0.14.3",
+ "prost-types",
+ "tokio",
+ "tokio-stream",
+ "tonic",
+ "tonic-prost",
 ]
 
 [[package]]
