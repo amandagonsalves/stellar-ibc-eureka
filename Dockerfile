@@ -1,5 +1,5 @@
 # ── Build stage ──────────────────────────────────────────────────────────────
-FROM rust:1.81-slim-bookworm AS builder
+FROM rust:1.91-slim-bookworm AS builder
 
 WORKDIR /build
 
@@ -8,6 +8,9 @@ RUN apt-get update \
         pkg-config \
         libssl-dev \
         protobuf-compiler \
+        make \
+        gcc \
+        libc-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Cache dependency graph before copying full source.
