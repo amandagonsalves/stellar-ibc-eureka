@@ -1,7 +1,8 @@
 [workspace]
 members = [
-    "crates/ibc", # here we will have the core for ibc, clients, context, etc, following namada's implementation
-    "crates/gateway" # here we will have a gateway with a runner.rs containing the grpc + http servers using reflection - we should have config.rs and a state for soroban client too, following what was done for cardano gateway and namada's structure to connect to hermes
+    "crates/ibc",
+    "crates/gateway",
+    "crates/core"
 ]
 resolver = "2"
 
@@ -61,6 +62,9 @@ config = "0.14"
 dotenvy = "0.15"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+stellar-ibc-core = { path = "crates/core" }
+stellar-ibc = { path = "crates/ibc" }
 
 [workspace.lints.rust]
 unsafe_code = "forbid"

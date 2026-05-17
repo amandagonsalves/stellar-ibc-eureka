@@ -11,10 +11,13 @@ description = ""
 crate-type = ["rlib"]
 
 [dependencies]
-ibc        = { workspace = true }
+ibc = { workspace = true }
 ibc-derive = { workspace = true }
-prost      = { workspace = true }
-thiserror  = { workspace = true }
-anyhow     = { workspace = true }
-serde      = { workspace = true }
-tracing    = { workspace = true }
+prost = { workspace = true }
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+serde = { workspace = true }
+tracing = { workspace = true }
+stellar-ibc-core = { workspace = true }
+stellar-strkey = { workspace = true }
+soroban-sdk = { workspace = true }
