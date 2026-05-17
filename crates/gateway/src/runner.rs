@@ -2,14 +2,14 @@ use std::sync::Arc;
 
 use axum::{routing::get, Router};
 
-use crate::{config::GatewayConfig, rpc::RpcClient, state::AppState};
+use crate::{config::GatewayConfig, query::QueryHandler, rpc::RpcClient, state::AppState};
 
 pub async fn run(cfg: GatewayConfig) {
     let http_addr = cfg.http_addr();
 
     let rpc = RpcClient::new(&cfg.rpc_url.as_str()).expect("could not create a new rpc client");
 
-    let app_state = Arc::new(AppState::new(Arc::new(rpc), cfg.signing_key.clone()));
+    let app_state = Arc::new(AppState::new(rpc, cfg.signing_key.clone()));
 
     tokio::spawn(async move {
         let app = Router::new()
@@ -42,7 +42,7 @@ pub async fn run(cfg: GatewayConfig) {
         .add_service(health_service)
         // .add_service(ClientServiceServer::new(client_handler))
         // .add_service(PacketServiceServer::new(packet_handler))
-        // .add_service(QueryServiceServer::new(query_handler))
+        .add_service(QueryHandler::new(app_state.rpc).into_server())
         // .add_service(CounterpartyServiceServer::new(counterparty_handler))
         .serve(grpc_addr)
         .await

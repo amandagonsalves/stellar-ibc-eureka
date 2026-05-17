@@ -94,6 +94,7 @@ fn main() {
     let mut query_svc = tonic_build::manual::Service::builder()
         .name("StellarGatewayQuery")
         .package("stellar.gateway.v1");
+
     for (name, route, input, output) in &query_methods {
         query_svc = query_svc.method(
             tonic_build::manual::Method::builder()

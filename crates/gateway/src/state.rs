@@ -9,9 +9,9 @@ pub struct AppState {
 }
 
 impl AppState {
-    pub fn new(rpc: Arc<RpcClient>, signing_key: String) -> Self {
+    pub fn new(rpc: RpcClient, signing_key: String) -> Self {
         Self {
-            rpc,
+            rpc: Arc::new(rpc),
             signing_key: Arc::new(signing_key),
         }
     }

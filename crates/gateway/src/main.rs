@@ -5,6 +5,7 @@ pub mod proto;
 pub mod rpc;
 pub mod runner;
 pub mod state;
+pub mod query;
 
 #[tokio::main]
 async fn main() {
