@@ -9,12 +9,12 @@ pub async fn run(cfg: GatewayConfig) {
 
     let rpc = RpcClient::new(&cfg.rpc_url.as_str()).expect("could not create a new rpc client");
 
-    let app_state = Arc::new(AppState::new(rpc, cfg.signing_key.clone()));
+    let app_state = Arc::new(AppState::new(rpc.clone(), cfg.signing_key.clone()));
 
     tokio::spawn(async move {
         let app = Router::new()
             .route("/health", get(|| async { "Server is up." }))
-            .with_state(app_state);
+            .with_state(app_state.clone());
 
         let listener = tokio::net::TcpListener::bind(http_addr).await.unwrap();
 
@@ -40,9 +40,9 @@ pub async fn run(cfg: GatewayConfig) {
     tonic::transport::Server::builder()
         .add_service(reflection_service)
         .add_service(health_service)
+        .add_service(QueryHandler::new(rpc.clone()).into_server())
         // .add_service(ClientServiceServer::new(client_handler))
         // .add_service(PacketServiceServer::new(packet_handler))
-        .add_service(QueryHandler::new(app_state.rpc).into_server())
         // .add_service(CounterpartyServiceServer::new(counterparty_handler))
         .serve(grpc_addr)
         .await

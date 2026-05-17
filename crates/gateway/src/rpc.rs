@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use soroban_client::{Options, Server};
 
+#[derive(Clone)]
 pub struct RpcClient {
     pub server: Arc<Server>,
 }
