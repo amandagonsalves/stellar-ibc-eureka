@@ -3,7 +3,12 @@ use std::sync::Arc;
 use axum::{routing::get, Router};
 
 use crate::{
-    config::GatewayConfig, msg::MsgHandler, query::QueryHandler, rpc::RpcClient, state::AppState,
+    api::account::{account, balance},
+    config::GatewayConfig,
+    msg::MsgHandler,
+    query::QueryHandler,
+    rpc::RpcClient,
+    state::AppState,
 };
 
 pub async fn run(cfg: GatewayConfig) {
@@ -16,6 +21,8 @@ pub async fn run(cfg: GatewayConfig) {
     tokio::spawn(async move {
         let app = Router::new()
             .route("/health", get(|| async { "Server is up." }))
+            .route("/account/{address}", get(account))
+            .route("/balance/{address}", get(balance))
             .with_state(app_state.clone());
 
         let listener = tokio::net::TcpListener::bind(http_addr).await.unwrap();
