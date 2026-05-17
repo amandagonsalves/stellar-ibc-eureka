@@ -12,7 +12,7 @@ name = "stellar-gateway"
 path = "src/main.rs"
 
 [dependencies]
-stellar-ibc = { path = "../ibc" }
+stellar-ibc = { workspace = true }
 
 tonic = { workspace = true }
 tonic-health = { workspace = true }
