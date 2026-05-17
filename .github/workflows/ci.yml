@@ -67,23 +67,23 @@ jobs:
           --ignore RUSTSEC-2026-0009
 
       - name: Check formatting
-        run: cargo fmt --manifest-path Cargo.toml -- --check
+        run: cargo fmt -- --check
 
       - name: Lint
         run: >
-          cargo clippy --manifest-path Cargo.toml --locked --all-targets --
+          cargo clippy --locked --all-targets --
           -D warnings
           -A clippy::manual_is_multiple_of
           -A clippy::too_many_arguments
 
       - name: Check install build warnings
         run: >
-          cargo rustc --manifest-path Cargo.toml --locked --release
+          cargo rustc --locked --release
           --bin crates --
           -D warnings
 
       - name: Test
-        run: cargo test --manifest-path Cargo.toml --locked
+        run: cargo test --locked
 
   gateway-health:
     name: Gateway health
