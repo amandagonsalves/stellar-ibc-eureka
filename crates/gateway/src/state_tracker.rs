@@ -64,16 +64,14 @@ impl StateTracker {
                     self.smt.insert(&k, &v);
                 }
             }
-            LedgerEntryChange::Removed(key) => {
-                if let LedgerKey::ContractData(d) = key {
-                    if !self.matches(&d.contract) {
-                        return;
-                    }
-                    let Ok(k) = d.key.to_xdr(Limits::none()) else {
-                        return;
-                    };
-                    self.smt.remove(&k);
+            LedgerEntryChange::Removed(LedgerKey::ContractData(key)) => {
+                if !self.matches(&key.contract) {
+                    return;
                 }
+                let Ok(k) = key.key.to_xdr(Limits::none()) else {
+                    return;
+                };
+                self.smt.remove(&k);
             }
             _ => {}
         }
