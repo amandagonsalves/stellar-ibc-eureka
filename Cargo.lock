@@ -3056,6 +3056,15 @@ dependencies = [
 [[package]]
 name = "stellar-ibc"
 version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "ibc",
+ "ibc-derive",
+ "prost 0.14.3",
+ "serde",
+ "thiserror 1.0.69",
+ "tracing",
+]
 
 [[package]]
 name = "stellar-strkey"
