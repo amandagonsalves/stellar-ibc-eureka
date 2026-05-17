@@ -220,6 +220,20 @@ pub struct MsgTimeoutPacketRequest {
 #[derive(Clone, Message)]
 pub struct MsgTimeoutPacketResponse {}
 
+#[derive(Clone, Message)]
+pub struct StellarHeader {
+    #[prost(uint32, tag = "1")]
+    pub ledger_seq: u32,
+    #[prost(bytes = "vec", tag = "2")]
+    pub ledger_header_xdr: Vec<u8>,
+    #[prost(bytes = "vec", tag = "3")]
+    pub ibc_state_root: Vec<u8>,
+    #[prost(bytes = "vec", tag = "4")]
+    pub scp_node_id: Vec<u8>,
+    #[prost(bytes = "vec", tag = "5")]
+    pub scp_signature: Vec<u8>,
+}
+
 include!(concat!(
     env!("OUT_DIR"),
     "/stellar.gateway.v1.StellarGatewayQuery.rs"

@@ -4,7 +4,7 @@ use soroban_client::{
     network::{NetworkPassphrase, Networks},
     operation::{self, Operation},
     transaction::{TransactionBehavior, TransactionBuilder, TransactionBuilderBehavior},
-    xdr::{LedgerKey, LedgerKeyAccount, Limits, ReadXdr, WriteXdr},
+    xdr::{LedgerHeader, LedgerKey, LedgerKeyAccount, Limits, ReadXdr, StellarValueExt, WriteXdr},
     Options, Server,
 };
 use stellar_hermes_core::rpc::RpcClient;
@@ -51,6 +51,87 @@ async fn test_get_missing_key(client: &RpcClient) {
         Ok(None) => pass(label),
         Ok(Some(_)) => fail(label, "expected None but got data"),
         Err(e) => fail(label, e),
+    }
+}
+
+async fn test_get_ledger(client: &RpcClient) {
+    let label = "get_ledger: returns LedgerHeader XDR for a recent sequence";
+
+    let seq = match client.latest_ledger_sequence().await {
+        Ok(s) => s.saturating_sub(2),
+        Err(e) => {
+            fail(label, format!("latest_ledger_sequence failed: {e}"));
+            return;
+        }
+    };
+
+    match client.get_ledger(seq).await {
+        Ok(ledger) => {
+            if ledger.header_xdr.is_empty() {
+                fail(label, "header_xdr is empty");
+                return;
+            }
+            match LedgerHeader::from_xdr(&ledger.header_xdr, Limits::none()) {
+                Ok(h) if h.ledger_seq == seq => pass(&format!("{label} (seq: {seq})")),
+                Ok(h) => fail(label, format!("sequence mismatch: got {}", h.ledger_seq)),
+                Err(e) => fail(label, format!("LedgerHeader XDR decode failed: {e}")),
+            }
+        }
+        Err(e) => fail(label, e),
+    }
+}
+
+async fn test_get_ledger_scp_signature(client: &RpcClient) {
+    let label = "get_ledger: LedgerHeader contains SCP signature";
+
+    let seq = match client.latest_ledger_sequence().await {
+        Ok(s) => s.saturating_sub(2),
+        Err(e) => {
+            fail(label, format!("latest_ledger_sequence failed: {e}"));
+            return;
+        }
+    };
+
+    let ledger = match client.get_ledger(seq).await {
+        Ok(l) => l,
+        Err(e) => {
+            fail(label, e);
+            return;
+        }
+    };
+
+    let header = match LedgerHeader::from_xdr(&ledger.header_xdr, Limits::none()) {
+        Ok(h) => h,
+        Err(e) => {
+            fail(label, format!("LedgerHeader XDR decode failed: {e}"));
+            return;
+        }
+    };
+
+    match header.scp_value.ext {
+        StellarValueExt::Signed(sig) => {
+            let sig_bytes = sig.signature.to_vec();
+            if sig_bytes.is_empty() {
+                fail(label, "SCP signature is empty");
+            } else {
+                pass(&format!(
+                    "{label} (sig len: {}, node_id present)",
+                    sig_bytes.len()
+                ));
+            }
+        }
+        StellarValueExt::Basic => {
+            fail(label, "scp_value.ext is Basic — no signature present");
+        }
+    }
+}
+
+async fn test_get_ledger_unknown_sequence(client: &RpcClient) {
+    let label = "get_ledger: unknown sequence returns error";
+
+    match client.get_ledger(u32::MAX).await {
+        Err(_) => pass(label),
+        Ok(_) => fail(label, "expected error for sequence u32::MAX but got Ok"),
     }
 }
 
@@ -124,6 +205,11 @@ async fn main() {
     println!("\n--- get_ledger_entry ---");
     test_get_known_account(&client, &source_kp).await;
     test_get_missing_key(&client).await;
+
+    println!("\n--- get_ledger ---");
+    test_get_ledger(&client).await;
+    test_get_ledger_scp_signature(&client).await;
+    test_get_ledger_unknown_sequence(&client).await;
 
     println!("\n--- submit_and_wait ---");
     test_submit_payment(&client, &source_kp, &server).await;

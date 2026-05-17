@@ -2,10 +2,14 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use soroban_client::soroban_rpc::TransactionStatus;
-use soroban_client::xdr::{Limits, ReadXdr, TransactionEnvelope, WriteXdr};
-use soroban_client::{Options, Server};
+use soroban_client::xdr::{LedgerKey, Limits, ReadXdr, TransactionEnvelope, WriteXdr};
+use soroban_client::{Options, Pagination, Server};
 
-use soroban_client::xdr::LedgerKey;
+pub struct LedgerData {
+    pub sequence: u32,
+    pub header_xdr: Vec<u8>,
+    pub metadata_xdr: Option<Vec<u8>>,
+}
 
 #[derive(Clone)]
 pub struct RpcClient {
@@ -33,6 +37,48 @@ impl RpcClient {
     pub async fn latest_ledger_sequence(&self) -> anyhow::Result<u32> {
         let info = self.server.get_latest_ledger().await?;
         Ok(info.sequence)
+    }
+
+    pub async fn get_ledger(&self, sequence: u32) -> anyhow::Result<LedgerData> {
+        let resp = self
+            .server
+            .get_ledgers(Pagination::From(sequence), Some(1))
+            .await
+            .map_err(|e| anyhow::anyhow!("getLedgers RPC failed: {e}"))?;
+
+        let info = resp
+            .ledgers
+            .into_iter()
+            .next()
+            .ok_or_else(|| anyhow::anyhow!("getLedgers: no ledger at sequence {sequence}"))?;
+
+        if info.sequence != sequence {
+            return Err(anyhow::anyhow!(
+                "getLedgers: expected seq {sequence}, got {}",
+                info.sequence
+            ));
+        }
+
+        let header_xdr = info
+            .to_header()
+            .ok_or_else(|| anyhow::anyhow!("getLedgers: no headerXdr for sequence {sequence}"))?
+            .header
+            .to_xdr(Limits::none())
+            .map_err(|e| anyhow::anyhow!("LedgerHeader XDR encode failed: {e}"))?;
+
+        let metadata_xdr = info
+            .to_metadata()
+            .map(|m| {
+                m.to_xdr(Limits::none())
+                    .map_err(|e| anyhow::anyhow!("LedgerCloseMeta XDR encode failed: {e}"))
+            })
+            .transpose()?;
+
+        Ok(LedgerData {
+            sequence,
+            header_xdr,
+            metadata_xdr,
+        })
     }
 
     pub async fn get_ledger_entry(&self, key: &[u8]) -> anyhow::Result<Option<Vec<u8>>> {

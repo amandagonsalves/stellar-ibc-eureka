@@ -80,8 +80,48 @@ impl StellarGatewayQuery for QueryHandler {
 
     async fn query_ibc_header(
         &self,
-        _request: Request<QueryIbcHeaderRequest>,
+        request: Request<QueryIbcHeaderRequest>,
     ) -> Result<Response<QueryIbcHeaderResponse>, Status> {
-        unimplemented!()
+        use prost::Message as _;
+        use soroban_client::xdr::{LedgerHeader, Limits, ReadXdr, StellarValueExt, WriteXdr};
+
+        let seq = request.into_inner().height as u32;
+
+        let ledger = self
+            .rpc
+            .get_ledger(seq)
+            .await
+            .map_err(|e| Status::internal(format!("getLedger failed: {e}")))?;
+
+        let header = LedgerHeader::from_xdr(&ledger.header_xdr, Limits::none())
+            .map_err(|e| Status::internal(format!("LedgerHeader XDR decode: {e}")))?;
+
+        let (scp_node_id, scp_signature) = match header.scp_value.ext {
+            StellarValueExt::Signed(sig) => {
+                let node_id_xdr = sig
+                    .node_id
+                    .to_xdr(Limits::none())
+                    .map_err(|e| Status::internal(format!("NodeId XDR encode: {e}")))?;
+                (node_id_xdr, sig.signature.to_vec())
+            }
+            StellarValueExt::Basic => (vec![], vec![]),
+        };
+
+        let stellar_header = crate::proto::StellarHeader {
+            ledger_seq: seq,
+            ledger_header_xdr: ledger.header_xdr,
+            ibc_state_root: vec![0u8; 32],
+            scp_node_id,
+            scp_signature,
+        };
+
+        let mut header_bytes = vec![];
+        stellar_header
+            .encode(&mut header_bytes)
+            .map_err(|e| Status::internal(format!("StellarHeader encode: {e}")))?;
+
+        Ok(Response::new(QueryIbcHeaderResponse {
+            header: header_bytes,
+        }))
     }
 }
