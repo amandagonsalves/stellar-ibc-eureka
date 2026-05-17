@@ -9,6 +9,7 @@ publish = false
 async-trait.workspace = true
 axum.workspace = true
 chrono.workspace = true
+ibc-core = { workspace = true, features = ["std"] }
 prost.workspace = true
 regex.workspace = true
 serde.workspace = true
@@ -16,11 +17,19 @@ serde_json.workspace = true
 sha3.workspace = true
 soroban-client.workspace = true
 soroban-sdk.workspace = true
+stellar-ibc-types = { workspace = true, features = ["std"] }
 stellar-strkey.workspace = true
+thiserror.workspace = true
+anyhow.workspace = true
 tokio.workspace = true
 tonic.workspace = true
+tonic-health.workspace = true
+tonic-reflection.workspace = true
 
 http-body-util = "0.1.0"
 dotenvy.workspace = true
-tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tracing.workspace = true
+tracing-subscriber.workspace = true
+
+stellar-gateway-store   = { path = "./store" }
+stellar-gateway-modules = { path = "./modules" }
