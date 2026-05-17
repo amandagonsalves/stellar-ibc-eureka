@@ -4,7 +4,7 @@ use soroban_client::{
     network::{NetworkPassphrase, Networks},
     operation::{self, Operation},
     transaction::{TransactionBehavior, TransactionBuilder, TransactionBuilderBehavior},
-    xdr::{AccountId, LedgerKey, LedgerKeyAccount, Limits, PublicKey, ReadXdr, Uint256, WriteXdr},
+    xdr::{LedgerKey, LedgerKeyAccount, Limits, ReadXdr, WriteXdr},
     Options, Server,
 };
 use stellar_hermes_gateway::rpc::RpcClient;
@@ -41,8 +41,9 @@ async fn test_get_known_account(client: &RpcClient, kp: &Keypair) {
 
 async fn test_get_missing_key(client: &RpcClient) {
     let label = "get_ledger_entry: non-existent key returns None";
+    let random_kp = Keypair::random().unwrap();
     let key = LedgerKey::Account(LedgerKeyAccount {
-        account_id: AccountId(PublicKey::PublicKeyTypeEd25519(Uint256([0u8; 32]))),
+        account_id: random_kp.xdr_account_id(),
     });
     let key_xdr = key.to_xdr(Limits::none()).unwrap();
 
@@ -92,9 +93,19 @@ async fn test_submit_payment(client: &RpcClient, source_kp: &Keypair, server: &S
         }
     };
 
+    print!("  submitting transaction (waiting up to 30s)...");
+    use std::io::Write;
+    std::io::stdout().flush().ok();
+
     match client.submit_and_wait(&xdr_bytes).await {
-        Ok(hash) => pass(&format!("{label} (hash: {hash})")),
-        Err(e) => fail(label, e),
+        Ok(hash) => {
+            println!(" done.");
+            pass(&format!("{label} (hash: {hash})"));
+        }
+        Err(e) => {
+            println!(" failed.");
+            fail(label, e);
+        }
     }
 }
 

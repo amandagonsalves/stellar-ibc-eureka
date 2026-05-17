@@ -107,12 +107,37 @@ impl RpcClient {
 
         match result.status {
             TransactionStatus::Success => Ok(hash),
-            TransactionStatus::Failed => {
-                Err(anyhow::anyhow!("transaction {hash} failed on-chain"))
-            }
+            TransactionStatus::Failed => Err(anyhow::anyhow!("transaction {hash} failed on-chain")),
             TransactionStatus::NotFound => {
                 Err(anyhow::anyhow!("transaction {hash} not found after 30s"))
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const TESTNET_URL: &str = "https://soroban-testnet.stellar.org";
+
+    #[tokio::test]
+    async fn submit_and_wait_rejects_invalid_xdr() {
+        let client = RpcClient::new(TESTNET_URL).unwrap();
+        let err = client.submit_and_wait(b"not valid xdr").await.unwrap_err();
+        assert!(
+            err.to_string().contains("TransactionEnvelope XDR"),
+            "unexpected error: {err}"
+        );
+    }
+
+    #[tokio::test]
+    async fn get_ledger_entry_rejects_invalid_xdr() {
+        let client = RpcClient::new(TESTNET_URL).unwrap();
+        let err = client.get_ledger_entry(b"bad").await.unwrap_err();
+        assert!(
+            err.to_string().contains("LedgerKey XDR"),
+            "unexpected error: {err}"
+        );
     }
 }

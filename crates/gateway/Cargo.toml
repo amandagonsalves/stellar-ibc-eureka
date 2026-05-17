@@ -7,6 +7,10 @@ repository = { workspace = true }
 rust-version = { workspace = true }
 description = ""
 
+[lib]
+name = "stellar_hermes_gateway"
+path = "src/lib.rs"
+
 [[bin]]
 name = "stellar-gateway"
 path = "src/main.rs"
