@@ -7,7 +7,7 @@ use crate::{config::GatewayConfig, query::QueryHandler, rpc::RpcClient, state::A
 pub async fn run(cfg: GatewayConfig) {
     let http_addr = cfg.http_addr();
 
-    let rpc = RpcClient::new(&cfg.rpc_url.as_str()).expect("could not create a new rpc client");
+    let rpc = RpcClient::new(cfg.rpc_url.as_str()).expect("could not create a new rpc client");
 
     let app_state = Arc::new(AppState::new(rpc.clone(), cfg.signing_key.clone()));
 
