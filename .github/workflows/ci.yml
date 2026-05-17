@@ -46,6 +46,11 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-cargo-crates-
 
+      - name: Install protoc
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y protobuf-compiler
+
       - name: Cache cargo-audit binary
         id: cache-cargo-audit
         uses: actions/cache@v4
@@ -79,7 +84,7 @@ jobs:
       - name: Check install build warnings
         run: >
           cargo rustc --locked --release
-          --bin crates --
+          --bin stellar-gateway --
           -D warnings
 
       - name: Test
