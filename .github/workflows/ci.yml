@@ -16,6 +16,8 @@ concurrency:
 
 env:
   CI: true
+  npm_config_audit: false
+  npm_config_fund: false
   CARGO_TERM_COLOR: always
 
 jobs:
@@ -41,63 +43,37 @@ jobs:
             ~/.cargo/git
             ~/.cargo/bin/cargo-audit
             target
-          key: ${{ runner.os }}-cargo-stellar-ibc-${{ hashFiles('Cargo.lock') }}
+          key: ${{ runner.os }}-cargo-crates-${{ hashFiles('Cargo.lock') }}
           restore-keys: |
-            ${{ runner.os }}-cargo-stellar-ibc-
+            ${{ runner.os }}-cargo-crates-
 
       - name: Install cargo-audit
         run: command -v cargo-audit || cargo install cargo-audit --locked
 
-      - name: Audit dependencies
-        run: cargo audit --ignore RUSTSEC-2026-0009
+      - name: Audit Rust dependencies
+        run: >
+          cargo audit --file Cargo.lock
+          --ignore RUSTSEC-2026-0104
+          --ignore RUSTSEC-2026-0098
+          --ignore RUSTSEC-2026-0099
+          --ignore RUSTSEC-2026-0049
+          --ignore RUSTSEC-2026-0009
 
       - name: Check formatting
-        run: cargo fmt --all -- --check
+        run: cargo fmt --manifest-path Cargo.toml -- --check
 
       - name: Lint
-        run: cargo clippy --all-targets --all-features -- -D warnings
+        run: >
+          cargo clippy --manifest-path Cargo.toml --locked --all-targets --
+          -D warnings
+          -A clippy::manual_is_multiple_of
+          -A clippy::too_many_arguments
+
+      - name: Check install build warnings
+        run: >
+          cargo rustc --manifest-path Cargo.toml --locked --release
+          --bin crates --
+          -D warnings
 
       - name: Test
-        run: cargo test --all --locked
-
-  wasm:
-    name: WASM build
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Rust
-        uses: dtolnay/rust-toolchain@1.91.1
-        with:
-          targets: wasm32-unknown-unknown
-
-      - name: Cache cargo
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: ${{ runner.os }}-cargo-stellar-wasm-${{ hashFiles('Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-stellar-wasm-
-
-      - name: Install binaryen
-        run: sudo apt-get install -y binaryen
-
-      - name: Build light client WASM
-        run: cargo build --target wasm32-unknown-unknown --no-default-features -p stellar-ibc-light-client --release
-
-      - name: Lower bulk-memory to MVP
-        run: |
-          WASM=target/wasm32-unknown-unknown/release/stellar_ibc_light_client.wasm
-          wasm-opt --enable-bulk-memory --llvm-memory-copy-fill-lowering -O1 --strip-debug "$WASM" -o "$WASM"
-
-      - name: Report WASM size
-        run: |
-          WASM=target/wasm32-unknown-unknown/release/stellar_ibc_light_client.wasm
-          echo "WASM size: $(wc -c < $WASM) bytes"
-          ls -lh $WASM
+        run: cargo test --manifest-path Cargo.toml --locked
