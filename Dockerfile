@@ -43,11 +43,11 @@ COPY --from=builder /build/target/release/stellar-gateway ./stellar-gateway
 # gRPC — Hermes fork connects here
 EXPOSE 50052
 # HTTP — health endpoint + REST queries
-EXPOSE 8001
+EXPOSE 8005
 
 ENV STELLAR_GATEWAY_HOST=0.0.0.0 \
     STELLAR_GATEWAY_GRPC_PORT=50052 \
-    STELLAR_GATEWAY_HTTP_PORT=8001 \
+    STELLAR_GATEWAY_HTTP_PORT=8005 \
     STELLAR_RPC_URL=https://soroban-testnet.stellar.org \
     NETWORK_PASSPHRASE="Test SDF Network ; September 2015"
 

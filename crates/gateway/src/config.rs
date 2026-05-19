@@ -22,7 +22,7 @@ impl GatewayConfig {
             http_port: std::env::var("STELLAR_GATEWAY_HTTP_PORT")
                 .ok()
                 .and_then(|v| v.parse().ok())
-                .unwrap_or(8000),
+                .unwrap_or(8005),
             rpc_url: std::env::var("STELLAR_RPC_URL")
                 .unwrap_or_else(|_| "https://soroban-testnet.stellar.org".to_string()),
             ibc_contract_id: std::env::var("IBC_CONTRACT_ID").unwrap_or_default(),

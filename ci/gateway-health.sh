@@ -4,7 +4,7 @@ set -euo pipefail
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 REPO_ROOT=$(cd "${SCRIPT_DIR}/.." && pwd)
 
-HTTP_PORT="${STELLAR_GATEWAY_HTTP_PORT:-8000}"
+HTTP_PORT="${STELLAR_GATEWAY_HTTP_PORT:-8005}"
 GRPC_PORT="${STELLAR_GATEWAY_GRPC_PORT:-50052}"
 GATEWAY_BIN="${REPO_ROOT}/target/release/stellar-gateway"
 
