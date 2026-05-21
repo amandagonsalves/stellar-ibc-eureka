@@ -1,3 +1,6 @@
+mod gateway_tests;
+mod pb;
+
 use soroban_client::{
     account::{Account, AccountBehavior},
     keypair::{Keypair, KeypairBehavior},
@@ -11,11 +14,11 @@ use stellar_hermes_core::rpc::RpcClient;
 
 const TESTNET_URL: &str = "https://soroban-testnet.stellar.org";
 
-fn pass(label: &str) {
+pub fn pass(label: &str) {
     println!("PASS  {label}");
 }
 
-fn fail(label: &str, err: impl std::fmt::Display) {
+pub fn fail(label: &str, err: impl std::fmt::Display) {
     println!("FAIL  {label}: {err}");
 }
 
@@ -213,6 +216,9 @@ async fn main() {
 
     println!("\n--- submit_and_wait ---");
     test_submit_payment(&client, &source_kp, &server).await;
+
+    let addr = gateway_tests::gateway_addr();
+    gateway_tests::run_all(&addr).await;
 
     println!("\nDone.");
 }

@@ -3891,9 +3891,14 @@ dependencies = [
 name = "stellar-integration-tests"
 version = "0.1.0"
 dependencies = [
+ "prost 0.14.3",
+ "prost-build",
  "soroban-client",
  "stellar-hermes-core",
  "tokio",
+ "tonic",
+ "tonic-build",
+ "tonic-prost",
 ]
 
 [[package]]

@@ -30,3 +30,6 @@ start-gateway:
 
 test-ibc:
 	cargo test -p stellar-ibc
+
+run-integration-tests:
+	cargo run -p stellar-integration-tests

@@ -15,3 +15,10 @@ path = "src/main.rs"
 stellar-hermes-core = { workspace = true }
 soroban-client = { workspace = true }
 tokio = { workspace = true }
+tonic = { workspace = true }
+tonic-prost = { workspace = true }
+prost = { workspace = true }
+
+[build-dependencies]
+tonic-build = { workspace = true }
+prost-build = "0.14"
