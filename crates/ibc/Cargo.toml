@@ -14,6 +14,7 @@ crate-type = ["rlib"]
 ibc = { workspace = true }
 ibc-derive = { workspace = true }
 prost = "0.13"
+ics23 = "0.12"
 thiserror = { workspace = true }
 anyhow = { workspace = true }
 serde = { workspace = true }

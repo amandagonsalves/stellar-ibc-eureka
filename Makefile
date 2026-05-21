@@ -24,3 +24,9 @@ audit:
 		--ignore RUSTSEC-2026-0009
 
 check: fmt-check lint test
+
+start-gateway:
+	cargo run -p stellar-hermes-gateway
+
+test-ibc:
+	cargo test -p stellar-ibc

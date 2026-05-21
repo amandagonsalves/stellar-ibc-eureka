@@ -40,6 +40,12 @@ fn main() {
             "crate::proto::QueryPacketReceiptResponse",
         ),
         (
+            "query_acknowledgement",
+            "QueryAcknowledgement",
+            "crate::proto::QueryAcknowledgementRequest",
+            "crate::proto::QueryAcknowledgementResponse",
+        ),
+        (
             "query_next_seq_recv",
             "QueryNextSeqRecv",
             "crate::proto::QueryNextSeqRecvRequest",

@@ -8,6 +8,7 @@ service StellarGatewayQuery {
   rpc QueryConsensusState(QueryConsensusStateRequest) returns (QueryConsensusStateResponse);
   rpc QueryPacketCommitment(QueryPacketCommitmentRequest) returns (QueryPacketCommitmentResponse);
   rpc QueryPacketReceipt(QueryPacketReceiptRequest) returns (QueryPacketReceiptResponse);
+  rpc QueryAcknowledgement(QueryAcknowledgementRequest) returns (QueryAcknowledgementResponse);
   rpc QueryNextSeqRecv(QueryNextSeqRecvRequest) returns (QueryNextSeqRecvResponse);
   rpc QueryIbcHeader(QueryIbcHeaderRequest) returns (QueryIbcHeaderResponse);
 }
@@ -74,6 +75,18 @@ message QueryPacketReceiptResponse {
   bool   received     = 1;
   bytes  proof        = 2;
   uint64 proof_height = 3;
+}
+
+message QueryAcknowledgementRequest {
+  string client_id = 1;
+  uint64 sequence  = 2;
+  uint64 height    = 3;
+}
+
+message QueryAcknowledgementResponse {
+  bytes  acknowledgement = 1;
+  bytes  proof           = 2;
+  uint64 proof_height    = 3;
 }
 
 message QueryNextSeqRecvRequest {
