@@ -45,4 +45,33 @@ pub enum DataKey {
     Counterparty(String),
     Frozen(String),
     Port(String),
+    NextSeqSend(String),
+}
+
+#[contracttype]
+#[derive(Clone)]
+pub struct OnRecvPacketCallback {
+    pub source_client: String,
+    pub dest_client: String,
+    pub sequence: u64,
+    pub payload: Payload,
+}
+
+#[contracttype]
+#[derive(Clone)]
+pub struct OnAcknowledgementPacketCallback {
+    pub source_client: String,
+    pub dest_client: String,
+    pub sequence: u64,
+    pub payload: Payload,
+    pub acknowledgement: Bytes,
+}
+
+#[contracttype]
+#[derive(Clone)]
+pub struct OnTimeoutPacketCallback {
+    pub source_client: String,
+    pub dest_client: String,
+    pub sequence: u64,
+    pub payload: Payload,
 }

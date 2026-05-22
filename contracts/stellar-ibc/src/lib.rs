@@ -7,10 +7,14 @@ mod ibc_store;
 mod ics02_client;
 mod ics24_host;
 mod identifiers;
+mod packet_handler;
 mod port_router;
 mod types;
 
 pub use errors::Error;
+pub use types::{
+    OnAcknowledgementPacketCallback, OnRecvPacketCallback, OnTimeoutPacketCallback,
+};
 
 pub use types::{Counterparty, DataKey, Height, Packet, Payload};
 
@@ -119,6 +123,42 @@ impl IbcRouter {
 
     pub fn acknowledgement(env: &Env, dest_client_id: String, sequence: u64) -> Option<BytesN<32>> {
         ibc_store::acknowledgement(env, &dest_client_id, sequence)
+    }
+
+    pub fn send_packet(
+        env: &Env,
+        source_client_id: String,
+        timeout_timestamp: u64,
+        payloads: Vec<Payload>,
+    ) -> u64 {
+        packet_handler::send_packet(env, source_client_id, timeout_timestamp, payloads)
+    }
+
+    pub fn recv_packet(env: &Env, packet: Packet, proof: Bytes, proof_height: u64) {
+        packet_handler::recv_packet(env, packet, proof, proof_height)
+    }
+
+    pub fn write_acknowledgement(
+        env: &Env,
+        dest_client_id: String,
+        sequence: u64,
+        acknowledgements: Vec<Bytes>,
+    ) {
+        packet_handler::write_acknowledgement(env, dest_client_id, sequence, acknowledgements)
+    }
+
+    pub fn acknowledge_packet(
+        env: &Env,
+        packet: Packet,
+        acknowledgements: Vec<Bytes>,
+        proof: Bytes,
+        proof_height: u64,
+    ) {
+        packet_handler::acknowledge_packet(env, packet, acknowledgements, proof, proof_height)
+    }
+
+    pub fn timeout_packet(env: &Env, packet: Packet, proof: Bytes, proof_height: u64) {
+        packet_handler::timeout_packet(env, packet, proof, proof_height)
     }
 }
 
