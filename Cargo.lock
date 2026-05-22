@@ -4021,6 +4021,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "stellar-tendermint-light-client"
+version = "0.1.0"
+dependencies = [
+ "soroban-sdk",
+]
+
+[[package]]
 name = "stellar-xdr"
 version = "26.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"

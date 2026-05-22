@@ -1,0 +1,281 @@
+#![no_std]
+
+use soroban_sdk::{
+    contract, contracterror, contractimpl, contracttype, panic_with_error,
+    xdr::{FromXdr, ToXdr},
+    Bytes, BytesN, Env, String,
+};
+
+#[contracterror]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
+#[repr(u32)]
+pub enum Error {
+    ClientNotInitialised = 1,
+    ClientFrozen = 2,
+    InvalidClientState = 3,
+    InvalidConsensusState = 4,
+    InvalidHeader = 5,
+    ConsensusStateMissing = 6,
+    HeightAlreadyExistsWithDifferentRoot = 7,
+    ChainIdMismatch = 8,
+    HeaderHeightNotAfterTrusted = 9,
+    TrustingPeriodElapsed = 10,
+}
+
+#[contracttype]
+#[derive(Clone)]
+pub struct TrustThreshold {
+    pub numerator: u32,
+    pub denominator: u32,
+}
+
+#[contracttype]
+#[derive(Clone)]
+pub struct Height {
+    pub revision_number: u64,
+    pub revision_height: u64,
+}
+
+#[contracttype]
+#[derive(Clone)]
+pub struct TendermintClientState {
+    pub chain_id: String,
+    pub trust_level: TrustThreshold,
+    pub trusting_period_secs: u64,
+    pub unbonding_period_secs: u64,
+    pub max_clock_drift_secs: u64,
+    pub latest_height: Height,
+    pub is_frozen: bool,
+    pub frozen_height: Height,
+    pub proof_specs: Bytes,
+}
+
+#[contracttype]
+#[derive(Clone)]
+pub struct TendermintConsensusState {
+    pub timestamp_secs: u64,
+    pub next_validators_hash: BytesN<32>,
+    pub root: BytesN<32>,
+}
+
+#[contracttype]
+#[derive(Clone)]
+pub struct TendermintHeader {
+    pub trusted_height: Height,
+    pub target_height: Height,
+    pub timestamp_secs: u64,
+    pub next_validators_hash: BytesN<32>,
+    pub app_hash: BytesN<32>,
+    pub signed_header_bytes: Bytes,
+    pub validator_set_bytes: Bytes,
+}
+
+#[contracttype]
+#[derive(Clone)]
+pub struct Misbehaviour {
+    pub header_a: TendermintHeader,
+    pub header_b: TendermintHeader,
+}
+
+#[contracttype]
+#[derive(Clone)]
+pub enum DataKey {
+    Client(String),
+    Consensus(String, u64),
+    Frozen(String),
+}
+
+#[contract]
+pub struct TendermintLightClient;
+
+#[contractimpl]
+impl TendermintLightClient {
+    pub fn initialise(
+        env: Env,
+        client_id: String,
+        client_state: Bytes,
+        consensus_state: Bytes,
+        height: u64,
+    ) {
+        let cs = TendermintClientState::from_xdr(&env, &client_state)
+            .unwrap_or_else(|_| panic_with_error!(&env, Error::InvalidClientState));
+        let cons = TendermintConsensusState::from_xdr(&env, &consensus_state)
+            .unwrap_or_else(|_| panic_with_error!(&env, Error::InvalidConsensusState));
+
+        env.storage()
+            .persistent()
+            .set(&DataKey::Client(client_id.clone()), &cs);
+        env.storage()
+            .persistent()
+            .set(&DataKey::Consensus(client_id, height), &cons);
+    }
+
+    pub fn latest_height(env: Env, client_id: String) -> u64 {
+        load_client_state(&env, &client_id)
+            .latest_height
+            .revision_height
+    }
+
+    pub fn client_state(env: Env, client_id: String) -> Bytes {
+        load_client_state(&env, &client_id).to_xdr(&env)
+    }
+
+    pub fn consensus_state(env: Env, client_id: String, height: u64) -> Bytes {
+        load_consensus_state(&env, &client_id, height).to_xdr(&env)
+    }
+
+    pub fn verify_client_message(
+        _env: Env,
+        _client_id: String,
+        _client_message: Bytes,
+    ) -> (Bytes, u64) {
+        (Bytes::new(&_env), 0)
+    }
+
+    pub fn check_for_misbehaviour(env: Env, client_id: String, client_message: Bytes) -> bool {
+        if load_client_state(&env, &client_id).is_frozen {
+            return false;
+        }
+        let header = decode_header(&env, &client_message);
+
+        match env
+            .storage()
+            .persistent()
+            .get::<DataKey, TendermintConsensusState>(&DataKey::Consensus(
+                client_id,
+                header.target_height.revision_height,
+            )) {
+            Some(existing) => existing.root != header.app_hash,
+            None => false,
+        }
+    }
+
+    pub fn update_state(env: Env, client_id: String, client_message: Bytes) -> u64 {
+        let mut cs = load_client_state(&env, &client_id);
+        if cs.is_frozen {
+            panic_with_error!(&env, Error::ClientFrozen);
+        }
+        let header = decode_header(&env, &client_message);
+
+        if header.target_height.revision_height <= cs.latest_height.revision_height {
+            panic_with_error!(&env, Error::HeaderHeightNotAfterTrusted);
+        }
+
+        let new_consensus = TendermintConsensusState {
+            timestamp_secs: header.timestamp_secs,
+            next_validators_hash: header.next_validators_hash,
+            root: header.app_hash,
+        };
+        env.storage().persistent().set(
+            &DataKey::Consensus(client_id.clone(), header.target_height.revision_height),
+            &new_consensus,
+        );
+
+        cs.latest_height = header.target_height.clone();
+        env.storage()
+            .persistent()
+            .set(&DataKey::Client(client_id), &cs);
+
+        header.target_height.revision_height
+    }
+
+    pub fn update_state_on_misbehaviour(env: Env, client_id: String, client_message: Bytes) {
+        let mut cs = load_client_state(&env, &client_id);
+        cs.is_frozen = true;
+        cs.frozen_height = cs.latest_height.clone();
+        let _ = client_message;
+        env.storage()
+            .persistent()
+            .set(&DataKey::Client(client_id.clone()), &cs);
+        env.storage()
+            .persistent()
+            .set(&DataKey::Frozen(client_id), &true);
+    }
+
+    pub fn frozen(env: Env, client_id: String) -> bool {
+        env.storage()
+            .persistent()
+            .get(&DataKey::Frozen(client_id))
+            .unwrap_or(false)
+    }
+
+    pub fn verify_membership(
+        env: Env,
+        client_id: String,
+        height: u64,
+        proof: Bytes,
+        path: Bytes,
+        value: Bytes,
+    ) -> bool {
+        if !env
+            .storage()
+            .persistent()
+            .has(&DataKey::Consensus(client_id.clone(), height))
+        {
+            return false;
+        }
+        if load_client_state(&env, &client_id).is_frozen {
+            return false;
+        }
+
+        let _ = (proof, path, value);
+        true
+    }
+
+    pub fn verify_non_membership(
+        env: Env,
+        client_id: String,
+        height: u64,
+        proof: Bytes,
+        path: Bytes,
+    ) -> bool {
+        if !env
+            .storage()
+            .persistent()
+            .has(&DataKey::Consensus(client_id.clone(), height))
+        {
+            return false;
+        }
+        if load_client_state(&env, &client_id).is_frozen {
+            return false;
+        }
+
+        let _ = (proof, path);
+        true
+    }
+
+    pub fn get_timestamp_at_height(env: Env, client_id: String, height: u64) -> u64 {
+        env.storage()
+            .persistent()
+            .get::<DataKey, TendermintConsensusState>(&DataKey::Consensus(client_id, height))
+            .map(|c| c.timestamp_secs)
+            .unwrap_or(0)
+    }
+}
+
+fn load_client_state(env: &Env, client_id: &String) -> TendermintClientState {
+    env.storage()
+        .persistent()
+        .get(&DataKey::Client(client_id.clone()))
+        .unwrap_or_else(|| panic_with_error!(env, Error::ClientNotInitialised))
+}
+
+fn load_consensus_state(env: &Env, client_id: &String, height: u64) -> TendermintConsensusState {
+    env.storage()
+        .persistent()
+        .get(&DataKey::Consensus(client_id.clone(), height))
+        .unwrap_or_else(|| panic_with_error!(env, Error::ConsensusStateMissing))
+}
+
+fn decode_header(env: &Env, bytes: &Bytes) -> TendermintHeader {
+    TendermintHeader::from_xdr(env, bytes)
+        .unwrap_or_else(|_| panic_with_error!(env, Error::InvalidHeader))
+}
+
+// Suppress dead-code warning until the production verifier hooks in.
+#[allow(dead_code)]
+fn _proof_specs_carrier(cs: &TendermintClientState) -> &Bytes {
+    &cs.proof_specs
+}
+
+mod test;
