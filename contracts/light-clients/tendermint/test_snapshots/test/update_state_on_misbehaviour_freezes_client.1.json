@@ -8,6 +8,7 @@
     [],
     [],
     [],
+    [],
     []
   ],
   "ledger": {
@@ -33,7 +34,7 @@
                     "symbol": "Client"
                   },
                   {
-                    "string": "10-attestation-0"
+                    "string": "07-tendermint-0"
                   }
                 ]
               },
@@ -42,28 +43,43 @@
                 "map": [
                   {
                     "key": {
-                      "symbol": "attestor_keys"
+                      "symbol": "chain_id"
                     },
                     "val": {
-                      "vec": [
+                      "string": "cosmoshub-4"
+                    }
+                  },
+                  {
+                    "key": {
+                      "symbol": "frozen_height"
+                    },
+                    "val": {
+                      "map": [
                         {
-                          "bytes": "5011ff3b30df1e096e19d4ccde9d232f1c4155f6e9a6ffacf2226cd2f0d41e32"
+                          "key": {
+                            "symbol": "revision_height"
+                          },
+                          "val": {
+                            "u64": "100"
+                          }
                         },
                         {
-                          "bytes": "3b00b2c10b9d6fff6b06b413d17e0f7af1c9b30a6906e1a972c6d6e47dcf7f86"
-                        },
-                        {
-                          "bytes": "c7131eefab8eda2dea5d25ac15b1d1ef814ac5e2aaa05941656e01f753be00a0"
+                          "key": {
+                            "symbol": "revision_number"
+                          },
+                          "val": {
+                            "u64": "0"
+                          }
                         }
                       ]
                     }
                   },
                   {
                     "key": {
-                      "symbol": "frozen"
+                      "symbol": "is_frozen"
                     },
                     "val": {
-                      "bool": false
+                      "bool": true
                     }
                   },
                   {
@@ -71,15 +87,81 @@
                       "symbol": "latest_height"
                     },
                     "val": {
-                      "u64": "5"
+                      "map": [
+                        {
+                          "key": {
+                            "symbol": "revision_height"
+                          },
+                          "val": {
+                            "u64": "100"
+                          }
+                        },
+                        {
+                          "key": {
+                            "symbol": "revision_number"
+                          },
+                          "val": {
+                            "u64": "0"
+                          }
+                        }
+                      ]
                     }
                   },
                   {
                     "key": {
-                      "symbol": "min_required_sigs"
+                      "symbol": "max_clock_drift_secs"
                     },
                     "val": {
-                      "u32": 2
+                      "u64": "30"
+                    }
+                  },
+                  {
+                    "key": {
+                      "symbol": "proof_specs"
+                    },
+                    "val": {
+                      "bytes": ""
+                    }
+                  },
+                  {
+                    "key": {
+                      "symbol": "trust_level"
+                    },
+                    "val": {
+                      "map": [
+                        {
+                          "key": {
+                            "symbol": "denominator"
+                          },
+                          "val": {
+                            "u32": 3
+                          }
+                        },
+                        {
+                          "key": {
+                            "symbol": "numerator"
+                          },
+                          "val": {
+                            "u32": 2
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "key": {
+                      "symbol": "trusting_period_secs"
+                    },
+                    "val": {
+                      "u64": "1209600"
+                    }
+                  },
+                  {
+                    "key": {
+                      "symbol": "unbonding_period_secs"
+                    },
+                    "val": {
+                      "u64": "1814400"
                     }
                   }
                 ]
@@ -103,16 +185,41 @@
                     "symbol": "Consensus"
                   },
                   {
-                    "string": "10-attestation-0"
+                    "string": "07-tendermint-0"
                   },
                   {
-                    "u64": "0"
+                    "u64": "100"
                   }
                 ]
               },
               "durability": "persistent",
               "val": {
-                "u64": "0"
+                "map": [
+                  {
+                    "key": {
+                      "symbol": "next_validators_hash"
+                    },
+                    "val": {
+                      "bytes": "1111111111111111111111111111111111111111111111111111111111111111"
+                    }
+                  },
+                  {
+                    "key": {
+                      "symbol": "root"
+                    },
+                    "val": {
+                      "bytes": "2222222222222222222222222222222222222222222222222222222222222222"
+                    }
+                  },
+                  {
+                    "key": {
+                      "symbol": "timestamp_secs"
+                    },
+                    "val": {
+                      "u64": "1000000"
+                    }
+                  }
+                ]
               }
             }
           },
@@ -130,19 +237,16 @@
               "key": {
                 "vec": [
                   {
-                    "symbol": "Consensus"
+                    "symbol": "Frozen"
                   },
                   {
-                    "string": "10-attestation-0"
-                  },
-                  {
-                    "u64": "5"
+                    "string": "07-tendermint-0"
                   }
                 ]
               },
               "durability": "persistent",
               "val": {
-                "u64": "1000"
+                "bool": true
               }
             }
           },
