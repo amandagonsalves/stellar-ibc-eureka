@@ -61,7 +61,11 @@ pub enum Error {
     CallerIsNotRouter = 5,
     UnknownSourcePort = 6,
     UnknownDestPort = 7,
+    AdminNotSet = 8,
+    DailyLimitExceeded = 9,
 }
+
+const SECS_PER_DAY: u64 = 86_400;
 
 #[contracttype]
 #[derive(Clone)]
@@ -83,7 +87,10 @@ pub struct FungibleTokenPacketData {
 #[derive(Clone)]
 pub enum DataKey {
     Router,
+    Admin,
     Balance(Address, String),
+    DailyCap(String),
+    Usage(String, u64),
 }
 
 #[contract]
@@ -91,8 +98,36 @@ pub struct IbcTransferApp;
 
 #[contractimpl]
 impl IbcTransferApp {
-    pub fn __constructor(env: Env, router: Address) {
+    pub fn __constructor(env: Env, router: Address, admin: Address) {
         env.storage().instance().set(&DataKey::Router, &router);
+        env.storage().instance().set(&DataKey::Admin, &admin);
+    }
+
+    pub fn set_rate_limit(env: Env, denom: String, daily_cap: i128) {
+        let admin: Address = env
+            .storage()
+            .instance()
+            .get(&DataKey::Admin)
+            .unwrap_or_else(|| panic_with_error!(&env, Error::AdminNotSet));
+        admin.require_auth();
+        if daily_cap < 0 {
+            panic_with_error!(&env, Error::AmountMustBePositive);
+        }
+        env.storage()
+            .persistent()
+            .set(&DataKey::DailyCap(denom), &daily_cap);
+    }
+
+    pub fn daily_cap(env: Env, denom: String) -> Option<i128> {
+        env.storage().persistent().get(&DataKey::DailyCap(denom))
+    }
+
+    pub fn daily_usage(env: Env, denom: String) -> i128 {
+        let day = current_day(&env);
+        env.storage()
+            .persistent()
+            .get(&DataKey::Usage(denom, day))
+            .unwrap_or(0)
     }
 
     pub fn mint(env: Env, to: Address, denom: String, amount: i128) {
@@ -125,6 +160,8 @@ impl IbcTransferApp {
         if amount <= 0 {
             panic_with_error!(&env, Error::AmountMustBePositive);
         }
+
+        enforce_rate_limit(&env, &denom, amount);
 
         let escrow = env.current_contract_address();
         debit(&env, &sender, &denom, amount);
@@ -308,6 +345,29 @@ fn hex_to_nibble(env: &Env, c: u8) -> u8 {
 #[allow(dead_code)]
 fn _symbol_kept_in_scope(env: &Env) -> Symbol {
     Symbol::new(env, "noop")
+}
+
+fn current_day(env: &Env) -> u64 {
+    env.ledger().timestamp() / SECS_PER_DAY
+}
+
+fn enforce_rate_limit(env: &Env, denom: &String, amount: i128) {
+    let cap: Option<i128> = env
+        .storage()
+        .persistent()
+        .get(&DataKey::DailyCap(denom.clone()));
+    let cap = match cap {
+        Some(c) => c,
+        None => return,
+    };
+
+    let day = current_day(env);
+    let usage_key = DataKey::Usage(denom.clone(), day);
+    let used: i128 = env.storage().persistent().get(&usage_key).unwrap_or(0);
+    if used + amount > cap {
+        panic_with_error!(env, Error::DailyLimitExceeded);
+    }
+    env.storage().persistent().set(&usage_key, &(used + amount));
 }
 
 mod test;

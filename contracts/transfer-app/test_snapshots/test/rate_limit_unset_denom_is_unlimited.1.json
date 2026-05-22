@@ -74,7 +74,7 @@
                   "string": "XLM"
                 },
                 {
-                  "i128": "400"
+                  "i128": "9999"
                 },
                 {
                   "string": "cosmos1abc"
@@ -92,9 +92,6 @@
         }
       ]
     ],
-    [],
-    [],
-    [],
     [],
     []
   ],
@@ -127,6 +124,26 @@
           "ext": "v0"
         },
         "live_until": 6311999
+      },
+      {
+        "entry": {
+          "last_modified_ledger_seq": 0,
+          "data": {
+            "contract_data": {
+              "ext": "v0",
+              "contract": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4",
+              "key": {
+                "bytes": "6d6f636b2d30010000000000000001"
+              },
+              "durability": "persistent",
+              "val": {
+                "bytes": "2dc536f89509a810b01f64417fa829d45e4f12fb68d4db4787417653733f5028"
+              }
+            }
+          },
+          "ext": "v0"
+        },
+        "live_until": 86400
       },
       {
         "entry": {
@@ -503,7 +520,7 @@
               },
               "durability": "persistent",
               "val": {
-                "i128": "0"
+                "i128": "9999"
               }
             }
           },
@@ -533,7 +550,7 @@
               },
               "durability": "persistent",
               "val": {
-                "i128": "1000"
+                "i128": "1"
               }
             }
           },
