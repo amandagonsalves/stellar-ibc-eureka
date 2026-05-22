@@ -305,7 +305,7 @@ async fn test_msg_register_counterparty_round_trip(channel: Channel) {
         .register_counterparty(MsgRegisterCounterpartyRequest {
             client_id: DEFAULT_CLIENT_ID.to_string(),
             counterparty_client_id: "07-tendermint-0".to_string(),
-            merkle_prefix: vec![],
+            counterparty_commitment_prefix: vec![],
         })
         .await;
     expect_ok_or_unimplemented(label, resp);

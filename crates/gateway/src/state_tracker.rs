@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use sha2::{Digest, Sha256};
 use soroban_client::xdr::{
     LedgerCloseMeta, LedgerEntryChange, LedgerEntryData, LedgerKey, Limits, ReadXdr, ScAddress,
-    TransactionMeta, WriteXdr,
+    ScVal, TransactionMeta,
 };
 use stellar_ibc_core::proof::{
     serialize_membership_proof_with_index, serialize_non_membership_proof_with_index,
@@ -107,10 +107,10 @@ impl StateTracker {
                 if !self.matches(&key.contract) {
                     return;
                 }
-                let Ok(k) = key.key.to_xdr(Limits::none()) else {
+                let Some(path) = scval_to_v2_path(&key.key) else {
                     return;
                 };
-                self.smt.remove(&k);
+                self.smt.remove(&path);
             }
             _ => {}
         }
@@ -123,16 +123,16 @@ impl StateTracker {
         if !self.matches(&d.contract) {
             return;
         }
-        let Ok(k) = d.key.to_xdr(Limits::none()) else {
+        let Some(path) = scval_to_v2_path(&d.key) else {
             return;
         };
-        let Ok(v) = d.val.to_xdr(Limits::none()) else {
+        let Some(value) = scval_to_provable_value(&d.val) else {
             return;
         };
         if is_update {
-            self.smt.update(&k, &v);
+            self.smt.update(&path, &value);
         } else {
-            self.smt.insert(&k, &v);
+            self.smt.insert(&path, &value);
         }
     }
 
@@ -199,4 +199,29 @@ fn collect_tx_changes(meta: &TransactionMeta, out: &mut Vec<LedgerEntryChange>) 
         #[allow(unreachable_patterns)]
         _ => {}
     }
+}
+
+fn scval_to_v2_path(key: &ScVal) -> Option<Vec<u8>> {
+    let ScVal::Bytes(bytes) = key else {
+        return None;
+    };
+    if !is_v2_provable_path(bytes.as_slice()) {
+        return None;
+    }
+    Some(bytes.as_slice().to_vec())
+}
+
+fn scval_to_provable_value(value: &ScVal) -> Option<Vec<u8>> {
+    match value {
+        ScVal::Bytes(b) => Some(b.as_slice().to_vec()),
+        _ => None,
+    }
+}
+
+fn is_v2_provable_path(key: &[u8]) -> bool {
+    if key.len() < 10 {
+        return false;
+    }
+    let discriminator = key[key.len() - 9];
+    matches!(discriminator, 0x01 | 0x02 | 0x03)
 }

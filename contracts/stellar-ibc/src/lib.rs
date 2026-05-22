@@ -1,8 +1,18 @@
 #![no_std]
 
 use soroban_sdk::{
-    contract, contractimpl, contracttype, Address, Bytes, Env, IntoVal, String, Symbol, Val, Vec,
+    contract, contractimpl, contracttype, Address, Bytes, BytesN, Env, IntoVal, String, Symbol,
+    Val, Vec,
 };
+
+const PACKET_COMMITMENT_DISCRIMINATOR: u8 = 0x01;
+const PACKET_RECEIPT_DISCRIMINATOR: u8 = 0x02;
+const ACK_COMMITMENT_DISCRIMINATOR: u8 = 0x03;
+
+const RECEIPT_SENTINEL: u8 = 0x01;
+
+const PROVABLE_TTL_THRESHOLD: u32 = 17_280;
+const PROVABLE_TTL_EXTEND_TO: u32 = 86_400;
 
 #[contracttype]
 #[derive(Clone)]
@@ -183,6 +193,88 @@ impl IbcRouter {
             .get(&DataKey::Frozen(client_id))
             .unwrap_or(false)
     }
+
+    pub fn set_packet_commitment(
+        env: Env,
+        source_client_id: String,
+        sequence: u64,
+        commitment: BytesN<32>,
+    ) {
+        let key = packet_commitment_key(&env, &source_client_id, sequence);
+        let storage = env.storage().persistent();
+        storage.set(&key, &commitment);
+        storage.extend_ttl(&key, PROVABLE_TTL_THRESHOLD, PROVABLE_TTL_EXTEND_TO);
+    }
+
+    pub fn packet_commitment(
+        env: Env,
+        source_client_id: String,
+        sequence: u64,
+    ) -> Option<BytesN<32>> {
+        let key = packet_commitment_key(&env, &source_client_id, sequence);
+        env.storage().persistent().get(&key)
+    }
+
+    pub fn delete_packet_commitment(env: Env, source_client_id: String, sequence: u64) {
+        let key = packet_commitment_key(&env, &source_client_id, sequence);
+        env.storage().persistent().remove(&key);
+    }
+
+    pub fn set_packet_receipt(env: Env, dest_client_id: String, sequence: u64) {
+        let key = packet_receipt_key(&env, &dest_client_id, sequence);
+        let sentinel = Bytes::from_slice(&env, &[RECEIPT_SENTINEL]);
+        let storage = env.storage().persistent();
+        storage.set(&key, &sentinel);
+        storage.extend_ttl(&key, PROVABLE_TTL_THRESHOLD, PROVABLE_TTL_EXTEND_TO);
+    }
+
+    pub fn has_packet_receipt(env: Env, dest_client_id: String, sequence: u64) -> bool {
+        let key = packet_receipt_key(&env, &dest_client_id, sequence);
+        env.storage().persistent().has(&key)
+    }
+
+    pub fn set_ack_commitment(
+        env: Env,
+        dest_client_id: String,
+        sequence: u64,
+        ack_hash: BytesN<32>,
+    ) {
+        let key = ack_commitment_key(&env, &dest_client_id, sequence);
+        let storage = env.storage().persistent();
+        storage.set(&key, &ack_hash);
+        storage.extend_ttl(&key, PROVABLE_TTL_THRESHOLD, PROVABLE_TTL_EXTEND_TO);
+    }
+
+    pub fn acknowledgement(
+        env: Env,
+        dest_client_id: String,
+        sequence: u64,
+    ) -> Option<BytesN<32>> {
+        let key = ack_commitment_key(&env, &dest_client_id, sequence);
+        env.storage().persistent().get(&key)
+    }
+}
+
+fn packet_commitment_key(env: &Env, source_client_id: &String, sequence: u64) -> Bytes {
+    v2_path_key(env, source_client_id, PACKET_COMMITMENT_DISCRIMINATOR, sequence)
+}
+
+fn packet_receipt_key(env: &Env, dest_client_id: &String, sequence: u64) -> Bytes {
+    v2_path_key(env, dest_client_id, PACKET_RECEIPT_DISCRIMINATOR, sequence)
+}
+
+fn ack_commitment_key(env: &Env, dest_client_id: &String, sequence: u64) -> Bytes {
+    v2_path_key(env, dest_client_id, ACK_COMMITMENT_DISCRIMINATOR, sequence)
+}
+
+fn v2_path_key(env: &Env, client_id: &String, discriminator: u8, sequence: u64) -> Bytes {
+    let id_len = client_id.len() as usize;
+    let mut buf = [0u8; 128];
+    client_id.copy_into_slice(&mut buf[..id_len]);
+    buf[id_len] = discriminator;
+    let seq_bytes = sequence.to_be_bytes();
+    buf[id_len + 1..id_len + 9].copy_from_slice(&seq_bytes);
+    Bytes::from_slice(env, &buf[..id_len + 9])
 }
 
 fn mint_client_id(env: &Env, client_type: &String) -> String {
