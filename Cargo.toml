@@ -3,8 +3,9 @@ members = [
     "crates/core",
     "crates/gateway",
     "crates/integration-tests",
-    "contracts/mock-light-client",
-    "contracts/stellar-ibc",
+    "contracts/light-clients/*",
+    "contracts/router",
+    
 ]
 resolver = "2"
 
@@ -72,7 +73,7 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 stellar-ibc-core = { path = "crates/core" }
 stellar-hermes-gateway = { path = "crates/gateway" }
-mock-light-client = { path = "contracts/mock-light-client" }
+stellar-mock-light-client = { path = "contracts/light-clients/mock" }
 
 [workspace.lints.rust]
 unsafe_code = "forbid"

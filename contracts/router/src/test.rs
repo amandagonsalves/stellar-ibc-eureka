@@ -1,7 +1,7 @@
 #![cfg(test)]
 
 use super::*;
-use mock_light_client::{MockLightClient, MockLightClientClient};
+use stellar_mock_light_client::{MockLightClient, MockLightClientClient};
 use soroban_sdk::testutils::{Address as _, Ledger};
 use soroban_sdk::{contract, contractimpl, vec, Bytes, BytesN, Env, String};
 use types::{Packet, Payload};
