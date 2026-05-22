@@ -9,6 +9,33 @@ pub struct Counterparty {
 
 #[contracttype]
 #[derive(Clone)]
+pub struct Height {
+    pub revision_number: u64,
+    pub revision_height: u64,
+}
+
+#[contracttype]
+#[derive(Clone)]
+pub struct Payload {
+    pub source_port: String,
+    pub dest_port: String,
+    pub version: String,
+    pub encoding: String,
+    pub value: Bytes,
+}
+
+#[contracttype]
+#[derive(Clone)]
+pub struct Packet {
+    pub sequence: u64,
+    pub source_client: String,
+    pub dest_client: String,
+    pub timeout_timestamp: u64,
+    pub payloads: Vec<Payload>,
+}
+
+#[contracttype]
+#[derive(Clone)]
 pub enum DataKey {
     Admin,
     NextClientId(String),

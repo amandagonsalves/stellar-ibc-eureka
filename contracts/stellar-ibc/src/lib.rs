@@ -4,10 +4,11 @@ use soroban_sdk::{contract, contractimpl, Address, Bytes, BytesN, Env, String, V
 
 mod ibc_store;
 mod ics02_client;
+mod ics24_host;
 mod port_router;
 mod types;
 
-pub use types::{Counterparty, DataKey};
+pub use types::{Counterparty, DataKey, Height, Packet, Payload};
 
 #[contract]
 pub struct IbcRouter;
@@ -18,106 +19,102 @@ impl IbcRouter {
         env.storage().instance().set(&DataKey::Admin, &admin);
     }
 
-    pub fn register_client_type(env: Env, client_type: String, lc_address: Address) {
-        ics02_client::register_client_type(&env, client_type, lc_address)
+    pub fn register_client_type(env: &Env, client_type: String, lc_address: Address) {
+        ics02_client::register_client_type(env, client_type, lc_address)
     }
 
-    pub fn lc_address(env: Env, client_type: String) -> Option<Address> {
-        ics02_client::lc_address(&env, client_type)
+    pub fn lc_address(env: &Env, client_type: String) -> Option<Address> {
+        ics02_client::lc_address(env, client_type)
     }
 
     pub fn create_client(
-        env: Env,
+        env: &Env,
         client_type: String,
         client_state: Bytes,
         consensus_state: Bytes,
         height: u64,
     ) -> String {
-        ics02_client::create_client(&env, client_type, client_state, consensus_state, height)
+        ics02_client::create_client(env, client_type, client_state, consensus_state, height)
     }
 
     pub fn register_counterparty(
-        env: Env,
+        env: &Env,
         client_id: String,
         counterparty_client_id: String,
         counterparty_commitment_prefix: Vec<Bytes>,
     ) {
         ics02_client::register_counterparty(
-            &env,
+            env,
             client_id,
             counterparty_client_id,
             counterparty_commitment_prefix,
         )
     }
 
-    pub fn counterparty(env: Env, client_id: String) -> Option<Counterparty> {
-        ics02_client::counterparty(&env, client_id)
+    pub fn counterparty(env: &Env, client_id: String) -> Option<Counterparty> {
+        ics02_client::counterparty(env, client_id)
     }
 
-    pub fn update_client(env: Env, client_id: String, client_message: Bytes) -> u64 {
-        ics02_client::update_client(&env, client_id, client_message)
+    pub fn update_client(env: &Env, client_id: String, client_message: Bytes) -> u64 {
+        ics02_client::update_client(env, client_id, client_message)
     }
 
-    pub fn client_lc_address(env: Env, client_id: String) -> Option<Address> {
-        ics02_client::client_lc_address(&env, client_id)
+    pub fn client_lc_address(env: &Env, client_id: String) -> Option<Address> {
+        ics02_client::client_lc_address(env, client_id)
     }
 
-    pub fn frozen(env: Env, client_id: String) -> bool {
-        ics02_client::frozen(&env, client_id)
+    pub fn frozen(env: &Env, client_id: String) -> bool {
+        ics02_client::frozen(env, client_id)
     }
 
-    pub fn register_port(env: Env, port_id: String, app_address: Address) {
-        port_router::register_port(&env, port_id, app_address)
+    pub fn register_port(env: &Env, port_id: String, app_address: Address) {
+        port_router::register_port(env, port_id, app_address)
     }
 
-    pub fn port_app(env: Env, port_id: String) -> Option<Address> {
-        port_router::port_app(&env, port_id)
+    pub fn port_app(env: &Env, port_id: String) -> Option<Address> {
+        port_router::port_app(env, port_id)
     }
 
     pub fn set_packet_commitment(
-        env: Env,
+        env: &Env,
         source_client_id: String,
         sequence: u64,
         commitment: BytesN<32>,
     ) {
-        ibc_store::set_packet_commitment(&env, &source_client_id, sequence, &commitment)
+        ibc_store::set_packet_commitment(env, &source_client_id, sequence, &commitment)
     }
 
     pub fn packet_commitment(
-        env: Env,
+        env: &Env,
         source_client_id: String,
         sequence: u64,
     ) -> Option<BytesN<32>> {
-        ibc_store::packet_commitment(&env, &source_client_id, sequence)
+        ibc_store::packet_commitment(env, &source_client_id, sequence)
     }
 
-    pub fn delete_packet_commitment(env: Env, source_client_id: String, sequence: u64) {
-        ibc_store::delete_packet_commitment(&env, &source_client_id, sequence)
+    pub fn delete_packet_commitment(env: &Env, source_client_id: String, sequence: u64) {
+        ibc_store::delete_packet_commitment(env, &source_client_id, sequence)
     }
 
-    pub fn set_packet_receipt(env: Env, dest_client_id: String, sequence: u64) {
-        ibc_store::set_packet_receipt(&env, &dest_client_id, sequence)
+    pub fn set_packet_receipt(env: &Env, dest_client_id: String, sequence: u64) {
+        ibc_store::set_packet_receipt(env, &dest_client_id, sequence)
     }
 
-    pub fn has_packet_receipt(env: Env, dest_client_id: String, sequence: u64) -> bool {
-        ibc_store::has_packet_receipt(&env, &dest_client_id, sequence)
+    pub fn has_packet_receipt(env: &Env, dest_client_id: String, sequence: u64) -> bool {
+        ibc_store::has_packet_receipt(env, &dest_client_id, sequence)
     }
 
     pub fn set_ack_commitment(
-        env: Env,
+        env: &Env,
         dest_client_id: String,
         sequence: u64,
         ack_hash: BytesN<32>,
     ) {
-        ibc_store::set_ack_commitment(&env, &dest_client_id, sequence, &ack_hash)
+        ibc_store::set_ack_commitment(env, &dest_client_id, sequence, &ack_hash)
     }
 
-    pub fn acknowledgement(
-        env: Env,
-        dest_client_id: String,
-        sequence: u64,
-    ) -> Option<BytesN<32>> {
-        ibc_store::acknowledgement(&env, &dest_client_id, sequence)
+    pub fn acknowledgement(env: &Env, dest_client_id: String, sequence: u64) -> Option<BytesN<32>> {
+        ibc_store::acknowledgement(env, &dest_client_id, sequence)
     }
 }
 
