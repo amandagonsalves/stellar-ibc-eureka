@@ -1,9 +1,9 @@
 # `stellar-mock-light-client` — accept-everything LC for development
 
-Test-only light client. Mirrors the LC contract interface (see
-`docs/stellar-ibc/13-lc-interface.md`) but skips all cryptographic checks —
-`check_for_misbehaviour` returns `false`, `verify_membership` /
-`verify_non_membership` return `true`, `get_timestamp_at_height` returns `0`.
+Test-only light client. Mirrors the shared LC contract interface that the
+router dials but skips all cryptographic checks — `check_for_misbehaviour`
+returns `false`, `verify_membership` / `verify_non_membership` return `true`,
+`get_timestamp_at_height` returns `0`.
 
 ## What it does
 
