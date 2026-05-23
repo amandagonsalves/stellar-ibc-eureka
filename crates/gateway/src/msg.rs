@@ -13,7 +13,7 @@ use soroban_client::{
     transaction_builder::{TransactionBuilder, TransactionBuilderBehavior, TIMEOUT_INFINITE},
     xdr::{Limits, ReadXdr, ScBytes, ScString, ScVal, ScVec, StringM, VecM, WriteXdr},
 };
-use stellar_ibc_core::rpc::RpcClient;
+use stellar_ibc_core::rpc::{RpcClient, SubmittedTx};
 use tonic::{Request, Response, Status};
 
 #[derive(Clone)]
@@ -43,7 +43,7 @@ impl MsgHandler {
         StellarGatewayMsgServer::new(self)
     }
 
-    async fn invoke_router(&self, method: &str, args: Vec<ScVal>) -> Result<String, Status> {
+    async fn invoke_router(&self, method: &str, args: Vec<ScVal>) -> Result<SubmittedTx, Status> {
         if self.ibc_contract_id.is_empty() {
             return Err(Status::failed_precondition(
                 "gateway IBC_CONTRACT_ID is not configured",
@@ -97,9 +97,21 @@ impl MsgHandler {
             .map_err(|e| Status::internal(format!("envelope XDR encode: {e}")))?;
 
         self.rpc
-            .submit_and_wait(&envelope_bytes)
+            .submit_and_wait_for_result(&envelope_bytes)
             .await
             .map_err(|e| Status::internal(format!("submit_and_wait({method}): {e}")))
+    }
+}
+
+fn scval_into_string(value: ScVal) -> Option<String> {
+    match value {
+        ScVal::String(ScString(sm)) => core::str::from_utf8(sm.as_slice())
+            .ok()
+            .map(|s| s.to_string()),
+        ScVal::Symbol(sym) => core::str::from_utf8(sym.0.as_slice())
+            .ok()
+            .map(|s| s.to_string()),
+        _ => None,
     }
 }
 
@@ -167,10 +179,12 @@ impl StellarGatewayMsg for MsgHandler {
             scval_bytes(&req.consensus_state)?,
             scval_u64(req.height),
         ];
-        let _tx_hash = self.invoke_router("create_client", args).await?;
-        Ok(Response::new(MsgCreateClientResponse {
-            client_id: String::new(),
-        }))
+        let submitted = self.invoke_router("create_client", args).await?;
+        let client_id = submitted
+            .return_value
+            .and_then(scval_into_string)
+            .unwrap_or_default();
+        Ok(Response::new(MsgCreateClientResponse { client_id }))
     }
 
     async fn update_client(
@@ -184,7 +198,7 @@ impl StellarGatewayMsg for MsgHandler {
             ));
         }
         let args = vec![scval_string(&req.client_id)?, scval_bytes(&req.header)?];
-        let _tx_hash = self.invoke_router("update_client", args).await?;
+        let _ = self.invoke_router("update_client", args).await?;
         Ok(Response::new(MsgUpdateClientResponse {}))
     }
 
@@ -203,7 +217,7 @@ impl StellarGatewayMsg for MsgHandler {
             scval_string(&req.counterparty_client_id)?,
             scval_vec_of_bytes(&req.counterparty_commitment_prefix)?,
         ];
-        let _tx_hash = self.invoke_router("register_counterparty", args).await?;
+        let _ = self.invoke_router("register_counterparty", args).await?;
         Ok(Response::new(MsgRegisterCounterpartyResponse {}))
     }
 
@@ -217,7 +231,7 @@ impl StellarGatewayMsg for MsgHandler {
             scval_bytes(&req.proof)?,
             scval_u64(req.proof_height),
         ];
-        let _tx_hash = self.invoke_router("recv_packet", args).await?;
+        let _ = self.invoke_router("recv_packet", args).await?;
         Ok(Response::new(MsgRecvPacketResponse {}))
     }
 
@@ -233,7 +247,7 @@ impl StellarGatewayMsg for MsgHandler {
             scval_bytes(&req.proof)?,
             scval_u64(req.proof_height),
         ];
-        let _tx_hash = self.invoke_router("acknowledge_packet", args).await?;
+        let _ = self.invoke_router("acknowledge_packet", args).await?;
         Ok(Response::new(MsgAckPacketResponse {}))
     }
 
@@ -247,7 +261,7 @@ impl StellarGatewayMsg for MsgHandler {
             scval_bytes(&req.proof)?,
             scval_u64(req.proof_height),
         ];
-        let _tx_hash = self.invoke_router("timeout_packet", args).await?;
+        let _ = self.invoke_router("timeout_packet", args).await?;
         Ok(Response::new(MsgTimeoutPacketResponse {}))
     }
 
@@ -265,7 +279,7 @@ impl StellarGatewayMsg for MsgHandler {
             scval_string(&req.client_id)?,
             scval_bytes(&req.client_message)?,
         ];
-        let _tx_hash = self.invoke_router("update_client", args).await?;
+        let _ = self.invoke_router("update_client", args).await?;
         Ok(Response::new(MsgSubmitMisbehaviourResponse {}))
     }
 }

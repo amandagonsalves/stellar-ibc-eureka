@@ -2,8 +2,14 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use soroban_client::soroban_rpc::TransactionStatus;
-use soroban_client::xdr::{LedgerKey, Limits, ReadXdr, TransactionEnvelope, WriteXdr};
+use soroban_client::xdr::{LedgerKey, Limits, ReadXdr, ScVal, TransactionEnvelope, WriteXdr};
 use soroban_client::{Options, Pagination, Server};
+
+#[derive(Debug, Clone)]
+pub struct SubmittedTx {
+    pub hash: String,
+    pub return_value: Option<ScVal>,
+}
 
 pub struct LedgerData {
     pub sequence: u32,
@@ -108,6 +114,13 @@ impl RpcClient {
     }
 
     pub async fn submit_and_wait(&self, tx_xdr: &[u8]) -> anyhow::Result<String> {
+        self.submit_and_wait_for_result(tx_xdr).await.map(|s| s.hash)
+    }
+
+    pub async fn submit_and_wait_for_result(
+        &self,
+        tx_xdr: &[u8],
+    ) -> anyhow::Result<SubmittedTx> {
         let envelope = TransactionEnvelope::from_xdr(tx_xdr, Limits::none())
             .map_err(|e| anyhow::anyhow!("invalid TransactionEnvelope XDR: {e}"))?;
 
@@ -152,7 +165,10 @@ impl RpcClient {
             .map_err(|(e, _)| anyhow::anyhow!("wait_transaction failed: {e}"))?;
 
         match result.status {
-            TransactionStatus::Success => Ok(hash),
+            TransactionStatus::Success => {
+                let return_value = result.to_result_meta().and_then(|(_, rv)| rv);
+                Ok(SubmittedTx { hash, return_value })
+            }
             TransactionStatus::Failed => Err(anyhow::anyhow!("transaction {hash} failed on-chain")),
             TransactionStatus::NotFound => {
                 Err(anyhow::anyhow!("transaction {hash} not found after 30s"))
