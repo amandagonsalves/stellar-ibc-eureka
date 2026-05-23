@@ -102,6 +102,12 @@ fn main() {
             "crate::proto::MsgTimeoutPacketRequest",
             "crate::proto::MsgTimeoutPacketResponse",
         ),
+        (
+            "submit_misbehaviour",
+            "SubmitMisbehaviour",
+            "crate::proto::MsgSubmitMisbehaviourRequest",
+            "crate::proto::MsgSubmitMisbehaviourResponse",
+        ),
     ];
 
     let mut query_svc = tonic_build::manual::Service::builder()
