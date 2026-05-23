@@ -65,7 +65,14 @@ pub async fn run(cfg: GatewayConfig) {
     tonic::transport::Server::builder()
         .add_service(reflection_service)
         .add_service(health_service)
-        .add_service(QueryHandler::new(rpc.clone(), tracker).into_server())
+        .add_service(
+            QueryHandler::new(
+                rpc.clone(),
+                tracker,
+                Some(cfg.ibc_contract_id.clone()).filter(|s| !s.is_empty()),
+            )
+            .into_server(),
+        )
         .add_service(
             MsgHandler::new(
                 rpc.clone(),

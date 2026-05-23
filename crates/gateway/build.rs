@@ -57,6 +57,12 @@ fn main() {
             "crate::proto::QueryIbcHeaderRequest",
             "crate::proto::QueryIbcHeaderResponse",
         ),
+        (
+            "events",
+            "Events",
+            "crate::proto::EventsRequest",
+            "crate::proto::EventsResponse",
+        ),
     ];
 
     let msg_methods = vec![

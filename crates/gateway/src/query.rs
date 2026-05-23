@@ -5,12 +5,12 @@ use tonic::{Request, Response, Status};
 
 use crate::proto::{
     stellar_gateway_query_server::{StellarGatewayQuery, StellarGatewayQueryServer},
-    LatestHeightRequest, LatestHeightResponse, QueryAcknowledgementRequest,
-    QueryAcknowledgementResponse, QueryClientStateRequest, QueryClientStateResponse,
-    QueryConsensusStateRequest, QueryConsensusStateResponse, QueryIbcHeaderRequest,
-    QueryIbcHeaderResponse, QueryNextSeqRecvRequest, QueryNextSeqRecvResponse,
-    QueryPacketCommitmentRequest, QueryPacketCommitmentResponse, QueryPacketReceiptRequest,
-    QueryPacketReceiptResponse,
+    EventsRequest, EventsResponse, GatewayContractEvent, LatestHeightRequest, LatestHeightResponse,
+    QueryAcknowledgementRequest, QueryAcknowledgementResponse, QueryClientStateRequest,
+    QueryClientStateResponse, QueryConsensusStateRequest, QueryConsensusStateResponse,
+    QueryIbcHeaderRequest, QueryIbcHeaderResponse, QueryNextSeqRecvRequest,
+    QueryNextSeqRecvResponse, QueryPacketCommitmentRequest, QueryPacketCommitmentResponse,
+    QueryPacketReceiptRequest, QueryPacketReceiptResponse,
 };
 use crate::state_tracker::{PathLookup, StateTracker};
 use stellar_ibc_core::commitment::{
@@ -22,11 +22,20 @@ use stellar_ibc_core::rpc::RpcClient;
 pub struct QueryHandler {
     pub rpc: RpcClient,
     pub tracker: Arc<Mutex<StateTracker>>,
+    pub ibc_contract_id: Option<String>,
 }
 
 impl QueryHandler {
-    pub fn new(rpc: RpcClient, tracker: Arc<Mutex<StateTracker>>) -> Self {
-        Self { rpc, tracker }
+    pub fn new(
+        rpc: RpcClient,
+        tracker: Arc<Mutex<StateTracker>>,
+        ibc_contract_id: Option<String>,
+    ) -> Self {
+        Self {
+            rpc,
+            tracker,
+            ibc_contract_id,
+        }
     }
 
     pub fn into_server(self) -> StellarGatewayQueryServer<Self> {
@@ -227,6 +236,73 @@ impl StellarGatewayQuery for QueryHandler {
 
         Ok(Response::new(QueryIbcHeaderResponse {
             header: header_bytes,
+        }))
+    }
+
+    async fn events(
+        &self,
+        request: Request<EventsRequest>,
+    ) -> Result<Response<EventsResponse>, Status> {
+        use soroban_client::xdr::{Limits, WriteXdr};
+        use soroban_client::{EventFilter, Pagination};
+        use soroban_client::soroban_rpc::EventType;
+
+        let contract_id = self
+            .ibc_contract_id
+            .clone()
+            .filter(|s| !s.is_empty())
+            .ok_or_else(|| Status::failed_precondition("ibc_contract_id is not configured"))?;
+
+        let req = request.into_inner();
+        let pagination = if !req.cursor.is_empty() {
+            Pagination::Cursor(req.cursor.clone())
+        } else if req.start_ledger > 0 {
+            Pagination::From(req.start_ledger)
+        } else {
+            return Err(Status::invalid_argument(
+                "events: must set either start_ledger or cursor",
+            ));
+        };
+
+        let limit = if req.limit == 0 { None } else { Some(req.limit) };
+        let filter = EventFilter::new(EventType::Contract).contract(&contract_id);
+
+        let resp = self
+            .rpc
+            .server
+            .get_events(pagination, vec![filter], limit)
+            .await
+            .map_err(|e| Status::internal(format!("getEvents RPC failed: {e}")))?;
+
+        let mut events = Vec::with_capacity(resp.events.len());
+        for ev in &resp.events {
+            let topics_xdr = ev
+                .topic()
+                .into_iter()
+                .map(|t| {
+                    t.to_xdr(Limits::none())
+                        .map_err(|e| Status::internal(format!("topic XDR encode: {e}")))
+                })
+                .collect::<Result<Vec<_>, _>>()?;
+            let value_xdr = ev
+                .value()
+                .to_xdr(Limits::none())
+                .map_err(|e| Status::internal(format!("value XDR encode: {e}")))?;
+            events.push(GatewayContractEvent {
+                id: ev.id.clone(),
+                ledger: ev.ledger,
+                ledger_closed_at: ev.ledger_closed_at.clone(),
+                contract_id: ev.contract_id.clone(),
+                tx_hash: ev.tx_hash.clone(),
+                topics_xdr,
+                value_xdr,
+            });
+        }
+
+        Ok(Response::new(EventsResponse {
+            latest_ledger: resp.latest_ledger,
+            cursor: resp.cursor.unwrap_or_default(),
+            events,
         }))
     }
 }
