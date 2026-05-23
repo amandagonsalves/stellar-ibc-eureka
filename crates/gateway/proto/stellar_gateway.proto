@@ -21,6 +21,7 @@ service StellarGatewayMsg {
   rpc RecvPacket(MsgRecvPacketRequest) returns (MsgRecvPacketResponse);
   rpc AckPacket(MsgAckPacketRequest) returns (MsgAckPacketResponse);
   rpc TimeoutPacket(MsgTimeoutPacketRequest) returns (MsgTimeoutPacketResponse);
+  rpc SubmitMisbehaviour(MsgSubmitMisbehaviourRequest) returns (MsgSubmitMisbehaviourResponse);
 }
 
 message LatestHeightRequest {}
@@ -171,3 +172,11 @@ message MsgTimeoutPacketRequest {
 }
 
 message MsgTimeoutPacketResponse {}
+
+message MsgSubmitMisbehaviourRequest {
+  string client_id       = 1;
+  bytes  client_message  = 2;
+  string signer          = 3;
+}
+
+message MsgSubmitMisbehaviourResponse {}

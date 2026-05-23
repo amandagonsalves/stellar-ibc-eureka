@@ -245,6 +245,19 @@ pub struct MsgTimeoutPacketRequest {
 pub struct MsgTimeoutPacketResponse {}
 
 #[derive(Clone, Message)]
+pub struct MsgSubmitMisbehaviourRequest {
+    #[prost(string, tag = "1")]
+    pub client_id: String,
+    #[prost(bytes = "vec", tag = "2")]
+    pub client_message: Vec<u8>,
+    #[prost(string, tag = "3")]
+    pub signer: String,
+}
+
+#[derive(Clone, Message)]
+pub struct MsgSubmitMisbehaviourResponse {}
+
+#[derive(Clone, Message)]
 pub struct StellarHeader {
     #[prost(uint32, tag = "1")]
     pub ledger_seq: u32,

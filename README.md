@@ -257,9 +257,6 @@ Copy-paste `grpcurl` recipes for every endpoint:
 | `AckPacket` | `packet`, `acknowledgement`, `proof`, `proof_height`, `signer` | — | ICS-4 §AcknowledgePacket |
 | `TimeoutPacket` | `packet`, `proof`, `proof_height`, `signer` | — | ICS-4 §TimeoutPacket |
 
-Msg handlers are currently stubs; they accept the wire shape but do not yet build +
-sign Soroban transactions. Plan in
-[`docs/NEXT_STEPS.md` — Task 6 / Task 7](../docs/NEXT_STEPS.md).
 
 gRPC reflection is on:
 

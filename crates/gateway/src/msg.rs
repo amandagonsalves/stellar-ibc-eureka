@@ -2,8 +2,9 @@ use crate::proto::{
     stellar_gateway_msg_server::{StellarGatewayMsg, StellarGatewayMsgServer},
     MsgAckPacketRequest, MsgAckPacketResponse, MsgCreateClientRequest, MsgCreateClientResponse,
     MsgRecvPacketRequest, MsgRecvPacketResponse, MsgRegisterCounterpartyRequest,
-    MsgRegisterCounterpartyResponse, MsgTimeoutPacketRequest, MsgTimeoutPacketResponse,
-    MsgUpdateClientRequest, MsgUpdateClientResponse, SubmitSignedTxRequest, SubmitSignedTxResponse,
+    MsgRegisterCounterpartyResponse, MsgSubmitMisbehaviourRequest, MsgSubmitMisbehaviourResponse,
+    MsgTimeoutPacketRequest, MsgTimeoutPacketResponse, MsgUpdateClientRequest,
+    MsgUpdateClientResponse, SubmitSignedTxRequest, SubmitSignedTxResponse,
 };
 use soroban_client::{
     contract::{ContractBehavior, Contracts},
@@ -248,6 +249,24 @@ impl StellarGatewayMsg for MsgHandler {
         ];
         let _tx_hash = self.invoke_router("timeout_packet", args).await?;
         Ok(Response::new(MsgTimeoutPacketResponse {}))
+    }
+
+    async fn submit_misbehaviour(
+        &self,
+        request: Request<MsgSubmitMisbehaviourRequest>,
+    ) -> Result<Response<MsgSubmitMisbehaviourResponse>, Status> {
+        let req = request.into_inner();
+        if req.client_id.is_empty() {
+            return Err(Status::invalid_argument(
+                "MsgSubmitMisbehaviourRequest.client_id is required",
+            ));
+        }
+        let args = vec![
+            scval_string(&req.client_id)?,
+            scval_bytes(&req.client_message)?,
+        ];
+        let _tx_hash = self.invoke_router("update_client", args).await?;
+        Ok(Response::new(MsgSubmitMisbehaviourResponse {}))
     }
 }
 
