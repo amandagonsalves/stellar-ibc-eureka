@@ -11,6 +11,7 @@ service StellarGatewayQuery {
   rpc QueryAcknowledgement(QueryAcknowledgementRequest) returns (QueryAcknowledgementResponse);
   rpc QueryNextSeqRecv(QueryNextSeqRecvRequest) returns (QueryNextSeqRecvResponse);
   rpc QueryIbcHeader(QueryIbcHeaderRequest) returns (QueryIbcHeaderResponse);
+  rpc Events(EventsRequest) returns (EventsResponse);
 }
 
 service StellarGatewayMsg {
@@ -106,6 +107,28 @@ message QueryIbcHeaderRequest {
 
 message QueryIbcHeaderResponse {
   bytes header = 1;
+}
+
+message EventsRequest {
+  uint32 start_ledger = 1;
+  string cursor       = 2;
+  uint32 limit        = 3;
+}
+
+message EventsResponse {
+  uint64 latest_ledger                   = 1;
+  string cursor                          = 2;
+  repeated GatewayContractEvent events   = 3;
+}
+
+message GatewayContractEvent {
+  string id                = 1;
+  uint64 ledger            = 2;
+  string ledger_closed_at  = 3;
+  string contract_id       = 4;
+  string tx_hash           = 5;
+  repeated bytes topics_xdr = 6;
+  bytes  value_xdr         = 7;
 }
 
 message SubmitSignedTxRequest {
