@@ -1,17 +1,22 @@
 use cosmwasm_std::{
-    entry_point, to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError,
+    entry_point, to_json_binary, Api, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError,
 };
 use prost::Message;
+use sha2::{Digest, Sha256};
 
 use crate::error::ContractError;
+use crate::merkle::{decode_membership_proof, decode_non_membership_proof};
 use crate::msg::{
     CheckForMisbehaviourMsg, CheckForMisbehaviourResult, ClientStatus, Height as MsgHeight,
     InstantiateMsg, LatestHeightResult, QueryMsg, StatusResult, SudoMsg, TimestampAtHeightResult,
     UpdateStateMsg, UpdateStateOnMisbehaviourMsg, UpdateStateResult, VerifyMembershipMsg,
     VerifyNonMembershipMsg,
 };
+use crate::smt::{verify_membership_raw, verify_non_membership_raw, HASH_SIZE};
 use crate::state::{CLIENT_STATE, CONSENSUS_STATES};
-use crate::types::{ClientState, ConsensusState, Height as WireHeight, StellarHeader};
+use crate::types::{ClientState, ConsensusState, Height as WireHeight, ScpEnvelope, StellarHeader};
+
+const ENVELOPE_TYPE_SCP: [u8; 4] = [0, 0, 0, 1];
 
 #[entry_point]
 pub fn instantiate(
@@ -136,6 +141,7 @@ fn update_state(
         });
     }
 
+    verify_scp_quorum(deps.api, &cs, &header.scp_envelopes)?;
 
     let new_consensus = ConsensusState {
         timestamp: header.timestamp,
@@ -224,10 +230,22 @@ fn verify_membership(
             height: cs.frozen_height.as_ref().unwrap().revision_height,
         });
     }
-    let _consensus = require_consensus_state(deps.as_ref(), msg.height.revision_height)?;
+    let consensus = require_consensus_state(deps.as_ref(), msg.height.revision_height)?;
 
-    let _ = msg.path;
-    let _ = msg.value;
+    let root: [u8; HASH_SIZE] = consensus
+        .root
+        .as_slice()
+        .try_into()
+        .map_err(|_| ContractError::MerkleVerificationFailed)?;
+
+    let key = concat_path(&msg.path);
+    let (proof_key, proof_value, siblings) = decode_membership_proof(msg.proof.as_slice())?;
+    if proof_key != key || proof_value.as_slice() != msg.value.as_slice() {
+        return Err(ContractError::MerkleVerificationFailed);
+    }
+    if !verify_membership_raw(&root, &key, msg.value.as_slice(), &siblings) {
+        return Err(ContractError::MerkleVerificationFailed);
+    }
     Ok(())
 }
 
@@ -242,10 +260,32 @@ fn verify_non_membership(
             height: cs.frozen_height.as_ref().unwrap().revision_height,
         });
     }
-    let _consensus = require_consensus_state(deps.as_ref(), msg.height.revision_height)?;
+    let consensus = require_consensus_state(deps.as_ref(), msg.height.revision_height)?;
 
-    let _ = msg.path;
+    let root: [u8; HASH_SIZE] = consensus
+        .root
+        .as_slice()
+        .try_into()
+        .map_err(|_| ContractError::MerkleVerificationFailed)?;
+
+    let key = concat_path(&msg.path);
+    let (proof_key, siblings) = decode_non_membership_proof(msg.proof.as_slice())?;
+    if proof_key != key {
+        return Err(ContractError::MerkleVerificationFailed);
+    }
+    if !verify_non_membership_raw(&root, &key, &siblings) {
+        return Err(ContractError::MerkleVerificationFailed);
+    }
     Ok(())
+}
+
+fn concat_path(path: &[cosmwasm_std::Binary]) -> Vec<u8> {
+    let total: usize = path.iter().map(|b| b.len()).sum();
+    let mut out = Vec::with_capacity(total);
+    for chunk in path {
+        out.extend_from_slice(chunk.as_slice());
+    }
+    out
 }
 
 fn decode_header(bytes: &[u8]) -> Result<StellarHeader, ContractError> {
@@ -281,4 +321,48 @@ fn hex_encode(bytes: &[u8]) -> String {
         s.push_str(&format!("{b:02x}"));
     }
     s
+}
+
+fn verify_scp_quorum(
+    api: &dyn Api,
+    client_state: &ClientState,
+    envelopes: &[ScpEnvelope],
+) -> Result<(), ContractError> {
+    if client_state.network_id.is_empty() {
+        return Err(ContractError::NetworkIdMissing);
+    }
+    if client_state.network_id.len() != 32 {
+        return Err(ContractError::ScpSignatureError(format!(
+            "network_id must be 32 bytes, got {}",
+            client_state.network_id.len()
+        )));
+    }
+
+    for env in envelopes {
+        if env.node_id.len() != 32 || env.signature.len() != 64 {
+            continue;
+        }
+        if !client_state
+            .trusted_validators
+            .iter()
+            .any(|v| v.as_slice() == env.node_id.as_slice())
+        {
+            continue;
+        }
+
+        let mut preimage =
+            Vec::with_capacity(32 + ENVELOPE_TYPE_SCP.len() + env.statement_xdr.len());
+        preimage.extend_from_slice(&client_state.network_id);
+        preimage.extend_from_slice(&ENVELOPE_TYPE_SCP);
+        preimage.extend_from_slice(&env.statement_xdr);
+        let digest: [u8; 32] = Sha256::digest(&preimage).into();
+
+        match api.ed25519_verify(&digest, env.signature.as_slice(), env.node_id.as_slice()) {
+            Ok(true) => return Ok(()),
+            Ok(false) => continue,
+            Err(e) => return Err(ContractError::ScpSignatureError(e.to_string())),
+        }
+    }
+
+    Err(ContractError::QuorumNotMet)
 }

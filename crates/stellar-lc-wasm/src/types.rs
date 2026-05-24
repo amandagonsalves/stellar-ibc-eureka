@@ -31,6 +31,8 @@ pub struct ClientState {
     pub trusted_validators: alloc::vec::Vec<alloc::vec::Vec<u8>>,
     #[prost(bytes = "vec", repeated, tag = "5")]
     pub proof_specs: alloc::vec::Vec<alloc::vec::Vec<u8>>,
+    #[prost(bytes = "vec", tag = "6")]
+    pub network_id: alloc::vec::Vec<u8>,
 }
 
 #[derive(Clone, PartialEq, Eq, Message, Serialize, Deserialize)]

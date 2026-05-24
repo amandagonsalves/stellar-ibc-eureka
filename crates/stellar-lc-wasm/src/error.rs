@@ -39,6 +39,12 @@ pub enum ContractError {
     #[error("scp quorum not met")]
     QuorumNotMet,
 
+    #[error("scp network_id is not configured on the client state")]
+    NetworkIdMissing,
+
+    #[error("scp signature verification error: {0}")]
+    ScpSignatureError(String),
+
     #[error("merkle proof verification failed")]
     MerkleVerificationFailed,
 

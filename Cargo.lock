@@ -4308,6 +4308,7 @@ version = "0.1.0"
 dependencies = [
  "cosmwasm-std",
  "cw-storage-plus",
+ "ed25519-dalek",
  "prost 0.14.3",
  "serde",
  "serde_json",
