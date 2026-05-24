@@ -1,4 +1,4 @@
-.PHONY: test upload-wasm health-check hermes-health docker-health docker-health-local upload-stellar-lc
+.PHONY: test upload-wasm health-check hermes-health docker-health docker-health-local upload-stellar-lc create-stellar-client
 
 SCRIPT_DIR  := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 REPO_ROOT   := $(abspath $(SCRIPT_DIR)..)
@@ -22,3 +22,8 @@ hermes-health:
 
 upload-stellar-lc:
 	@bash $(SCRIPT_DIR)upload-stellar-lc.sh
+
+# Task 2 phase 2: create + query + update the 08-wasm Stellar client on cardanoentrypoint.
+# Optionally accept CHECKSUM=<hex>; otherwise auto-detect from the chain.
+create-stellar-client:
+	@bash $(SCRIPT_DIR)create-stellar-client.sh $(CHECKSUM)
