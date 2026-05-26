@@ -52,14 +52,22 @@ docker build \
   "${REPO_ROOT}"
 
 echo ""
-echo "Step 2: smoke-test the image runs without crashing on --help"
+echo "Step 2: smoke-test the image starts cleanly (3s probe)"
 ENV_ARG=()
 if [[ -f "${REPO_ROOT}/.env" ]]; then
   ENV_ARG=(--env-file "${REPO_ROOT}/.env")
 fi
-set +e
-docker run --rm "${ENV_ARG[@]}" "${LOCAL_REF}" --help 2>&1 | head -5
-set -e
+CID=$(docker run -d --rm "${ENV_ARG[@]}" "${LOCAL_REF}")
+sleep 3
+if docker ps -q -f "id=${CID}" | grep -q .; then
+  echo "  Container ${CID:0:12} still running after 3s — startup OK."
+  docker logs "${CID}" 2>&1 | tail -5 || true
+  docker stop "${CID}" > /dev/null 2>&1 || true
+else
+  echo "  ERROR: container ${CID:0:12} exited within 3s."
+  docker logs "${CID}" 2>&1 | tail -20 || true
+  exit 1
+fi
 
 if [[ "${LOCAL_REF}" != "${REMOTE_REF}" ]]; then
   echo ""
@@ -91,7 +99,7 @@ echo ""
 echo "=== build-gateway-image done ==="
 echo "  Image : ${REMOTE_REF}"
 echo ""
-echo "Run locally   : docker run --rm --env-file .env -p 50052:50052 -p 8001:8001 ${REMOTE_REF}"
+echo "Run locally   : docker run --rm --env-file .env -p 50052:50052 -p 8101:8101 ${REMOTE_REF}"
 if [[ "${PUSH}" == "1" || "${PUSH}" == "true" ]]; then
   echo "Pull anywhere : docker pull ${REMOTE_REF}"
 fi
