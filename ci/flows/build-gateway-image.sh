@@ -24,8 +24,8 @@ if [[ ! -f "${DOCKERFILE}" ]]; then
   exit 1
 fi
 
-if ! grep -q "stellar-hermes-gateway" "${DOCKERFILE}"; then
-  echo "ERROR: ${DOCKERFILE} does not look like the gateway Dockerfile (no 'stellar-hermes-gateway' reference)."
+if ! grep -q "stellar-gateway" "${DOCKERFILE}"; then
+  echo "ERROR: ${DOCKERFILE} does not look like the gateway Dockerfile (no 'stellar-gateway' reference)."
   exit 1
 fi
 
