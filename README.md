@@ -133,7 +133,7 @@ for the SMT design and ICS-23 wire format.
 │                        stub used to develop the router)               │
 │                                                                       │
 │   stellar-tendermint   pending — verifies Cosmos headers on Stellar   │
-│   stellar-lc-wasm      pending — packaged separately as a WASM blob   │
+│   light-client-wasm      pending — packaged separately as a WASM blob   │
 │                        and loaded into Cosmos via 08-wasm             │
 └───────────────────────────────────────────────────────────────────────┘
 ```
@@ -157,7 +157,7 @@ for the SMT design and ICS-23 wire format.
 
 The Cosmos counterparty tracks Stellar via the standard ibc-go `08-wasm` mechanism:
 
-- A Rust crate (`stellar-lc-wasm`, pending) compiles to `wasm32-unknown-unknown`.
+- A Rust crate (`light-client-wasm`, pending) compiles to `wasm32-unknown-unknown`.
 - Uploaded once to the Cosmos chain via `MsgStoreCode`, instantiated per client.
 - Verifies SCP `EXTERNALIZE` envelopes (Ed25519 signatures from a quorum of trusted
   validators) and walks the gateway-produced `MerkleProof` against

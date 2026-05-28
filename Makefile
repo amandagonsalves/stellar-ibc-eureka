@@ -58,3 +58,16 @@ check-contracts:
 # crates/integration-tests
 run-integration-tests:
 	cargo run -p stellar-integration-tests
+
+# crates/osmosis
+start-osmosis:
+	cargo run -p stellar-osmosis -- start
+
+start-osmosis-stateful:
+	cargo run -p stellar-osmosis -- start --stateful
+
+stop-osmosis:
+	cargo run -p stellar-osmosis -- stop
+
+health-osmosis:
+	cargo run -p stellar-osmosis -- health
