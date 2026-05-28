@@ -21,6 +21,14 @@ IBC-enabled chain** — Osmosis, Noble, Neutron, Injective, Cosmos Hub, dYdX,
 Celestia, and the rest of the IBC graph — without relying on multisig
 committees or federated validators.
 
+Looking further out: IBC is increasingly **not only a Cosmos protocol**.
+It is becoming the generic interop substrate that lets non-Cosmos chains
+talk to *each other* through shared, reusable parts. The same investment
+that ships a Stellar↔Cosmos bridge ships the Stellar half of every
+future Stellar↔non-Cosmos pair, for free, because the protocol layer is
+shared. That compounding — bridges that scale O(*n*) instead of O(*n²*)
+— is what makes this work fundable as infrastructure, not as a one-off.
+
 ---
 
 ## 1. Why connect Stellar to Cosmos
@@ -101,6 +109,107 @@ token transfers; through **ICS-27** (interchain accounts) we get
 cross-chain smart-contract calls; through **08-wasm** we get pluggable
 light clients without forking the counterparty chain. The same primitive
 extends from "move USDC" to "trigger a Soroban contract from Osmosis."
+
+---
+
+## IBC as a generic interop state machine
+
+A broader framing worth making explicit, because it changes what kind
+of investment this work represents.
+
+IBC is — at its core — a **blockchain-interop state machine**. The
+specification dictates what state must be provable (commitments,
+receipts, ack commitments), what must be verifiable (header /
+membership / non-membership proofs), and what the packet lifecycle
+looks like. It deliberately says nothing about *how* those state
+transitions are computed underneath. **IBC can be implemented under
+any virtual machine, any consensus algorithm, any programming
+language** — wherever you can hash, sign, and verify a Merkle proof.
+
+The Cosmos SDK has the most mature implementation today, but that is
+an accident of timing, not a property of the protocol. Increasingly,
+IBC is being adopted as the **default interoperability substrate** by
+chain families that have nothing to do with Cosmos — and the more
+non-Cosmos chains speak it, the more value it provides as a shared
+language between them.
+
+| Chain family | IBC status |
+|---|---|
+| Cosmos SDK (Tendermint) | Native `ibc-go` since 2021 |
+| Cardano (Ouroboros / eUTXO) | Production integration shipping (Cardano Foundation) |
+| Stellar (SCP / Soroban) | **This project** |
+| Polkadot / Substrate | Composable / Picasso IBC implementation in production |
+| Ethereum L2s (rollups) | Polymer Labs / IBC Eureka onboarding rollups |
+| Solana | Picasso / Eclipse IBC research and integration |
+| Near | Pagoda / Picasso IBC integration work in progress |
+
+Once two non-Cosmos chains both speak IBC, they can talk **directly to
+each other** through the same packet protocol — no Cosmos chain has to
+sit in the middle, no new bridge has to be built. The day a Stellar
+client exists for a chain that already has a Cosmos counterparty
+client, that pair is bridged. **Marginal cost of the next chain pair
+approaches zero.**
+
+### Bespoke bridges scale O(n²); IBC scales O(n)
+
+The dominant model in crypto interop today is per-pair custom bridges.
+It is also the dominant *cost*. For *n* chains to be pairwise bridged
+with custom code, the industry has to build, audit, and operate ~n²/2
+bridges:
+
+```
+3 chains   →    3 bridges
+10 chains  →   45 bridges
+20 chains  →  190 bridges
+50 chains  → 1225 bridges
+```
+
+Each one needs its own security model, audited codebase, operator set,
+relay incentive design, and ongoing maintenance. Industry-rough
+numbers put the build-and-audit cost in the hundreds of thousands to
+low millions per bridge, with significant ongoing operating cost — and
+custom bridges remain the single most-exploited category of crypto
+infrastructure by total value lost.
+
+IBC inverts the topology. With *n* chains all speaking IBC, you need:
+- *n* light clients (one per chain, packaged as `08-wasm` blobs and
+  embedded wherever they need to be verified — write once, run
+  anywhere).
+- **1** shared protocol specification.
+- **1** generalized relayer stack (Hermes, with an abstract
+  `ChainEndpoint` trait that every chain implements).
+
+The marginal cost of the (*n*+1)-th chain is **one light client + one
+chain endpoint**. Not *n* new bridges. The investment in
+`stellar-ibc-core`, the Hermes Stellar endpoint, and
+`light-client-wasm` is reused by every future chain pair this stack
+serves.
+
+### Why this matters for funding
+
+This framing changes the pitch substantially. A foundation grant for
+"another Stellar↔Cosmos bridge" reads as a **point investment** with
+a single use case. A foundation grant for **"the Stellar
+implementation of a generic, reusable, multi-chain interop state
+machine — already supporting Cardano, designed to support every
+future non-Cosmos chain that joins"** reads as **infrastructure
+investment** with compounding returns.
+
+The same dollar funds:
+
+- A working Stellar↔Cosmos bridge (the immediate, demonstrable
+  deliverable).
+- The Stellar side of any Stellar↔non-Cosmos pair that emerges in the
+  next several years, for free, because the protocol layer is shared.
+- A maintained `StellarChainEndpoint` in the upstream Hermes fork —
+  permanent infrastructure for every IBC operator running Stellar.
+- Validation that the abstract `ChainEndpoint` pattern generalizes
+  across consensus families, which strengthens the case for further
+  non-Cosmos IBC integrations and lowers the bar for any of them.
+
+Bespoke bridge funding terminates at the boundary of its chain pair.
+IBC funding **compounds across the interop graph**. That is the
+strongest single argument we have to make.
 
 ---
 
