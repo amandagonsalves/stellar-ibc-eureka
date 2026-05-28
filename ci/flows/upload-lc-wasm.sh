@@ -8,7 +8,7 @@ REPO_ROOT=$(cd "${CI_DIR}/.." && pwd)
 source "${SCRIPT_DIR}/_env.sh"
 load_env_file "${REPO_ROOT}/.env"
 
-CRATE="stellar-lc-wasm"
+CRATE="light-client-wasm"
 WASM_FILE="${REPO_ROOT}/target/wasm32-unknown-unknown/release/stellar_lc_wasm.wasm"
 HERMES_CONFIG="${HERMES_CONFIG:-${CI_DIR}/hermes-config.toml}"
 PATCH_HERMES_CONFIG="${PATCH_HERMES_CONFIG:-1}"

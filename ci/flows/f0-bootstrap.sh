@@ -58,7 +58,7 @@ else
 fi
 
 echo ""
-echo "Step 4: Upload stellar-lc-wasm + patch hermes config..."
+echo "Step 4: Upload light-client-wasm + patch hermes config..."
 bash "${SCRIPT_DIR}/upload-lc-wasm.sh"
 
 echo ""
