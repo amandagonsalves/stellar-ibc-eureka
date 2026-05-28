@@ -13,7 +13,7 @@ HERMES_IMAGE="${HERMES_IMAGE:-amandagonsalvesx/stellar-hermes-cardano}"
 HERMES_TAG="${HERMES_TAG:-latest}"
 HERMES_REGISTRY="${HERMES_REGISTRY:-}"
 PUSH="${PUSH:-1}"
-DOCKERFILE="${HERMES_REPO}/Dockerfile"
+DOCKERFILE="${HERMES_REPO}/ci/release/hermes.Dockerfile"
 
 if ! command -v docker > /dev/null 2>&1; then
   echo "ERROR: docker not found in PATH."
