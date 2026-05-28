@@ -4224,6 +4224,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
 
 [[package]]
+name = "stellar-api"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "axum",
+ "serde",
+ "stellar-ibc-core",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "stellar-attestation-light-client"
 version = "0.1.0"
 dependencies = [
@@ -4257,7 +4270,6 @@ name = "stellar-hermes-gateway"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "axum",
  "dotenvy",
  "ibc",
  "prost 0.14.3",

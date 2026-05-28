@@ -1,21 +1,13 @@
 use std::sync::Arc;
 
-use axum::{routing::get, Router};
 use tokio::sync::Mutex;
 
 use crate::{
-    api::account::{account, balance},
-    config::GatewayConfig,
-    msg::MsgHandler,
-    query::QueryHandler,
-    state::AppState,
-    state_tracker::StateTracker,
+    config::GatewayConfig, msg::MsgHandler, query::QueryHandler, state_tracker::StateTracker,
 };
 use stellar_ibc_core::rpc::RpcClient;
 
 pub async fn run(cfg: GatewayConfig) {
-    let http_addr = cfg.http_addr();
-
     let rpc = RpcClient::new(cfg.rpc_url.as_str()).expect("could not create a new rpc client");
 
     let ibc_contract_id = if cfg.ibc_contract_id.is_empty() {
@@ -27,22 +19,6 @@ pub async fn run(cfg: GatewayConfig) {
     };
 
     let tracker = Arc::new(Mutex::new(StateTracker::new(rpc.clone(), ibc_contract_id)));
-
-    let app_state = Arc::new(AppState::new(rpc.clone(), cfg.signing_key.clone()));
-
-    tokio::spawn(async move {
-        let app = Router::new()
-            .route("/health", get(|| async { "Server is up." }))
-            .route("/account/{address}", get(account))
-            .route("/balance/{address}", get(balance))
-            .with_state(app_state.clone());
-
-        let listener = tokio::net::TcpListener::bind(http_addr).await.unwrap();
-
-        tracing::info!("HTTP server listening on {}", http_addr);
-
-        axum::serve(listener, app).await.unwrap();
-    });
 
     let grpc_addr = cfg.grpc_addr();
 

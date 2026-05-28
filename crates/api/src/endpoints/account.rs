@@ -15,11 +15,6 @@ struct AccountResponse {
     account_id: String,
 }
 
-#[derive(Serialize)]
-struct BalanceResponse {
-    balance: String,
-}
-
 pub async fn account(
     State(_state): State<Arc<AppState>>,
     Path(address): Path<String>,
@@ -28,18 +23,6 @@ pub async fn account(
         StatusCode::OK,
         Json(AccountResponse {
             account_id: address,
-        }),
-    )
-}
-
-pub async fn balance(
-    State(_state): State<Arc<AppState>>,
-    Path(_address): Path<String>,
-) -> impl IntoResponse {
-    (
-        StatusCode::OK,
-        Json(BalanceResponse {
-            balance: "0".to_string(),
         }),
     )
 }

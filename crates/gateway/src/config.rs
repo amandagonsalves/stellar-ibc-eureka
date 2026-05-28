@@ -3,7 +3,6 @@ use std::net::SocketAddr;
 pub struct GatewayConfig {
     pub host: String,
     pub grpc_port: u16,
-    pub http_port: u16,
     pub rpc_url: String,
     pub ibc_contract_id: String,
     pub transfer_contract_id: String,
@@ -19,10 +18,6 @@ impl GatewayConfig {
                 .ok()
                 .and_then(|v| v.parse().ok())
                 .unwrap_or(50052),
-            http_port: std::env::var("STELLAR_GATEWAY_HTTP_PORT")
-                .ok()
-                .and_then(|v| v.parse().ok())
-                .unwrap_or(8101),
             rpc_url: std::env::var("STELLAR_RPC_URL")
                 .unwrap_or_else(|_| "https://soroban-testnet.stellar.org".to_string()),
             ibc_contract_id: std::env::var("IBC_CONTRACT_ID").unwrap_or_default(),
@@ -37,11 +32,5 @@ impl GatewayConfig {
         format!("{}:{}", self.host, self.grpc_port)
             .parse()
             .expect("invalid grpc address")
-    }
-
-    pub fn http_addr(&self) -> SocketAddr {
-        format!("{}:{}", self.host, self.http_port)
-            .parse()
-            .expect("invalid http address")
     }
 }

@@ -1,11 +1,11 @@
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
 pub mod config;
-pub mod msg;
-pub mod proto;
-pub mod query;
+pub(crate) mod endpoints;
 pub mod runner;
-pub mod state_tracker;
+mod state;
+
+pub use state::AppState;
 
 #[tokio::main]
 async fn main() {
@@ -14,7 +14,10 @@ async fn main() {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    let cfg = config::GatewayConfig::from_env();
+    let cfg = config::ApiConfig::from_env();
 
-    runner::run(cfg).await;
+    if let Err(error) = runner::run(cfg).await {
+        tracing::error!("api server error: {error}");
+        std::process::exit(1);
+    }
 }

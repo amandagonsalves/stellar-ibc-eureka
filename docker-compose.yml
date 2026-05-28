@@ -54,18 +54,42 @@ services:
         required: false
     ports:
       - "${STELLAR_GATEWAY_GRPC_PORT}:${STELLAR_GATEWAY_GRPC_PORT}"
-      - "${STELLAR_GATEWAY_HTTP_PORT}:${STELLAR_GATEWAY_HTTP_PORT}"
     environment:
       STELLAR_GATEWAY_HOST: "0.0.0.0"
       STELLAR_GATEWAY_GRPC_PORT: "${STELLAR_GATEWAY_GRPC_PORT}"
-      STELLAR_GATEWAY_HTTP_PORT: "${STELLAR_GATEWAY_HTTP_PORT}"
       STELLAR_RPC_URL: "${STELLAR_RPC_URL}"
       NETWORK_PASSPHRASE: "${NETWORK_PASSPHRASE}"
       STELLAR_SIGNING_KEY: "${STELLAR_SIGNING_KEY}"
       IBC_CONTRACT_ID: "${IBC_CONTRACT_ID}"
       TRANSFER_CONTRACT_ID: "${TRANSFER_CONTRACT_ID}"
     healthcheck:
-      test: ["CMD", "curl", "-sf", "http://localhost:${STELLAR_GATEWAY_HTTP_PORT}/health"]
+      test: ["CMD-SHELL", "nc -z localhost ${STELLAR_GATEWAY_GRPC_PORT}"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 15s
+
+  stellar-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ${GATEWAY_IMAGE}:${GATEWAY_TAG}
+    entrypoint: ["stellar-api"]
+    profiles: [local, staging]
+    restart: unless-stopped
+    depends_on:
+      stellar-node:
+        condition: service_healthy
+        required: false
+    ports:
+      - "${STELLAR_API_PORT}:${STELLAR_API_PORT}"
+    environment:
+      STELLAR_API_HOST: "0.0.0.0"
+      STELLAR_API_PORT: "${STELLAR_API_PORT}"
+      STELLAR_RPC_URL: "${STELLAR_RPC_URL}"
+      STELLAR_SIGNING_KEY: "${STELLAR_SIGNING_KEY}"
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:${STELLAR_API_PORT}/health"]
       interval: 10s
       timeout: 5s
       retries: 6

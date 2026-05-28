@@ -21,7 +21,6 @@ tonic-reflection = { workspace = true }
 prost = { workspace = true }
 
 tokio = { workspace = true }
-axum = { workspace = true }
 
 soroban-client = { workspace = true }
 stellar-strkey = { workspace = true }

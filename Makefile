@@ -35,6 +35,19 @@ test-gateway:
 check-gateway:
 	cd crates/gateway && cargo fmt && cargo clippy --locked --all-targets -- -D warnings -A clippy::manual_is_multiple_of -A clippy::too_many_arguments
 
+# crates/api
+build-api:
+	cargo build -p stellar-api
+
+start-api:
+	cargo run -p stellar-api
+
+test-api:
+	cargo test -p stellar-api
+
+check-api:
+	cd crates/api && cargo fmt && cargo clippy --locked --all-targets -- -D warnings -A clippy::manual_is_multiple_of -A clippy::too_many_arguments
+
 # crates/core
 build-ibc-core:
 	cargo build -p stellar-ibc-core
