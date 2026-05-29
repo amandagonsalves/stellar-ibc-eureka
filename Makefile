@@ -137,6 +137,8 @@ shell-hermes:
 
 restart: restart-api restart-gateway restart-hermes
 
+up: push-api push-gateway push-hermes restart-api restart-gateway restart-hermes
+
 hermes-keys:
 	@$(MAKE) -C ci hermes-keys
 
