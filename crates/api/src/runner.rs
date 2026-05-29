@@ -8,6 +8,7 @@ use std::sync::Arc;
 use stellar_ibc_core::rpc::RpcClient;
 use tokio::net::TcpListener;
 
+use crate::services::cosmos::client::CosmosClient;
 use crate::{config::ApiConfig, services, AppState};
 
 pub fn router(state: Arc<AppState>) -> Router {
@@ -22,6 +23,27 @@ pub fn router(state: Arc<AppState>) -> Router {
         .route("/tx/{tx_hash}", get(services::tx::get_signed_tx))
         .route("/tx/sign", post(services::tx::sign_tx))
         .route("/tx/submit", post(services::tx::submit_signed_tx))
+        .route("/cosmos/node-info", get(services::cosmos::node_info))
+        .route("/cosmos/proposer", get(services::cosmos::proposer_info))
+        .route("/cosmos/gov/proposals", get(services::cosmos::proposals))
+        .route(
+            "/cosmos/gov/proposals/{id}",
+            get(services::cosmos::proposal_by_id),
+        )
+        .route(
+            "/cosmos/gov/params/deposit",
+            get(services::cosmos::gov_deposit_params),
+        )
+        .route("/cosmos/tx/{hash}", get(services::cosmos::tx_by_hash))
+        .route(
+            "/cosmos/ibc-wasm/checksums",
+            get(services::cosmos::ibc_wasm_checksums),
+        )
+        .route(
+            "/cosmos/ibc-wasm/store-code",
+            post(services::cosmos::submit_store_code),
+        )
+        .route("/cosmos/gov/vote", post(services::cosmos::submit_vote))
         .with_state(state)
 }
 
@@ -55,12 +77,20 @@ pub async fn run(cfg: ApiConfig) -> anyhow::Result<()> {
         port = cfg.port,
         rpc_url = %cfg.rpc_url,
         signing_key_configured = !cfg.signing_key.is_empty(),
+        cosmos_chain_id = %cfg.cosmos.chain_id,
+        cosmos_rest_url = %cfg.cosmos.rest_url,
+        cosmos_signer_configured = !cfg.cosmos.proposer_private_key_hex.is_empty(),
         "starting stellar-api"
     );
 
+    let addr = cfg.addr();
     let rpc = RpcClient::new(cfg.rpc_url.as_str()).expect("could not create a new rpc client");
+    let cosmos = CosmosClient::new(cfg.cosmos)?;
+    if let Some(p) = cosmos.proposer_address() {
+        tracing::info!(cosmos_proposer = %p, "cosmos signer derived");
+    }
 
-    let state = Arc::new(AppState::new(rpc, cfg.signing_key.clone()));
+    let state = Arc::new(AppState::new(rpc, cfg.signing_key, cosmos));
 
-    serve(cfg.addr(), state).await
+    serve(addr, state).await
 }

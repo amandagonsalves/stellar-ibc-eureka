@@ -22,3 +22,9 @@ tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 anyhow = { workspace = true }
 hex = { workspace = true }
+base64 = { workspace = true }
+
+reqwest = { workspace = true }
+cosmrs = { workspace = true }
+ibc-proto = { workspace = true }
+prost = "0.13"
