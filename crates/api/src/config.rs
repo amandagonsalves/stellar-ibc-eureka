@@ -6,6 +6,7 @@ pub struct ApiConfig {
     pub rpc_url: String,
     pub signing_key: String,
     pub cosmos: CosmosConfig,
+    pub hermes_config_path: String,
 }
 
 pub struct CosmosConfig {
@@ -29,6 +30,8 @@ impl ApiConfig {
                 .unwrap_or_else(|_| "https://soroban-testnet.stellar.org".to_string()),
             signing_key: std::env::var("STELLAR_SIGNING_KEY").unwrap_or_default(),
             cosmos: CosmosConfig::from_env(),
+            hermes_config_path: std::env::var("HERMES_CONFIG_PATH")
+                .unwrap_or_else(|_| "/etc/hermes/config.toml".to_string()),
         }
     }
 

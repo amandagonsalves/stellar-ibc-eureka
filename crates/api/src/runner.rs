@@ -44,6 +44,10 @@ pub fn router(state: Arc<AppState>) -> Router {
             post(services::cosmos::submit_store_code),
         )
         .route("/cosmos/gov/vote", post(services::cosmos::submit_vote))
+        .route(
+            "/hermes/wasm-checksum",
+            post(services::hermes::patch_wasm_checksum),
+        )
         .with_state(state)
 }
 
@@ -89,8 +93,14 @@ pub async fn run(cfg: ApiConfig) -> anyhow::Result<()> {
     if let Some(p) = cosmos.proposer_address() {
         tracing::info!(cosmos_proposer = %p, "cosmos signer derived");
     }
+    tracing::info!(hermes_config_path = %cfg.hermes_config_path, "hermes config target");
 
-    let state = Arc::new(AppState::new(rpc, cfg.signing_key, cosmos));
+    let state = Arc::new(AppState::new(
+        rpc,
+        cfg.signing_key,
+        cosmos,
+        cfg.hermes_config_path,
+    ));
 
     serve(addr, state).await
 }

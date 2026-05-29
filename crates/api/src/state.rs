@@ -9,14 +9,21 @@ pub struct AppState {
     pub rpc: Arc<RpcClient>,
     pub signing_key: Arc<String>,
     pub cosmos: Arc<CosmosClient>,
+    pub hermes_config_path: Arc<String>,
 }
 
 impl AppState {
-    pub fn new(rpc: RpcClient, signing_key: String, cosmos: CosmosClient) -> Self {
+    pub fn new(
+        rpc: RpcClient,
+        signing_key: String,
+        cosmos: CosmosClient,
+        hermes_config_path: String,
+    ) -> Self {
         Self {
             rpc: Arc::new(rpc),
             signing_key: Arc::new(signing_key),
             cosmos: Arc::new(cosmos),
+            hermes_config_path: Arc::new(hermes_config_path),
         }
     }
 }

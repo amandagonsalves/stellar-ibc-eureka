@@ -3953,6 +3953,7 @@ dependencies = [
  "hex",
  "ibc-proto 0.52.0",
  "prost 0.13.5",
+ "regex",
  "reqwest 0.12.28",
  "serde",
  "serde_json",
