@@ -77,6 +77,9 @@ services:
       node:
         condition: service_started
         required: false
+      osmosis:
+        condition: service_healthy
+        required: false
     ports:
       - "${STELLAR_API_PORT}:${STELLAR_API_PORT}"
     environment:
@@ -87,6 +90,12 @@ services:
       STELLAR_SIGNING_KEY: "${STELLAR_SIGNING_KEY}"
       IBC_CONTRACT_ID: "${IBC_CONTRACT_ID}"
       TRANSFER_CONTRACT_ID: "${TRANSFER_CONTRACT_ID}"
+      COSMOS_CHAIN_ID: "${COSMOS_CHAIN_ID}"
+      COSMOS_REST_URL: "http://osmosis:1317"
+      COSMOS_RPC_URL: "http://osmosis:26657"
+      COSMOS_ACCOUNT_PREFIX: "${COSMOS_ACCOUNT_PREFIX}"
+      COSMOS_GAS_DENOM: "${COSMOS_GAS_DENOM}"
+      COSMOS_PROPOSER_PRIVATE_KEY: "${COSMOS_PROPOSER_PRIVATE_KEY}"
     healthcheck:
       test: ["CMD", "curl", "-sf", "http://localhost:${STELLAR_API_PORT}/health"]
       interval: 10s
