@@ -1,41 +1,67 @@
 [global]
 log_level = 'debug'
 
+[telemetry]
+enabled = true
+host = '127.0.0.1'
+port = 3002
+
+[telemetry.buckets.latency_submitted]
+start = 500
+end = 20000
+buckets = 10
+
+[telemetry.buckets.latency_confirmed]
+start = 1000
+end = 30000
+buckets = 10
+
+[rest]
+enabled = false
+host = '127.0.0.1'
+port = 3030
+
+[mode]
+
 [mode.clients]
 enabled = true
 refresh = true
 misbehaviour = true
 
 [mode.connections]
-enabled = false
+enabled = true
 
 [mode.channels]
-enabled = false
+enabled = true
 
 [mode.packets]
-enabled = false
+enabled = true
+clear_interval = 100
+clear_on_start = true
+tx_confirmation = true
 
 [[chains]]
 id = 'localosmosis'
 type = 'CosmosSdk'
 rpc_addr = 'http://osmosis:26657'
 grpc_addr = 'http://osmosis:9090'
-event_source = { mode = 'push', url = 'ws://osmosis:26657/websocket', batch_delay = '500ms' }
+event_source = { mode = 'push', url = 'ws://127.0.0.1:26657/websocket', batch_delay = '200ms' }
 rpc_timeout = '10s'
-trusted_node = false
 account_prefix = 'osmo'
-key_name = 'testkey'
-store_prefix = 'ibc'
-default_gas = 100000
-max_gas = 4000000
-gas_price = { price = 0.025, denom = 'uosmo' }
-gas_multiplier = 1.5
-max_msg_num = 30
-max_tx_size = 2097152
-clock_drift = '5s'
-trusting_period = '3m'
-trust_threshold = '2/3'
+key_name = 'localosmosis'
 address_type = { derivation = 'cosmos' }
+store_prefix = 'ibc'
+default_gas = 5000000
+max_gas = 15000000
+gas_price = { price = 0.1, denom = 'uosmo' }
+gas_multiplier = 2.0
+max_msg_num = 20
+max_tx_size = 209715
+clock_drift = '20s'
+max_block_time = '10s'
+trusting_period = '10days'
+memo_prefix = 'Osmosis Docs Rocks'
+trust_threshold = { numerator = '1', denominator = '3' }
 
 [[chains]]
 id = 'stellar-testnet'
@@ -55,6 +81,23 @@ clock_drift = '5s'
 client_refresh_rate = '1/3'
 wasm_checksum_hex = ''
 
+# [[chains]]
+# type = 'Cardano'
+# id = 'cardano-devnet'
+# gateway_url = 'http://localhost:5001'
+# network_id = 0
+# key_name = 'cardano-relayer'
+# key_store_type = 'Test'  # or 'Memory' for production
+# account = 0
+# max_block_time = '20000ms'
+# clock_drift = '5s'
+# mithril_certification_timeout = '30m'
+# mithril_poll_interval = '5s'
+# mithril_wait_log_interval = '30s'
+# trust_threshold = { numerator = '2', denominator = '3' }
+
 [chains.packet_filter]
 policy = 'allow'
-list = []
+list = [
+  ['transfer', '*'],
+]
