@@ -60,10 +60,10 @@ async fn test_get_missing_key(client: &RpcClient) {
 async fn test_get_ledger(client: &RpcClient) {
     let label = "get_ledger: returns LedgerHeader XDR for a recent sequence";
 
-    let seq = match client.latest_ledger_sequence().await {
+    let seq = match client.get_latest_ledger().await {
         Ok(s) => s.saturating_sub(2),
         Err(e) => {
-            fail(label, format!("latest_ledger_sequence failed: {e}"));
+            fail(label, format!("get_latest_ledger failed: {e}"));
             return;
         }
     };
@@ -87,10 +87,10 @@ async fn test_get_ledger(client: &RpcClient) {
 async fn test_get_ledger_scp_signature(client: &RpcClient) {
     let label = "get_ledger: LedgerHeader contains SCP signature";
 
-    let seq = match client.latest_ledger_sequence().await {
+    let seq = match client.get_latest_ledger().await {
         Ok(s) => s.saturating_sub(2),
         Err(e) => {
-            fail(label, format!("latest_ledger_sequence failed: {e}"));
+            fail(label, format!("get_latest_ledger failed: {e}"));
             return;
         }
     };

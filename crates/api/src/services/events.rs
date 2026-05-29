@@ -1,5 +1,4 @@
 use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, Ordering};
 
 use axum::{
     extract::{Query, State},
@@ -8,7 +7,8 @@ use axum::{
     Json,
 };
 use serde::Deserialize;
-use serde_json::json;
+use serde_json::{json, Value};
+use stellar_ibc_core::rpc::{EventCursor, EventsPage};
 
 use crate::state::AppState;
 
@@ -21,7 +21,7 @@ pub struct EventsQuery {
 }
 
 #[tracing::instrument(skip(state))]
-pub async fn list(
+pub async fn get_events(
     State(state): State<Arc<AppState>>,
     Query(params): Query<EventsQuery>,
 ) -> impl IntoResponse {
@@ -33,10 +33,39 @@ pub async fn list(
         "GET /events"
     );
 
-    let latest = match state.rpc.latest_ledger_sequence().await {
-        Ok(seq) => seq,
+    let contract_id = match params.contract_id.as_deref().filter(|s| !s.is_empty()) {
+        Some(id) => id.to_owned(),
+        None => {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(json!({ "error": "missing 'contract_id' query parameter" })),
+            )
+                .into_response();
+        }
+    };
+
+    let cursor = match (params.cursor.as_ref(), params.start_ledger) {
+        (Some(c), _) if !c.is_empty() => EventCursor::Cursor(c.clone()),
+        (_, Some(s)) if s > 0 => EventCursor::StartLedger(s),
+        _ => {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(json!({
+                    "error": "must provide either non-empty 'cursor' or 'start_ledger' > 0"
+                })),
+            )
+                .into_response();
+        }
+    };
+
+    let page: EventsPage = match state
+        .rpc
+        .get_events(&contract_id, cursor, params.limit)
+        .await
+    {
+        Ok(page) => page,
         Err(error) => {
-            tracing::error!(%error, "latest_ledger_sequence failed in /events fallback");
+            tracing::error!(%error, %contract_id, "get_events failed");
             return (
                 StatusCode::BAD_GATEWAY,
                 Json(json!({ "error": error.to_string() })),
@@ -45,17 +74,32 @@ pub async fn list(
         }
     };
 
-    static WARNED_STUB: AtomicBool = AtomicBool::new(false);
-    if !WARNED_STUB.swap(true, Ordering::Relaxed) {
-        tracing::warn!(
-            "/events is a stub — returning empty event pages until Soroban getEvents is wired through `RpcClient`."
-        );
-    }
+    tracing::info!(
+        events = page.events.len(),
+        latest_ledger = page.latest_ledger,
+        "get events"
+    );
+
+    let events: Vec<Value> = page
+        .events
+        .iter()
+        .map(|ev| {
+            json!({
+                "id":              ev.id,
+                "ledger":          ev.ledger,
+                "ledger_closed_at": ev.ledger_closed_at,
+                "contract_id":     ev.contract_id,
+                "tx_hash":         ev.tx_hash,
+                "topics_xdr":      ev.topics_xdr.iter().map(hex::encode).collect::<Vec<_>>(),
+                "value_xdr":       hex::encode(&ev.value_xdr),
+            })
+        })
+        .collect();
 
     let body = json!({
-        "latest_ledger": latest,
-        "cursor": params.cursor.unwrap_or_default(),
-        "events": [],
+        "latest_ledger": page.latest_ledger,
+        "cursor":        page.cursor,
+        "events":        events,
     });
 
     (StatusCode::OK, Json(body)).into_response()

@@ -86,7 +86,7 @@ impl ApiClient {
         Ok(body)
     }
 
-    pub async fn latest_ledger_sequence(&self) -> anyhow::Result<u32> {
+    pub async fn get_latest_ledger(&self) -> anyhow::Result<u32> {
         let body = self.get_json("/ledger/latest").await?;
         body.get("sequence")
             .and_then(|v| v.as_u64())

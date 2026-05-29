@@ -1,9 +1,9 @@
 use std::sync::Arc;
 use std::time::Duration;
 
-use soroban_client::soroban_rpc::TransactionStatus;
+use soroban_client::soroban_rpc::{EventType, TransactionStatus};
 use soroban_client::xdr::{LedgerKey, Limits, ReadXdr, ScVal, TransactionEnvelope, WriteXdr};
-use soroban_client::{Options, Pagination, Server};
+use soroban_client::{EventFilter, Options, Pagination, Server};
 
 #[derive(Debug, Clone)]
 pub struct SubmittedTx {
@@ -15,6 +15,30 @@ pub struct LedgerData {
     pub sequence: u32,
     pub header_xdr: Vec<u8>,
     pub metadata_xdr: Option<Vec<u8>>,
+}
+
+#[derive(Clone, Debug)]
+pub struct EventRecord {
+    pub id: String,
+    pub ledger: u32,
+    pub ledger_closed_at: String,
+    pub contract_id: String,
+    pub tx_hash: String,
+    pub topics_xdr: Vec<Vec<u8>>,
+    pub value_xdr: Vec<u8>,
+}
+
+#[derive(Clone, Debug)]
+pub struct EventsPage {
+    pub latest_ledger: u32,
+    pub cursor: String,
+    pub events: Vec<EventRecord>,
+}
+
+#[derive(Clone, Debug)]
+pub enum EventCursor {
+    Cursor(String),
+    StartLedger(u32),
 }
 
 #[derive(Clone)]
@@ -40,8 +64,9 @@ impl RpcClient {
         })
     }
 
-    pub async fn latest_ledger_sequence(&self) -> anyhow::Result<u32> {
+    pub async fn get_latest_ledger(&self) -> anyhow::Result<u32> {
         let info = self.server.get_latest_ledger().await?;
+
         Ok(info.sequence)
     }
 
@@ -111,6 +136,56 @@ impl RpcClient {
             .map_err(|e| anyhow::anyhow!("failed to re-encode LedgerEntryData: {e}"))?;
 
         Ok(Some(data_xdr))
+    }
+
+    pub async fn get_events(
+        &self,
+        contract_id: &str,
+        cursor: EventCursor,
+        limit: Option<u32>,
+    ) -> anyhow::Result<EventsPage> {
+        let pagination = match cursor {
+            EventCursor::Cursor(c) => Pagination::Cursor(c),
+            EventCursor::StartLedger(s) => Pagination::From(s),
+        };
+        let filter = EventFilter::new(EventType::Contract).contract(contract_id);
+
+        let resp = self
+            .server
+            .get_events(pagination, vec![filter], limit)
+            .await
+            .map_err(|e| anyhow::anyhow!("getEvents RPC failed: {e}"))?;
+
+        let mut events = Vec::with_capacity(resp.events.len());
+        for ev in &resp.events {
+            let topics_xdr = ev
+                .topic()
+                .into_iter()
+                .map(|t| {
+                    t.to_xdr(Limits::none())
+                        .map_err(|e| anyhow::anyhow!("event topic XDR encode: {e}"))
+                })
+                .collect::<anyhow::Result<Vec<_>>>()?;
+            let value_xdr = ev
+                .value()
+                .to_xdr(Limits::none())
+                .map_err(|e| anyhow::anyhow!("event value XDR encode: {e}"))?;
+            events.push(EventRecord {
+                id: ev.id.clone(),
+                ledger: ev.ledger as u32,
+                ledger_closed_at: ev.ledger_closed_at.clone(),
+                contract_id: ev.contract_id.clone(),
+                tx_hash: ev.tx_hash.clone(),
+                topics_xdr,
+                value_xdr,
+            });
+        }
+
+        Ok(EventsPage {
+            latest_ledger: resp.latest_ledger as u32,
+            cursor: resp.cursor.unwrap_or_default(),
+            events,
+        })
     }
 
     pub async fn submit_and_wait(&self, tx_xdr: &[u8]) -> anyhow::Result<String> {

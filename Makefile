@@ -111,8 +111,6 @@ stop-stellar-ibc:
 ps-stellar-ibc:
 	$(COMPOSE) ps
 
-# Per-service: restart (recreate, picks up compose-file changes), logs, shell
-
 restart-api:
 	$(COMPOSE) rm -sf api
 	$(COMPOSE) up -d api
@@ -137,8 +135,8 @@ logs-hermes:
 shell-hermes:
 	$(COMPOSE) exec hermes sh
 
-# Hermes keystore (one-shot import of testkey + stellar-relayer from
-# crates/osmosis/assets/default-config.json into the hermes-keys volume)
+restart: restart-api restart-gateway restart-hermes
+
 hermes-keys:
 	@$(MAKE) -C ci hermes-keys
 

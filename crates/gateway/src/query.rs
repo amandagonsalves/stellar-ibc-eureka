@@ -50,9 +50,9 @@ impl StellarGatewayQuery for QueryHandler {
         _request: Request<LatestHeightRequest>,
     ) -> Result<Response<LatestHeightResponse>, Status> {
         tracing::info!("gRPC LatestHeight");
-        let latest_sequence: u32 = self.api.latest_ledger_sequence().await.map_err(|error| {
-            tracing::error!(%error, "latest_ledger_sequence failed");
-            Status::internal(format!("latest_ledger_sequence failed: {error}"))
+        let latest_sequence: u32 = self.api.get_latest_ledger().await.map_err(|error| {
+            tracing::error!(%error, "get_latest_ledger failed");
+            Status::internal(format!("get_latest_ledger failed: {error}"))
         })?;
 
         tracing::info!(revision_height = latest_sequence, "served latest height");
@@ -267,9 +267,9 @@ impl StellarGatewayQuery for QueryHandler {
                          Deploy the router (`make -C ci deploy-contracts`) then restart the gateway."
                     );
                 }
-                let latest = self.api.latest_ledger_sequence().await.map_err(|error| {
-                    tracing::error!(%error, "latest_ledger_sequence failed (events empty-page fallback)");
-                    Status::internal(format!("latest_ledger_sequence failed: {error}"))
+                let latest = self.api.get_latest_ledger().await.map_err(|error| {
+                    tracing::error!(%error, "get_latest_ledger failed (events empty-page fallback)");
+                    Status::internal(format!("get_latest_ledger failed: {error}"))
                 })?;
                 return Ok(Response::new(EventsResponse {
                     latest_ledger: latest.into(),
