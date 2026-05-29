@@ -251,11 +251,33 @@ impl StellarGatewayQuery for QueryHandler {
         &self,
         request: Request<EventsRequest>,
     ) -> Result<Response<EventsResponse>, Status> {
-        let contract_id = self
+        let contract_id = match self
             .ibc_contract_id
-            .clone()
+            .as_ref()
             .filter(|s| !s.is_empty())
-            .ok_or_else(|| Status::failed_precondition("ibc_contract_id is not configured"))?;
+            .cloned()
+        {
+            Some(id) => id,
+            None => {
+                static WARNED_UNCONFIGURED: std::sync::atomic::AtomicBool =
+                    std::sync::atomic::AtomicBool::new(false);
+                if !WARNED_UNCONFIGURED.swap(true, std::sync::atomic::Ordering::Relaxed) {
+                    tracing::warn!(
+                        "Events: IBC_CONTRACT_ID is not configured; returning empty event pages. \
+                         Deploy the router (`make -C ci deploy-contracts`) then restart the gateway."
+                    );
+                }
+                let latest = self.api.latest_ledger_sequence().await.map_err(|error| {
+                    tracing::error!(%error, "latest_ledger_sequence failed (events empty-page fallback)");
+                    Status::internal(format!("latest_ledger_sequence failed: {error}"))
+                })?;
+                return Ok(Response::new(EventsResponse {
+                    latest_ledger: latest.into(),
+                    cursor: String::new(),
+                    events: Vec::new(),
+                }));
+            }
+        };
 
         let req = request.into_inner();
         tracing::info!(

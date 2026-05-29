@@ -141,3 +141,6 @@ shell-hermes:
 # crates/osmosis/assets/default-config.json into the hermes-keys volume)
 hermes-keys:
 	@$(MAKE) -C ci hermes-keys
+
+deploy-contracts:
+	bash ci/flows/upload-and-deploy-contracts.sh
