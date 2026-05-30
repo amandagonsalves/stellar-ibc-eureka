@@ -7,14 +7,9 @@ repository = { workspace = true }
 rust-version = { workspace = true }
 description = "Standalone HTTP/REST API service for the Stellar IBC stack"
 
-[[bin]]
-name = "stellar-api"
-path = "src/main.rs"
-
 [dependencies]
 stellar-ibc-core = { workspace = true }
 soroban-client = { workspace = true }
-
 axum = { workspace = true }
 tokio = { workspace = true }
 serde = { workspace = true }
@@ -24,12 +19,13 @@ tracing-subscriber = { workspace = true }
 anyhow = { workspace = true }
 hex = { workspace = true }
 base64 = { workspace = true }
-
 reqwest = { workspace = true }
 cosmrs = { workspace = true }
 ibc-proto = { workspace = true }
 prost = "0.13"
 regex = { workspace = true }
-
 utoipa = { version = "5", features = ["axum_extras"] }
 utoipa-swagger-ui = { version = "9", features = ["axum", "vendored"] }
+
+[dev-dependencies]
+tokio = { workspace = true }

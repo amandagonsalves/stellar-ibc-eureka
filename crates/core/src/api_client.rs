@@ -1,11 +1,12 @@
 use soroban_client::xdr::{Limits, ReadXdr, ScVal, WriteXdr};
 
-use crate::rpc::{LedgerData, SubmittedTx};
+use crate::types::{LedgerData, SubmittedTx};
 
 #[derive(Clone)]
 pub struct ApiClient {
     base_url: String,
     http: reqwest::Client,
+    signer: String,
 }
 
 pub struct EventRecord {
@@ -30,10 +31,11 @@ pub enum EventCursor {
 }
 
 impl ApiClient {
-    pub fn new(base_url: &str) -> Self {
+    pub fn new(base_url: &str, signer: String) -> Self {
         Self {
             base_url: base_url.trim_end_matches('/').to_owned(),
             http: reqwest::Client::new(),
+            signer,
         }
     }
 
@@ -194,52 +196,10 @@ impl ApiClient {
         })
     }
 
-    pub async fn invoke_router(
+    pub async fn build_unsigned_tx(
         &self,
         method: &str,
         args: Vec<ScVal>,
-    ) -> anyhow::Result<SubmittedTx> {
-        let args_xdr = args
-            .iter()
-            .map(|arg| {
-                arg.to_xdr(Limits::none())
-                    .map(hex::encode)
-                    .map_err(|e| anyhow::anyhow!("ScVal XDR encode: {e}"))
-            })
-            .collect::<Result<Vec<_>, _>>()?;
-
-        let body = serde_json::json!({
-            "method": method,
-            "args_xdr": args_xdr,
-        });
-        let resp = self.post_json("/contract/invoke", body).await?;
-
-        let hash = resp
-            .get("hash")
-            .and_then(|v| v.as_str())
-            .ok_or_else(|| anyhow::anyhow!("missing 'hash' in /contract/invoke response"))?
-            .to_owned();
-
-        let return_value = match resp.get("return_value_xdr").and_then(|v| v.as_str()) {
-            Some(value_hex) => {
-                let bytes = hex::decode(value_hex)
-                    .map_err(|e| anyhow::anyhow!("return_value_xdr hex decode: {e}"))?;
-                Some(
-                    ScVal::from_xdr(&bytes, Limits::none())
-                        .map_err(|e| anyhow::anyhow!("return_value ScVal decode: {e}"))?,
-                )
-            }
-            None => None,
-        };
-
-        Ok(SubmittedTx { hash, return_value })
-    }
-
-    pub async fn prepare_invoke(
-        &self,
-        method: &str,
-        args: Vec<ScVal>,
-        source_account: &str,
     ) -> anyhow::Result<Vec<u8>> {
         let args_xdr = args
             .iter()
@@ -253,22 +213,19 @@ impl ApiClient {
         let body = serde_json::json!({
             "method": method,
             "args_xdr": args_xdr,
-            "source_account": source_account,
+            "signer": &self.signer
         });
-        let resp = self.post_json("/contract/prepare", body).await?;
+        let resp = self.post_json("/tx/prepare", body).await?;
 
         let tx_hex = resp
             .get("tx_xdr")
             .and_then(|v| v.as_str())
-            .ok_or_else(|| anyhow::anyhow!("missing 'tx_xdr' in /contract/prepare response"))?;
+            .ok_or_else(|| anyhow::anyhow!("missing 'tx_xdr' in /tx/prepare response"))?;
+
         hex::decode(tx_hex).map_err(|e| anyhow::anyhow!("tx_xdr hex decode: {e}"))
     }
 
-    pub async fn submit_and_wait(&self, tx_xdr: &[u8]) -> anyhow::Result<String> {
-        self.submit_and_wait_for_result(tx_xdr).await.map(|s| s.hash)
-    }
-
-    pub async fn submit_and_wait_for_result(&self, tx_xdr: &[u8]) -> anyhow::Result<SubmittedTx> {
+    pub async fn submit_and_wait(&self, tx_xdr: &[u8]) -> anyhow::Result<SubmittedTx> {
         let body = serde_json::json!({ "tx_xdr": hex::encode(tx_xdr) });
         let resp = self.post_json("/tx/submit", body).await?;
         let hash = resp
@@ -287,6 +244,7 @@ impl ApiClient {
             }
             None => None,
         };
+
         Ok(SubmittedTx { hash, return_value })
     }
 }
