@@ -8,7 +8,7 @@ use axum::{
 };
 use serde::Deserialize;
 use serde_json::{json, Value};
-use stellar_ibc_core::rpc::{EventCursor, EventsPage};
+use crate::rpc::{EventCursor, EventsPage};
 
 use crate::state::AppState;
 

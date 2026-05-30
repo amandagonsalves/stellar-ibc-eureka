@@ -1,8 +1,6 @@
 use std::sync::Arc;
 
-use stellar_ibc_core::rpc::RpcClient;
-
-use crate::services::cosmos::client::CosmosClient;
+use crate::{rpc::RpcClient, services::cosmos::client::CosmosClient};
 
 #[derive(Clone)]
 pub struct AppState {

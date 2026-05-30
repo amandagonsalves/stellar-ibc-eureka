@@ -3,15 +3,15 @@ use axum::{
     routing::{get, post},
     Router,
 };
+use soroban_client::keypair::{Keypair, KeypairBehavior};
 use std::net::SocketAddr;
 use std::sync::Arc;
-use stellar_ibc_core::rpc::RpcClient;
 use tokio::net::TcpListener;
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
 
-use crate::services::cosmos::client::CosmosClient;
 use crate::{config::ApiConfig, services, AppState};
+use crate::{rpc::RpcClient, services::cosmos::client::CosmosClient};
 
 /// OpenAPI document for the cosmos + hermes endpoints. Served as JSON at
 /// `/api-docs/openapi.json` and rendered as Swagger UI at `/docs`.
@@ -59,11 +59,14 @@ pub fn router(state: Arc<AppState>) -> Router {
         .route("/account/{address}", get(services::account::account))
         .route("/balance/{address}", get(services::balance::balance))
         .route("/tx/submit", post(services::tx::submit_signed_tx))
-        .route("/contract/prepare", post(services::contract::prepare_invoke))
+        .route("/tx/prepare", post(services::tx::prepare_tx))
         .route("/cosmos/node-info", get(services::cosmos::node_info))
         .route("/cosmos/proposer", get(services::cosmos::proposer_info))
         .route("/cosmos/funder", get(services::cosmos::funder_info))
-        .route("/cosmos/bank/send", post(services::cosmos::submit_bank_send))
+        .route(
+            "/cosmos/bank/send",
+            post(services::cosmos::submit_bank_send),
+        )
         .route("/cosmos/gov/proposals", get(services::cosmos::proposals))
         .route(
             "/cosmos/gov/proposals/{id}",
@@ -128,7 +131,10 @@ pub async fn run(cfg: ApiConfig) -> anyhow::Result<()> {
     );
 
     let addr = cfg.addr();
-    let rpc = RpcClient::new(cfg.rpc_url.as_str()).expect("could not create a new rpc client");
+    let keypair = Keypair::from_secret(&cfg.signing_key).unwrap();
+
+    let rpc = RpcClient::new(cfg.rpc_url.as_str(), &keypair.public_key())
+        .expect("could not create a new rpc client");
     let cosmos = CosmosClient::new(cfg.cosmos)?;
     if let Some(p) = cosmos.proposer_address() {
         tracing::info!(cosmos_proposer = %p, "cosmos signer derived");
