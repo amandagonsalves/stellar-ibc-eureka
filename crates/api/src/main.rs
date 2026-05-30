@@ -15,10 +15,8 @@
 //! - `GET  /events` — Soroban events ([`services::events::get_events`]).
 //! - `GET  /account/{address}` — account info ([`services::account::account`]).
 //! - `GET  /balance/{address}` — account balances ([`services::balance::balance`]).
-//! - `GET  /tx` — build an unsigned tx ([`services::tx::get_unsigned_tx`]).
-//! - `GET  /tx/{tx_hash}` — fetch a signed tx ([`services::tx::get_signed_tx`]).
-//! - `POST /tx/sign` — sign a tx envelope ([`services::tx::sign_tx`]).
-//! - `POST /tx/submit` — submit a signed tx ([`services::tx::submit_signed_tx`]).
+//! - `POST /contract/prepare` — build an unsigned router-invoke tx for the relayer to sign ([`services::contract::prepare_invoke`]).
+//! - `POST /tx/submit` — submit a relayer-signed tx ([`services::tx::submit_signed_tx`]).
 //!
 //! ### Cosmos read
 //! - `GET  /cosmos/node-info` ([`services::cosmos::node_info`])

@@ -22,6 +22,8 @@ pub struct ApiConfig {
     /// Path to the hermes config file the api may patch. Env:
     /// `HERMES_CONFIG_PATH`. Default `/etc/hermes/config.toml`.
     pub hermes_config_path: String,
+    pub ibc_contract_id: String,
+    pub network_passphrase: String,
 }
 
 /// Cosmos chain configuration consumed by [`super::services::cosmos`].
@@ -61,6 +63,9 @@ impl ApiConfig {
             cosmos: CosmosConfig::from_env(),
             hermes_config_path: std::env::var("HERMES_CONFIG_PATH")
                 .unwrap_or_else(|_| "/etc/hermes/config.toml".to_string()),
+            ibc_contract_id: std::env::var("IBC_CONTRACT_ID").unwrap_or_default(),
+            network_passphrase: std::env::var("NETWORK_PASSPHRASE")
+                .unwrap_or_else(|_| "Test SDF Network ; September 2015".to_string()),
         }
     }
 

@@ -58,10 +58,8 @@ pub fn router(state: Arc<AppState>) -> Router {
         .route("/events", get(services::events::get_events))
         .route("/account/{address}", get(services::account::account))
         .route("/balance/{address}", get(services::balance::balance))
-        .route("/tx", get(services::tx::get_unsigned_tx))
-        .route("/tx/{tx_hash}", get(services::tx::get_signed_tx))
-        .route("/tx/sign", post(services::tx::sign_tx))
         .route("/tx/submit", post(services::tx::submit_signed_tx))
+        .route("/contract/prepare", post(services::contract::prepare_invoke))
         .route("/cosmos/node-info", get(services::cosmos::node_info))
         .route("/cosmos/proposer", get(services::cosmos::proposer_info))
         .route("/cosmos/funder", get(services::cosmos::funder_info))
@@ -142,6 +140,8 @@ pub async fn run(cfg: ApiConfig) -> anyhow::Result<()> {
         cfg.signing_key,
         cosmos,
         cfg.hermes_config_path,
+        cfg.ibc_contract_id,
+        cfg.network_passphrase,
     ));
 
     serve(addr, state).await
