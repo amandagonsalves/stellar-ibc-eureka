@@ -13,6 +13,7 @@ path = "src/main.rs"
 
 [dependencies]
 stellar-ibc-core = { workspace = true }
+soroban-client = { workspace = true }
 
 axum = { workspace = true }
 tokio = { workspace = true }

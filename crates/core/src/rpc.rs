@@ -188,6 +188,55 @@ impl RpcClient {
         })
     }
 
+    pub async fn build_unsigned_router_invoke(
+        &self,
+        contract_id: &str,
+        method: &str,
+        args_xdr: &[Vec<u8>],
+        source_account: &str,
+        network_passphrase: &str,
+        base_fee: u32,
+    ) -> anyhow::Result<Vec<u8>> {
+        use soroban_client::contract::{ContractBehavior, Contracts};
+        use soroban_client::transaction::TransactionBehavior;
+        use soroban_client::transaction_builder::{TransactionBuilder, TransactionBuilderBehavior};
+
+        let mut args = Vec::with_capacity(args_xdr.len());
+        for (i, raw) in args_xdr.iter().enumerate() {
+            let sc = ScVal::from_xdr(raw, Limits::none())
+                .map_err(|e| anyhow::anyhow!("arg {i} ScVal XDR decode: {e}"))?;
+            args.push(sc);
+        }
+
+        let contract = Contracts::new(contract_id)
+            .map_err(|e| anyhow::anyhow!("invalid contract id {contract_id}: {e}"))?;
+        let operation = contract.call(method, Some(args));
+
+        let mut source = self
+            .server
+            .get_account(source_account)
+            .await
+            .map_err(|e| anyhow::anyhow!("get_account({source_account}): {e:?}"))?;
+
+        let unsigned = TransactionBuilder::new(&mut source, network_passphrase, None)
+            .fee(base_fee)
+            .add_operation(operation)
+            .build();
+
+        let prepared = self
+            .server
+            .prepare_transaction(&unsigned)
+            .await
+            .map_err(|e| anyhow::anyhow!("prepare_transaction: {e:?}"))?;
+
+        let envelope = prepared
+            .to_envelope()
+            .map_err(|e| anyhow::anyhow!("to_envelope: {e}"))?;
+        envelope
+            .to_xdr(Limits::none())
+            .map_err(|e| anyhow::anyhow!("envelope XDR encode: {e}"))
+    }
+
     pub async fn submit_and_wait(&self, tx_xdr: &[u8]) -> anyhow::Result<String> {
         self.submit_and_wait_for_result(tx_xdr)
             .await
