@@ -3,40 +3,120 @@
   "moniker": "val",
   "gentx": {
     "key": "val",
-    "amount": "500000000uosmo"
+    "amount": "1000000000000000uosmo"
   },
   "keys": {
     "val": "bottom loan skill merry east cradle onion journey palm apology verb edit desert impose absurd oil bubble sweet glove shallow size build burst effort",
     "relayer": "engage vote never tired enter brain chat loan coil venture soldier shine awkward keen delay link mass print venue federal ankle valid upgrade balance"
   },
   "accounts": {
-    "val": "1000000000000uosmo",
-    "relayer": "1000000000000uosmo"
+    "val": "2000000000000000uosmo",
+    "relayer": "1000000000000000uosmo"
   },
   "genesis": [
-    { "path": ".app_state.staking.params.bond_denom", "type": "string", "value": "uosmo" },
-    { "path": ".app_state.crisis.constant_fee.denom", "type": "string", "value": "uosmo" },
-    { "path": ".app_state.mint.params.mint_denom", "type": "string", "value": "uosmo" },
-    { "path": ".app_state.txfees.basedenom", "type": "string", "value": "uosmo" },
-    { "path": ".app_state.poolmanager.params.pool_creation_fee.[0].denom", "type": "string", "value": "uosmo" },
-    { "path": ".app_state.poolincentives.params.minted_denom", "type": "string", "value": "uosmo" },
-    { "path": ".app_state.gov.params.voting_period", "type": "string", "value": "20s" },
-    { "path": ".app_state.gov.params.expedited_voting_period", "type": "string", "value": "10s" },
-    { "path": ".app_state.gov.params.min_deposit.[0].denom", "type": "string", "value": "uosmo" },
-    { "path": ".app_state.gov.params.min_deposit.[0].amount", "type": "string", "value": "1" },
-    { "path": ".app_state.gov.params.expedited_min_deposit.[0].denom", "type": "string", "value": "uosmo" },
-    { "path": ".app_state.gov.params.expedited_min_deposit.[0].amount", "type": "string", "value": "1" }
+    {
+      "path": ".app_state.staking.params.bond_denom",
+      "type": "string",
+      "value": "uosmo"
+    },
+    {
+      "path": ".app_state.crisis.constant_fee.denom",
+      "type": "string",
+      "value": "uosmo"
+    },
+    {
+      "path": ".app_state.mint.params.mint_denom",
+      "type": "string",
+      "value": "uosmo"
+    },
+    {
+      "path": ".app_state.txfees.basedenom",
+      "type": "string",
+      "value": "uosmo"
+    },
+    {
+      "path": ".app_state.poolmanager.params.pool_creation_fee.[0].denom",
+      "type": "string",
+      "value": "uosmo"
+    },
+    {
+      "path": ".app_state.poolincentives.params.minted_denom",
+      "type": "string",
+      "value": "uosmo"
+    },
+    {
+      "path": ".app_state.gov.params.voting_period",
+      "type": "string",
+      "value": "20s"
+    },
+    {
+      "path": ".app_state.gov.params.expedited_voting_period",
+      "type": "string",
+      "value": "10s"
+    },
+    {
+      "path": ".app_state.gov.params.min_deposit.[0].denom",
+      "type": "string",
+      "value": "uosmo"
+    },
+    {
+      "path": ".app_state.gov.params.min_deposit.[0].amount",
+      "type": "string",
+      "value": "1"
+    },
+    {
+      "path": ".app_state.gov.params.expedited_min_deposit.[0].denom",
+      "type": "string",
+      "value": "uosmo"
+    },
+    {
+      "path": ".app_state.gov.params.expedited_min_deposit.[0].amount",
+      "type": "string",
+      "value": "2"
+    }
   ],
   "app": [
-    { "path": ".api.enable", "type": "bool", "value": true },
-    { "path": ".api.address", "type": "string", "value": "tcp://0.0.0.0:1317" },
-    { "path": ".api.enabled-unsafe-cors", "type": "bool", "value": true },
-    { "path": ".grpc.enable", "type": "bool", "value": true },
-    { "path": ".grpc.address", "type": "string", "value": "0.0.0.0:9090" }
+    {
+      "path": ".api.enable",
+      "type": "bool",
+      "value": true
+    },
+    {
+      "path": ".api.address",
+      "type": "string",
+      "value": "tcp://0.0.0.0:1317"
+    },
+    {
+      "path": ".api.enabled-unsafe-cors",
+      "type": "bool",
+      "value": true
+    },
+    {
+      "path": ".grpc.enable",
+      "type": "bool",
+      "value": true
+    },
+    {
+      "path": ".grpc.address",
+      "type": "string",
+      "value": "0.0.0.0:9090"
+    }
   ],
   "config": [
-    { "path": ".p2p.seeds", "type": "string", "value": "" },
-    { "path": ".rpc.laddr", "type": "string", "value": "tcp://0.0.0.0:26657" },
-    { "path": ".rpc.cors_allowed_origins.[]", "type": "string", "value": "*" }
+    {
+      "path": ".p2p.seeds",
+      "type": "string",
+      "value": ""
+    },
+    {
+      "path": ".rpc.laddr",
+      "type": "string",
+      "value": "tcp://0.0.0.0:26657"
+    },
+    {
+      "path": ".rpc.cors_allowed_origins.[]",
+      "type": "string",
+      "value": "*"
+    }
   ]
 }

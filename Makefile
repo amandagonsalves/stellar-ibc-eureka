@@ -122,6 +122,10 @@ restart-gateway:
 	$(COMPOSE) rm -sf gateway
 	$(COMPOSE) up -d gateway
 
+restart-osmosis:
+	$(COMPOSE) rm -sf osmosis
+	$(COMPOSE) up -d osmosis
+
 logs-gateway:
 	$(COMPOSE) logs -f gateway
 
