@@ -4023,6 +4023,7 @@ dependencies = [
  "serde_json",
  "soroban-client",
  "stellar-ibc-core",
+ "stellar-strkey 0.0.16",
  "tokio",
  "tracing",
  "tracing-subscriber",

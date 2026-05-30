@@ -58,6 +58,7 @@ pub fn router(state: Arc<AppState>) -> Router {
         .route("/events", get(services::events::get_events))
         .route("/account/{address}", get(services::account::account))
         .route("/balance/{address}", get(services::balance::balance))
+        .route("/stellar/clients", get(services::clients::list_clients))
         .route("/tx/submit", post(services::tx::submit_signed_tx))
         .route("/tx/prepare", post(services::tx::prepare_tx))
         .route("/cosmos/node-info", get(services::cosmos::node_info))

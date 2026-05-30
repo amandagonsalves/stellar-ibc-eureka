@@ -10,6 +10,7 @@ description = "Standalone HTTP/REST API service for the Stellar IBC stack"
 [dependencies]
 stellar-ibc-core = { workspace = true }
 soroban-client = { workspace = true }
+stellar-strkey = { workspace = true }
 axum = { workspace = true }
 tokio = { workspace = true }
 serde = { workspace = true }
