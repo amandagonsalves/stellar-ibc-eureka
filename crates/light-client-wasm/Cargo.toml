@@ -11,8 +11,7 @@ description = "08-wasm Stellar light client deployable on a Cosmos SDK chain"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-cosmwasm-std    = { version = "2.1", default-features = false }
-cw-storage-plus = { version = "2.0", default-features = false }
+cosmwasm-std    = { version = "2.1", default-features = false, features = ["std"] }
 prost           = { workspace = true }
 sha2            = { workspace = true }
 serde           = { workspace = true }

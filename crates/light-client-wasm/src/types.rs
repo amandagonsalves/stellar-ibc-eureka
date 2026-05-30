@@ -65,6 +65,30 @@ pub struct StellarHeader {
     pub previous_ledger_hash: alloc::vec::Vec<u8>,
 }
 
+#[derive(Clone, PartialEq, Eq, Message)]
+pub struct Any {
+    #[prost(string, tag = "1")]
+    pub type_url: alloc::string::String,
+    #[prost(bytes = "vec", tag = "2")]
+    pub value: alloc::vec::Vec<u8>,
+}
+
+#[derive(Clone, PartialEq, Eq, Message)]
+pub struct WasmClientState {
+    #[prost(bytes = "vec", tag = "1")]
+    pub data: alloc::vec::Vec<u8>,
+    #[prost(bytes = "vec", tag = "2")]
+    pub checksum: alloc::vec::Vec<u8>,
+    #[prost(message, optional, tag = "3")]
+    pub latest_height: ::core::option::Option<Height>,
+}
+
+#[derive(Clone, PartialEq, Eq, Message)]
+pub struct WasmConsensusState {
+    #[prost(bytes = "vec", tag = "1")]
+    pub data: alloc::vec::Vec<u8>,
+}
+
 #[derive(Clone, PartialEq, Eq, Message, Serialize, Deserialize)]
 pub struct Misbehaviour {
     #[prost(string, tag = "1")]
