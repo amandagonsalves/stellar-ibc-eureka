@@ -4021,6 +4021,7 @@ dependencies = [
  "reqwest 0.12.28",
  "serde",
  "serde_json",
+ "soroban-client",
  "stellar-ibc-core",
  "tokio",
  "tracing",
@@ -4083,6 +4084,8 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "hex",
+ "ibc",
+ "ibc-proto 0.51.1",
  "ics23",
  "prost 0.13.5",
  "reqwest 0.12.28",
@@ -4090,20 +4093,6 @@ dependencies = [
  "sha2 0.10.9",
  "soroban-client",
  "tokio",
-]
-
-[[package]]
-name = "stellar-integration-tests"
-version = "0.1.0"
-dependencies = [
- "prost 0.14.3",
- "prost-build",
- "soroban-client",
- "stellar-ibc-core",
- "tokio",
- "tonic",
- "tonic-build",
- "tonic-prost",
 ]
 
 [[package]]

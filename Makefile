@@ -27,7 +27,7 @@ build-gateway:
 	cargo build -p stellar-hermes-gateway
 
 start-gateway:
-	cargo run -p stellar-hermes-gateway
+	set -a && . ./.env && set +a && cargo run -p stellar-hermes-gateway
 
 test-gateway:
 	cargo test -p stellar-hermes-gateway
@@ -40,7 +40,7 @@ build-api:
 	cargo build -p stellar-api
 
 start-api:
-	cargo run -p stellar-api
+	set -a && . ./.env && set +a && cargo run -p stellar-api
 
 test-api:
 	cargo test -p stellar-api
@@ -67,10 +67,6 @@ test-contracts:
 
 check-contracts:
 	cd contracts && cargo fmt && cargo clippy --locked --all-targets -- -D warnings -A clippy::manual_is_multiple_of -A clippy::too_many_arguments
-
-# crates/integration-tests
-run-integration-tests:
-	cargo run -p stellar-integration-tests
 
 # crates/osmosis
 start-osmosis:
@@ -159,3 +155,9 @@ up-api: push-api restart-api
 up-gateway: push-gateway restart-gateway
 
 up-hermes-config: up-api up-hermes
+
+f0:
+	@$(MAKE) -C ci f0
+
+f1:
+	@$(MAKE) -C ci f1

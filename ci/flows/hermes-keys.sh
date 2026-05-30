@@ -42,11 +42,17 @@ if [[ ! -f "${OSMOSIS_CONFIG_JSON}" ]]; then
   exit 1
 fi
 
-VAL_MNEMONIC=$(jq -er '.keys.val' "${OSMOSIS_CONFIG_JSON}" 2>/dev/null || true)
 RELAYER_MNEMONIC=$(jq -er '.keys.relayer' "${OSMOSIS_CONFIG_JSON}" 2>/dev/null || true)
 
-if [[ -z "${RELAYER_MNEMONIC}" || -z "${VAL_MNEMONIC}" ]]; then
-  echo "ERROR: ${OSMOSIS_CONFIG_JSON} is missing .keys.val or .keys.relayer"
+if [[ -z "${RELAYER_MNEMONIC}" ]]; then
+  echo "ERROR: ${OSMOSIS_CONFIG_JSON} is missing .keys.relayer"
+  exit 1
+fi
+
+if [[ -z "${STELLAR_SIGNING_KEY:-}" ]]; then
+  echo "ERROR: STELLAR_SIGNING_KEY is empty in .env."
+  echo "  The Stellar relayer key must be the funded contract admin/deployer secret"
+  echo "  so it can pay fees and satisfy admin.require_auth() in create_client."
   exit 1
 fi
 
@@ -67,10 +73,22 @@ import_key () {
         -c "cat > /tmp/m.txt && hermes --config ${HERMES_CONFIG_IN_CONTAINER} keys add --chain ${chain_id} --mnemonic-file /tmp/m.txt --key-name ${key_name} --overwrite; rc=\$?; rm -f /tmp/m.txt; exit \$rc"
 }
 
+import_stellar_secret_key () {
+  local chain_id="$1"
+  local key_name="$2"
+  local secret="$3"
+
+  echo "  importing ${key_name} for ${chain_id} (from STELLAR_SIGNING_KEY)..."
+  printf '{"secret_key":"%s"}\n' "${secret}" \
+    | docker compose "${COMPOSE_ARGS[@]}" run --rm --no-deps -T \
+        --entrypoint sh "${HERMES_SERVICE}" \
+        -c "cat > /tmp/k.json && hermes --config ${HERMES_CONFIG_IN_CONTAINER} keys add --chain ${chain_id} --key-file /tmp/k.json --key-name ${key_name} --overwrite; rc=\$?; rm -f /tmp/k.json; exit \$rc"
+}
+
 echo ""
 echo "Step 2: importing keys into the hermes-keys named volume..."
 import_key "${LOCAL_CHAIN_ID}" "${LOCAL_KEY_NAME}" "${RELAYER_MNEMONIC}"
-import_key "${STELLAR_CHAIN_ID}" "${STELLAR_KEY_NAME}" "${VAL_MNEMONIC}"
+import_stellar_secret_key "${STELLAR_CHAIN_ID}" "${STELLAR_KEY_NAME}" "${STELLAR_SIGNING_KEY}"
 
 echo ""
 echo "Step 3: starting ${HERMES_SERVICE} fresh with keys in place..."

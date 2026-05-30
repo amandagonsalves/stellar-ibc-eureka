@@ -58,6 +58,7 @@ services:
       STELLAR_GATEWAY_GRPC_PORT: "${STELLAR_GATEWAY_GRPC_PORT}"
       STELLAR_API_URL: "http://api:${STELLAR_API_PORT}"
       IBC_CONTRACT_ID: "${IBC_CONTRACT_ID}"
+      STELLAR_SIGNING_KEY: "${STELLAR_SIGNING_KEY}"
     healthcheck:
       test: ["CMD-SHELL", "nc -z localhost ${STELLAR_GATEWAY_GRPC_PORT}"]
       interval: 10s

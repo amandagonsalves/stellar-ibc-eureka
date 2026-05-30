@@ -3,7 +3,6 @@ members = [
     "crates/api",
     "crates/core",
     "crates/gateway",
-    "crates/integration-tests",
     "crates/osmosis",
     "crates/light-client-wasm"
 ]
