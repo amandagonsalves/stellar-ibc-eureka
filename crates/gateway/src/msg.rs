@@ -6,9 +6,12 @@ use crate::proto::{
     MsgTimeoutPacketRequest, MsgTimeoutPacketResponse, MsgUpdateClientRequest,
     MsgUpdateClientResponse, SubmitSignedTxRequest, SubmitSignedTxResponse,
 };
-use soroban_client::xdr::{Limits, ReadXdr, ScBytes, ScString, ScVal, ScVec, StringM, VecM, WriteXdr};
+use soroban_client::xdr::{
+    Limits, ReadXdr, ScBytes, ScString, ScVal, ScVec, StringM, VecM, WriteXdr,
+};
 use stellar_ibc_core::api_client::ApiClient;
-use stellar_ibc_core::rpc::SubmittedTx;
+use stellar_ibc_core::ibc::client_state::AnyClientState;
+use stellar_ibc_core::ibc::consensus_state::AnyConsensusState;
 use tonic::{Request, Response, Status};
 
 #[derive(Clone)]
@@ -25,58 +28,15 @@ impl MsgHandler {
         StellarGatewayMsgServer::new(self)
     }
 
-    async fn prepare_router(
-        &self,
-        method: &str,
-        args: Vec<ScVal>,
-        signer: &str,
-    ) -> Result<Vec<u8>, Status> {
-        if signer.is_empty() {
-            return Err(Status::invalid_argument(
-                "signer (relayer source account) is required to prepare an unsigned tx",
-            ));
-        }
-        tracing::info!(method, args = args.len(), %signer, "prepare_router via api");
+    async fn prepare_msg_tx(&self, method: &str, args: Vec<ScVal>) -> Result<Vec<u8>, Status> {
+        tracing::info!(method, args = args.len(), "prepare_router via api");
         self.api
-            .prepare_invoke(method, args, signer)
+            .build_unsigned_tx(method, args)
             .await
             .map_err(|error| {
-                tracing::error!(%error, method, "prepare_invoke failed");
-                Status::internal(format!("prepare_invoke({method}): {error}"))
+                tracing::error!(%error, method, "invoke failed");
+                Status::internal(format!("invoke({method}): {error}"))
             })
-    }
-
-    async fn invoke_router(&self, method: &str, args: Vec<ScVal>) -> Result<SubmittedTx, Status> {
-        tracing::info!(method, args = args.len(), "invoke_router via api");
-        match self.api.invoke_router(method, args).await {
-            Ok(submitted) => {
-                tracing::info!(
-                    method,
-                    hash = %submitted.hash,
-                    has_return_value = submitted.return_value.is_some(),
-                    "invoke_router ok"
-                );
-                Ok(submitted)
-            }
-            Err(error) => {
-                tracing::error!(%error, method, "invoke_router failed");
-                Err(Status::internal(format!(
-                    "invoke_router({method}): {error}"
-                )))
-            }
-        }
-    }
-}
-
-fn scval_into_string(value: ScVal) -> Option<String> {
-    match value {
-        ScVal::String(ScString(sm)) => core::str::from_utf8(sm.as_slice())
-            .ok()
-            .map(|s| s.to_string()),
-        ScVal::Symbol(sym) => core::str::from_utf8(sym.0.as_slice())
-            .ok()
-            .map(|s| s.to_string()),
-        _ => None,
     }
 }
 
@@ -119,14 +79,10 @@ impl StellarGatewayMsg for MsgHandler {
     ) -> Result<Response<SubmitSignedTxResponse>, Status> {
         let tx_xdr = request.into_inner().tx_xdr;
         tracing::info!(tx_bytes = tx_xdr.len(), "gRPC SubmitSignedTx");
-        let submitted = self
-            .api
-            .submit_and_wait_for_result(&tx_xdr)
-            .await
-            .map_err(|error| {
-                tracing::error!(%error, "submit_and_wait_for_result failed");
-                Status::internal(format!("submit_and_wait: {error}"))
-            })?;
+        let submitted = self.api.submit_and_wait(&tx_xdr).await.map_err(|error| {
+            tracing::error!(%error, "submit_and_wait_for_result failed");
+            Status::internal(format!("submit_and_wait: {error}"))
+        })?;
         let return_value = submitted
             .return_value
             .and_then(|v| v.to_xdr(Limits::none()).ok())
@@ -157,15 +113,35 @@ impl StellarGatewayMsg for MsgHandler {
             height = req.height,
             "gRPC CreateClient"
         );
+        let (client_state_bytes, height) = match AnyClientState::decode_value(&req.client_state) {
+            Ok(cs) => {
+                tracing::info!(
+                    chain_id = %cs.chain_id(),
+                    revision_number = cs.revision_number(),
+                    latest_height = cs.latest_height(),
+                    "decoded tendermint client state"
+                );
+                (cs.encode_value(), cs.latest_height())
+            }
+            Err(error) => {
+                tracing::warn!(%error, request_height = req.height, "could not decode tendermint client state; forwarding as-is");
+                (req.client_state.clone(), req.height)
+            }
+        };
+        let consensus_state_bytes = match AnyConsensusState::decode_value(&req.consensus_state) {
+            Ok(cons) => cons.encode_value(),
+            Err(error) => {
+                tracing::warn!(%error, "could not decode tendermint consensus state; forwarding as-is");
+                req.consensus_state.clone()
+            }
+        };
         let args = vec![
             scval_string(&req.client_type)?,
-            scval_bytes(&req.client_state)?,
-            scval_bytes(&req.consensus_state)?,
-            scval_u64(req.height),
+            scval_bytes(&client_state_bytes)?,
+            scval_bytes(&consensus_state_bytes)?,
+            scval_u64(height),
         ];
-        let tx_xdr = self
-            .prepare_router("create_client", args, &req.signer)
-            .await?;
+        let tx_xdr = self.prepare_msg_tx("create_client", args).await?;
         tracing::info!(tx_bytes = tx_xdr.len(), "create_client prepared (unsigned)");
         Ok(Response::new(MsgCreateClientResponse {
             client_id: String::new(),
@@ -190,7 +166,7 @@ impl StellarGatewayMsg for MsgHandler {
             "gRPC UpdateClient"
         );
         let args = vec![scval_string(&req.client_id)?, scval_bytes(&req.header)?];
-        let _ = self.invoke_router("update_client", args).await?;
+        let _ = self.prepare_msg_tx("update_client", args).await?;
         Ok(Response::new(MsgUpdateClientResponse {}))
     }
 
@@ -216,7 +192,7 @@ impl StellarGatewayMsg for MsgHandler {
             scval_string(&req.counterparty_client_id)?,
             scval_vec_of_bytes(&req.counterparty_commitment_prefix)?,
         ];
-        let _ = self.invoke_router("register_counterparty", args).await?;
+        let _ = self.prepare_msg_tx("register_counterparty", args).await?;
         Ok(Response::new(MsgRegisterCounterpartyResponse {}))
     }
 
@@ -237,7 +213,7 @@ impl StellarGatewayMsg for MsgHandler {
             scval_bytes(&req.proof)?,
             scval_u64(req.proof_height),
         ];
-        let _ = self.invoke_router("recv_packet", args).await?;
+        let _ = self.prepare_msg_tx("recv_packet", args).await?;
         Ok(Response::new(MsgRecvPacketResponse {}))
     }
 
@@ -261,7 +237,7 @@ impl StellarGatewayMsg for MsgHandler {
             scval_bytes(&req.proof)?,
             scval_u64(req.proof_height),
         ];
-        let _ = self.invoke_router("acknowledge_packet", args).await?;
+        let _ = self.prepare_msg_tx("acknowledge_packet", args).await?;
         Ok(Response::new(MsgAckPacketResponse {}))
     }
 
@@ -282,7 +258,7 @@ impl StellarGatewayMsg for MsgHandler {
             scval_bytes(&req.proof)?,
             scval_u64(req.proof_height),
         ];
-        let _ = self.invoke_router("timeout_packet", args).await?;
+        let _ = self.prepare_msg_tx("timeout_packet", args).await?;
         Ok(Response::new(MsgTimeoutPacketResponse {}))
     }
 
@@ -306,7 +282,7 @@ impl StellarGatewayMsg for MsgHandler {
             scval_string(&req.client_id)?,
             scval_bytes(&req.client_message)?,
         ];
-        let _ = self.invoke_router("update_client", args).await?;
+        let _ = self.prepare_msg_tx("update_client", args).await?;
         Ok(Response::new(MsgSubmitMisbehaviourResponse {}))
     }
 }
@@ -316,7 +292,7 @@ mod tests {
     use super::*;
 
     fn handler() -> MsgHandler {
-        MsgHandler::new(ApiClient::new("http://127.0.0.1:8101"))
+        MsgHandler::new(ApiClient::new("http://127.0.0.1:8101", String::from("GGG")))
     }
 
     #[tokio::test]

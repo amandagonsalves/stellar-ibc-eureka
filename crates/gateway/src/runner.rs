@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use soroban_client::keypair::{Keypair, KeypairBehavior};
 use tokio::sync::Mutex;
 
 use crate::{
@@ -16,7 +17,10 @@ pub async fn run(cfg: GatewayConfig) {
         "starting stellar-gateway"
     );
 
-    let api = ApiClient::new(&cfg.api_url);
+    let keypair =
+        Keypair::from_secret(&cfg.signing_key).expect("failed to get keypair from secret");
+
+    let api = ApiClient::new(&cfg.api_url, keypair.public_key());
 
     let ibc_contract_id = if cfg.ibc_contract_id.is_empty() {
         tracing::warn!("IBC_CONTRACT_ID is empty — state tracker will accept any contract");
