@@ -45,7 +45,7 @@ id = 'localosmosis'
 type = 'CosmosSdk'
 rpc_addr = 'http://osmosis:26657'
 grpc_addr = 'http://osmosis:9090'
-event_source = { mode = 'push', url = 'ws://127.0.0.1:26657/websocket', batch_delay = '200ms' }
+event_source = { mode = 'push', url = 'ws://osmosis:26657/websocket', batch_delay = '200ms' }
 rpc_timeout = '10s'
 account_prefix = 'osmo'
 key_name = 'localosmosis'
@@ -79,7 +79,7 @@ clear_interval = 0
 query_packets_chunk_size = 50
 clock_drift = '5s'
 client_refresh_rate = '1/3'
-wasm_checksum_hex = ''
+wasm_checksum_hex = '68876a364c669049ddf9354208e28b69e7663686032615e1c660a67ffd245f69'
 
 # [[chains]]
 # type = 'Cardano'

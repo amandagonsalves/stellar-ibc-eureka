@@ -25,7 +25,9 @@ VOTE_GAS_LIMIT="${VOTE_GAS_LIMIT:-200000}"
 VOTE_FEE_AMOUNT="${VOTE_FEE_AMOUNT:-10000}"
 VOTE_OPTION="${VOTE_OPTION:-1}"
 TX_WAIT_TIMEOUT="${TX_WAIT_TIMEOUT:-60}"
-VOTING_PERIOD="${VOTING_PERIOD:-20}"
+VOTING_PERIOD="${VOTING_PERIOD:-25}"
+VERIFY_RETRIES="${VERIFY_RETRIES:-15}"
+VERIFY_INTERVAL="${VERIFY_INTERVAL:-2}"
 FUND_AMOUNT="${FUND_AMOUNT:-100000000}"
 FUND_GAS_LIMIT="${FUND_GAS_LIMIT:-200000}"
 FUND_FEE_AMOUNT="${FUND_FEE_AMOUNT:-10000}"
@@ -140,12 +142,20 @@ sleep "${VOTING_PERIOD}"
 
 echo ""
 echo "Step 6: Verifying checksum on-chain via api..."
-ON_CHAIN_HEX=$(curl -sf "${API_URL}/cosmos/ibc-wasm/checksums" \
-  | python3 -c "
+ON_CHAIN_HEX=""
+for attempt in $(seq 1 "${VERIFY_RETRIES}"); do
+  ON_CHAIN_HEX=$(curl -sf "${API_URL}/cosmos/ibc-wasm/checksums" \
+    | python3 -c "
 import sys, json
 cs = json.load(sys.stdin).get('checksums', []) or []
 print('\n'.join(cs))
 " 2>/dev/null | tr '[:upper:]' '[:lower:]')
+  if echo "${ON_CHAIN_HEX}" | grep -q "${LOCAL_SHA}"; then
+    break
+  fi
+  echo "  attempt ${attempt}/${VERIFY_RETRIES}: checksum not yet on-chain, retrying in ${VERIFY_INTERVAL}s..."
+  sleep "${VERIFY_INTERVAL}"
+done
 
 if [[ -z "${ON_CHAIN_HEX}" ]]; then
   echo "  ERROR: no checksums registered on ${CHAIN_ID}. Proposal probably did not pass."

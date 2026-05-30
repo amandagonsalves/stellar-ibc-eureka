@@ -1,4 +1,4 @@
-.PHONY: f0 hermes-image gateway-image api-image hermes-keys upload-lc-wasm deploy-contracts caribic-preflight cosmos-only
+.PHONY: f0 hermes-image gateway-image api-image hermes-keys upload-lc-wasm deploy-contracts caribic-preflight cosmos-only api-doc
 
 SCRIPT_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 FLOWS_DIR  := $(SCRIPT_DIR)flows
@@ -29,3 +29,6 @@ caribic-preflight:
 
 cosmos-only:
 	@bash $(FLOWS_DIR)/cosmos-only.sh
+
+api-doc:
+	@cargo doc -p stellar-api --no-deps --open

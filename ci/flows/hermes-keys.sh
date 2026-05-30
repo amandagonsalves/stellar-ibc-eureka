@@ -13,7 +13,7 @@ HERMES_SERVICE="${HERMES_SERVICE:-hermes}"
 HERMES_CONFIG_IN_CONTAINER="${HERMES_CONFIG_IN_CONTAINER:-/home/hermes/.hermes/config.toml}"
 
 LOCAL_CHAIN_ID="${COSMOS_CHAIN_ID:-localosmosis}"
-LOCAL_KEY_NAME="${LOCAL_KEY_NAME:-testkey}"
+LOCAL_KEY_NAME="${LOCAL_KEY_NAME:-localosmosis}"
 STELLAR_CHAIN_ID="${STELLAR_CHAIN_ID:-stellar-testnet}"
 STELLAR_KEY_NAME="${STELLAR_KEY_NAME:-stellar-relayer}"
 
