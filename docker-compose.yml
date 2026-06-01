@@ -27,7 +27,7 @@ services:
       - ./crates/osmosis/assets/default-config.json:/config/default-config.json:ro
       - ${HOME}/.osmosisd-local:/osmosis/.osmosisd
     environment:
-      OSMOSIS_CHAIN_ID: "${COSMOS_CHAIN_ID:-localosmosis}"
+      COSMOS_CHAIN_ID: "${COSMOS_CHAIN_ID:-localosmosis}"
     ports:
       - "26658:26657"
       - "1318:1317"
@@ -57,7 +57,7 @@ services:
       STELLAR_GATEWAY_HOST: "0.0.0.0"
       STELLAR_GATEWAY_GRPC_PORT: "${STELLAR_GATEWAY_GRPC_PORT}"
       STELLAR_API_URL: "http://api:${STELLAR_API_PORT}"
-      IBC_CONTRACT_ID: "${IBC_CONTRACT_ID}"
+      ROUTER_CONTRACT_ADDRESS: "${ROUTER_CONTRACT_ADDRESS}"
       STELLAR_SIGNING_KEY: "${STELLAR_SIGNING_KEY}"
     healthcheck:
       test: ["CMD-SHELL", "nc -z localhost ${STELLAR_GATEWAY_GRPC_PORT}"]
@@ -91,8 +91,8 @@ services:
       STELLAR_RPC_URL: "${STELLAR_RPC_URL}"
       NETWORK_PASSPHRASE: "${NETWORK_PASSPHRASE}"
       STELLAR_SIGNING_KEY: "${STELLAR_SIGNING_KEY}"
-      IBC_CONTRACT_ID: "${IBC_CONTRACT_ID}"
-      TRANSFER_CONTRACT_ID: "${TRANSFER_CONTRACT_ID}"
+      ROUTER_CONTRACT_ADDRESS: "${ROUTER_CONTRACT_ADDRESS}"
+      TRANSFER_CONTRACT_ADDRESS: "${TRANSFER_CONTRACT_ADDRESS}"
       COSMOS_CHAIN_ID: "${COSMOS_CHAIN_ID}"
       COSMOS_REST_URL: "http://osmosis:1317"
       COSMOS_RPC_URL: "http://osmosis:26657"
