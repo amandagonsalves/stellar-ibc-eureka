@@ -41,19 +41,19 @@ pub(crate) async fn create(
         bail!("docker not found in PATH");
     }
 
-    logger::step(&format!("probing gateway gRPC at {}", cfg.gateway_grpc_addr));
-    if !probe::tcp_ok(&cfg.gateway_grpc_addr) {
+    logger::step(&format!("probing gateway gRPC at {}", cfg.gateway_url));
+    if !probe::tcp_ok(&cfg.gateway_url) {
         bail!(
             "gateway not reachable at {} — start it with: stellaribc gateway start",
-            cfg.gateway_grpc_addr
+            cfg.gateway_url
         );
     }
 
-    logger::step(&format!("probing Cosmos RPC at {}", cfg.cosmos_status_url()));
-    if !probe::http_ok(http, &cfg.cosmos_status_url()).await {
+    logger::step(&format!("probing Cosmos RPC at {}", cfg.osmosis_status_url()));
+    if !probe::http_ok(http, &cfg.osmosis_status_url()).await {
         bail!(
             "Cosmos RPC not reachable at {} — start it with: stellaribc up --cosmos",
-            cfg.cosmos_rpc_url
+            cfg.osmosis_rpc_url
         );
     }
 

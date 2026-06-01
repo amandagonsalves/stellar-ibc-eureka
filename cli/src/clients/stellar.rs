@@ -28,7 +28,7 @@ pub async fn run(cfg: &ClientsConfig, root: &Path, http: &reqwest::Client, force
     }
 
     let spec = CreateSpec {
-        host_chain: &cfg.cosmos_chain_id,
+        host_chain: &cfg.osmosis_chain_id,
         reference_chain: &cfg.stellar_chain_id,
         id_prefix: "08-wasm",
         result_env_var: "STELLAR_CLIENT_ID",
