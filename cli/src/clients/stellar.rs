@@ -2,20 +2,22 @@ use std::path::Path;
 
 use anyhow::{bail, Result};
 
+use crate::clients::config::ClientsConfig;
 use crate::clients::CreateSpec;
-use crate::config::Config;
 use crate::logger;
 
-pub async fn run(cfg: &Config, root: &Path, http: &reqwest::Client, force: bool) -> Result<()> {
-    logger::banner("clients stellar (F1.2 — Stellar client on Cosmos, 08-wasm)");
+pub async fn run(cfg: &ClientsConfig, root: &Path, http: &reqwest::Client, force: bool) -> Result<()> {
+    logger::banner("clients stellar (Stellar client on Cosmos, 08-wasm)");
 
-    if !force && !cfg.stellar_client_id.is_empty() {
-        logger::warn(&format!(
-            "STELLAR_CLIENT_ID already set ({}). Use --force to create another.",
-            cfg.stellar_client_id
-        ));
+    if !force {
+        if let Some(existing) = &cfg.stellar_client {
+            logger::warn(&format!(
+                "STELLAR_CLIENT_ID already set ({}). Use --force to create another.",
+                existing.as_str()
+            ));
 
-        return Ok(());
+            return Ok(());
+        }
     }
 
     if !wasm_checksum_present(&cfg.hermes_config) {
@@ -30,11 +32,11 @@ pub async fn run(cfg: &Config, root: &Path, http: &reqwest::Client, force: bool)
         reference_chain: &cfg.stellar_chain_id,
         id_prefix: "08-wasm",
         result_env_var: "STELLAR_CLIENT_ID",
-        existing: &cfg.stellar_client_id,
+        existing: cfg.stellar_client.as_ref().map(|c| c.as_str()),
     };
 
     super::create(cfg, root, http, &spec, force).await?;
-    logger::hint("next: stellaribc clients counterparty stellar / cosmos   (F1.3 / F1.4)");
+    logger::hint("next: stellaribc clients counterparty stellar / cosmos");
 
     Ok(())
 }

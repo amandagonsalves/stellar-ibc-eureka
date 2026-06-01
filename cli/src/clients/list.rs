@@ -1,9 +1,9 @@
 use anyhow::Result;
 
-use crate::config::Config;
+use crate::clients::config::ClientsConfig;
 use crate::{logger, probe, shared};
 
-pub async fn run(cfg: &Config, http: &reqwest::Client) -> Result<()> {
+pub async fn run(cfg: &ClientsConfig, http: &reqwest::Client) -> Result<()> {
     logger::banner("clients list");
 
     if !probe::http_ok(http, &cfg.api_health_url()).await {

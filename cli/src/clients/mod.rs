@@ -1,3 +1,4 @@
+pub mod config;
 pub mod cosmos;
 pub mod counterparty;
 pub mod list;
@@ -7,7 +8,7 @@ use std::path::Path;
 
 use anyhow::{anyhow, bail, Result};
 
-use crate::config::Config;
+use crate::clients::config::ClientsConfig;
 use crate::{logger, probe, run, shared};
 
 pub(crate) struct CreateSpec<'a> {
@@ -15,23 +16,25 @@ pub(crate) struct CreateSpec<'a> {
     pub reference_chain: &'a str,
     pub id_prefix: &'a str,
     pub result_env_var: &'a str,
-    pub existing: &'a str,
+    pub existing: Option<&'a str>,
 }
 
 pub(crate) async fn create(
-    cfg: &Config,
+    cfg: &ClientsConfig,
     root: &Path,
     http: &reqwest::Client,
     spec: &CreateSpec<'_>,
     force: bool,
 ) -> Result<()> {
-    if !spec.existing.is_empty() && !force {
-        logger::warn(&format!(
-            "{} already set ({}). Use --force to create another.",
-            spec.result_env_var, spec.existing
-        ));
+    if let Some(existing) = spec.existing {
+        if !force {
+            logger::warn(&format!(
+                "{} already set ({existing}). Use --force to create another.",
+                spec.result_env_var
+            ));
 
-        return Ok(());
+            return Ok(());
+        }
     }
 
     if !run::has("docker") {
@@ -46,8 +49,8 @@ pub(crate) async fn create(
         );
     }
 
-    logger::step(&format!("probing Cosmos RPC at {}/status", cfg.cosmos_rpc_url));
-    if !probe::http_ok(http, &format!("{}/status", cfg.cosmos_rpc_url)).await {
+    logger::step(&format!("probing Cosmos RPC at {}", cfg.cosmos_status_url()));
+    if !probe::http_ok(http, &cfg.cosmos_status_url()).await {
         bail!(
             "Cosmos RPC not reachable at {} — start it with: stellaribc up --cosmos",
             cfg.cosmos_rpc_url
