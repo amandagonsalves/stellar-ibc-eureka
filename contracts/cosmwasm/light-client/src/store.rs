@@ -23,7 +23,7 @@ fn checksum(storage: &dyn Storage) -> alloc::vec::Vec<u8> {
     storage.get(CHECKSUM_KEY).unwrap_or_default()
 }
 
-pub fn save_client_state(storage: &mut dyn Storage, client_state: &ClientState) {
+pub fn set_client_state(storage: &mut dyn Storage, client_state: &ClientState) {
     let wasm = WasmClientState {
         data: client_state.encode_to_vec(),
         checksum: checksum(storage),
@@ -36,14 +36,14 @@ pub fn save_client_state(storage: &mut dyn Storage, client_state: &ClientState) 
     storage.set(CLIENT_STATE_KEY, &any.encode_to_vec());
 }
 
-pub fn load_client_state(storage: &dyn Storage) -> Option<ClientState> {
+pub fn client_state(storage: &dyn Storage) -> Option<ClientState> {
     let raw = storage.get(CLIENT_STATE_KEY)?;
     let any = Any::decode(raw.as_slice()).ok()?;
     let wasm = WasmClientState::decode(any.value.as_slice()).ok()?;
     ClientState::decode(wasm.data.as_slice()).ok()
 }
 
-pub fn save_consensus_state(
+pub fn set_consensus_state(
     storage: &mut dyn Storage,
     height: u64,
     consensus_state: &ConsensusState,
@@ -55,11 +55,14 @@ pub fn save_consensus_state(
         type_url: WASM_CONSENSUS_STATE_TYPE_URL.into(),
         value: wasm.encode_to_vec(),
     };
-    storage.set(&consensus_state_key(height), &any.encode_to_vec());
+    storage.set(
+        &consensus_state_key(height).as_slice(),
+        &any.encode_to_vec(),
+    );
 }
 
-pub fn load_consensus_state(storage: &dyn Storage, height: u64) -> Option<ConsensusState> {
-    let raw = storage.get(&consensus_state_key(height))?;
+pub fn consensus_state(storage: &dyn Storage, height: u64) -> Option<ConsensusState> {
+    let raw = storage.get(&consensus_state_key(height).as_slice())?;
     let any = Any::decode(raw.as_slice()).ok()?;
     let wasm = WasmConsensusState::decode(any.value.as_slice()).ok()?;
     ConsensusState::decode(wasm.data.as_slice()).ok()

@@ -13,7 +13,7 @@ use crate::msg::{
     VerifyNonMembershipMsg,
 };
 use crate::smt::{verify_membership_raw, verify_non_membership_raw, HASH_SIZE};
-use crate::state;
+use crate::store;
 use crate::types::{ClientState, ConsensusState, Height as WireHeight, ScpEnvelope, StellarHeader};
 
 const ENVELOPE_TYPE_SCPVALUE: [u8; 4] = [0, 0, 0, 4];
@@ -25,7 +25,7 @@ pub fn instantiate(
     _info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    if state::load_client_state(deps.storage).is_some() {
+    if store::client_state(deps.storage).is_some() {
         return Err(ContractError::AlreadyInitialised);
     }
 
@@ -40,9 +40,9 @@ pub fn instantiate(
         .ok_or_else(|| ContractError::InvalidWire("client_state.latest_height".into()))?
         .revision_height;
 
-    state::set_checksum(deps.storage, msg.checksum.as_slice());
-    state::save_client_state(deps.storage, &client_state);
-    state::save_consensus_state(deps.storage, height, &consensus_state);
+    store::set_checksum(deps.storage, msg.checksum.as_slice());
+    store::set_client_state(deps.storage, &client_state);
+    store::set_consensus_state(deps.storage, height, &consensus_state);
 
     Ok(Response::default())
 }
@@ -150,7 +150,7 @@ fn update_state(
         root: header.ibc_state_root.clone(),
     };
 
-    if let Some(existing) = state::load_consensus_state(deps.storage, header.ledger_seq) {
+    if let Some(existing) = store::consensus_state(deps.storage, header.ledger_seq) {
         if existing != new_consensus {
             return Err(ContractError::ConsensusStateConflict {
                 height: header.ledger_seq,
@@ -158,7 +158,7 @@ fn update_state(
         }
     }
 
-    state::save_consensus_state(deps.storage, header.ledger_seq, &new_consensus);
+    store::set_consensus_state(deps.storage, header.ledger_seq, &new_consensus);
 
     if header.ledger_seq
         > cs.latest_height
@@ -170,7 +170,7 @@ fn update_state(
             revision_number: 0,
             revision_height: header.ledger_seq,
         });
-        state::save_client_state(deps.storage, &cs);
+        store::set_client_state(deps.storage, &cs);
     }
 
     Ok(UpdateStateResult {
@@ -189,7 +189,7 @@ fn update_state_on_misbehaviour(
     let mut cs = require_client_state_mut(deps.as_ref())?;
     let latest = cs.latest_height.clone().unwrap_or_default();
     cs.frozen_height = Some(latest);
-    state::save_client_state(deps.storage, &cs);
+    store::set_client_state(deps.storage, &cs);
     Ok(())
 }
 
@@ -205,7 +205,7 @@ fn check_for_misbehaviour(
         });
     }
     let header = decode_header(&msg.client_message)?;
-    if let Some(existing) = state::load_consensus_state(deps.storage, header.ledger_seq) {
+    if let Some(existing) = store::consensus_state(deps.storage, header.ledger_seq) {
         let header_consensus = ConsensusState {
             timestamp: header.timestamp,
             ledger_hash: header.ledger_hash.clone(),
@@ -294,7 +294,7 @@ fn decode_header(bytes: &[u8]) -> Result<StellarHeader, ContractError> {
 }
 
 fn require_client_state(deps: Deps<'_>) -> Result<ClientState, ContractError> {
-    state::load_client_state(deps.storage).ok_or(ContractError::NotInitialised)
+    store::client_state(deps.storage).ok_or(ContractError::NotInitialised)
 }
 
 fn require_client_state_mut(deps: Deps<'_>) -> Result<ClientState, ContractError> {
@@ -302,7 +302,7 @@ fn require_client_state_mut(deps: Deps<'_>) -> Result<ClientState, ContractError
 }
 
 fn require_consensus_state(deps: Deps<'_>, height: u64) -> Result<ConsensusState, ContractError> {
-    state::load_consensus_state(deps.storage, height)
+    store::consensus_state(deps.storage, height)
         .ok_or(ContractError::ConsensusStateMissing { height })
 }
 

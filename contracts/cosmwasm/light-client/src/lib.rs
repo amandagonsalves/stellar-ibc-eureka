@@ -3,7 +3,7 @@ pub mod error;
 pub mod merkle;
 pub mod msg;
 pub mod smt;
-pub mod state;
+pub mod store;
 pub mod types;
 
 pub use error::ContractError;

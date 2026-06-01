@@ -2,10 +2,10 @@ use std::path::Path;
 
 use anyhow::Result;
 
-use crate::config::Config;
+use crate::ops::config::OpsConfig;
 use crate::{logger, probe, run, shared};
 
-pub async fn run(root: &Path, cfg: &Config, http: &reqwest::Client) -> Result<()> {
+pub async fn run(root: &Path, cfg: &OpsConfig, http: &reqwest::Client) -> Result<()> {
     logger::banner("doctor — prerequisites & configuration");
 
     logger::step("Toolchain");
@@ -26,8 +26,8 @@ pub async fn run(root: &Path, cfg: &Config, http: &reqwest::Client) -> Result<()
 
     logger::step("Configuration");
     shared::flag("STELLAR_SIGNING_KEY", !cfg.stellar_signing_key.is_empty(), "needed to deploy + sign on Stellar");
-    shared::flag("IBC_CONTRACT_ID", !cfg.ibc_contract_id.is_empty(), "router address (set by `stellaribc contracts deploy`)");
-    shared::flag("TRANSFER_CONTRACT_ID", !cfg.transfer_contract_id.is_empty(), "transfer-app address");
+    shared::flag("IBC_CONTRACT_ID", !cfg.ibc_router.is_empty(), "router address (set by `stellaribc contracts deploy-all`)");
+    shared::flag("TRANSFER_CONTRACT_ID", !cfg.transfer_app.is_empty(), "transfer-app address");
     shared::flag("STELLAR_CLIENT_ID", !cfg.stellar_client_id.is_empty(), "08-wasm client id (set by `stellaribc clients stellar`)");
 
     logger::step("Services");
