@@ -2,17 +2,17 @@ use std::path::Path;
 
 use anyhow::Result;
 
-use crate::config::Config;
-use crate::gateway::image;
+use crate::config::ImageRef;
 use crate::{logger, run};
 
 const SERVICE: &str = "gateway";
 
-pub fn start(cfg: &Config, root: &Path, rebuild: bool) -> Result<()> {
+pub fn start(image: &ImageRef, root: &Path, pull: bool) -> Result<()> {
     logger::banner("gateway start");
+    logger::detail(&format!("image: {}", image.reference()));
 
-    if rebuild {
-        image::build(cfg, root)?;
+    if pull {
+        run::compose(root, &["pull", SERVICE])?;
     }
 
     logger::step("docker compose up -d gateway");
@@ -34,11 +34,12 @@ pub fn stop(root: &Path) -> Result<()> {
     Ok(())
 }
 
-pub fn restart(cfg: &Config, root: &Path, rebuild: bool) -> Result<()> {
+pub fn restart(image: &ImageRef, root: &Path, pull: bool) -> Result<()> {
     logger::banner("gateway restart");
+    logger::detail(&format!("image: {}", image.reference()));
 
-    if rebuild {
-        image::build(cfg, root)?;
+    if pull {
+        run::compose(root, &["pull", SERVICE])?;
 
         logger::step("docker compose up -d --force-recreate gateway");
         run::compose(root, &["up", "-d", "--force-recreate", SERVICE])?;
