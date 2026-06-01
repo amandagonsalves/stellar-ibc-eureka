@@ -176,7 +176,7 @@ async fn checksum_registered(http: &reqwest::Client, cfg: &ContractsConfig, loca
 async fn proposer_address(http: &reqwest::Client, cfg: &ContractsConfig) -> Result<String> {
     let value = probe::get_json(http, &format!("{}/cosmos/proposer", cfg.api_url))
         .await
-        .ok_or_else(|| anyhow!("api did not return a proposer (COSMOS_PROPOSER_PRIVATE_KEY missing?)"))?;
+        .ok_or_else(|| anyhow!("api did not return a proposer (OSMOSIS_PROPOSER_PRIVATE_KEY missing?)"))?;
 
     value
         .get("address")

@@ -34,7 +34,12 @@ fn stellar_base(cfg: &ContractsConfig, sub: &str) -> Vec<String> {
     args
 }
 
-pub(crate) fn deploy(cfg: &ContractsConfig, root: &Path, wasm: &str, ctor: &[&str]) -> Result<String> {
+pub(crate) fn deploy(
+    cfg: &ContractsConfig,
+    root: &Path,
+    wasm: &str,
+    ctor: &[&str],
+) -> Result<String> {
     let mut args = stellar_base(cfg, "deploy");
     args.push("--wasm".to_string());
     args.push(wasm.to_string());

@@ -21,7 +21,7 @@ pub fn run(
 
     if !cfg.ibc_router.is_empty() && !force {
         logger::warn(&format!(
-            "IBC_CONTRACT_ID already set ({}). Use --force to redeploy.",
+            "ROUTER_CONTRACT_ADDRESS already set ({}). Use --force to redeploy.",
             cfg.ibc_router
         ));
 
@@ -143,8 +143,8 @@ pub fn run(
     shared::env_upsert(
         &root.join(".env"),
         &[
-            ("IBC_CONTRACT_ID", router.as_str()),
-            ("TRANSFER_CONTRACT_ID", transfer.as_str()),
+            ("ROUTER_CONTRACT_ADDRESS", router.as_str()),
+            ("TRANSFER_CONTRACT_ADDRESS", transfer.as_str()),
             ("MOCK_LC_CONTRACT_ID", mock.as_str()),
             ("ATTESTATION_LC_CONTRACT_ID", attestation_id.as_str()),
             ("TENDERMINT_LC_CONTRACT_ID", tendermint_id.as_str()),
@@ -153,7 +153,7 @@ pub fn run(
     )?;
 
     logger::ok("deploy-all complete");
-    logger::hint("recreate services to pick up IBC_CONTRACT_ID: stellaribc api restart --pull && stellaribc gateway restart --pull");
+    logger::hint("recreate services to pick up ROUTER_CONTRACT_ADDRESS: stellaribc api restart --pull && stellaribc gateway restart --pull");
 
     Ok(())
 }
