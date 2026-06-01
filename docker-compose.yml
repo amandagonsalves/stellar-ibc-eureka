@@ -84,7 +84,7 @@ services:
     ports:
       - "${STELLAR_API_PORT}:${STELLAR_API_PORT}"
     volumes:
-      - ./ci/hermes-config.toml:/etc/hermes/config.toml:rw
+      - ./hermes-config.toml:/etc/hermes/config.toml:rw
     environment:
       STELLAR_API_HOST: "0.0.0.0"
       STELLAR_API_PORT: "${STELLAR_API_PORT}"
@@ -119,7 +119,7 @@ services:
         required: false
     command: ["--config", "/home/hermes/.hermes/config.toml", "start"]
     volumes:
-      - ./ci/hermes-config.toml:/home/hermes/.hermes/config.toml:ro
+      - ./hermes-config.toml:/home/hermes/.hermes/config.toml:ro
       - hermes-keys:/home/hermes/.hermes/keys
     environment:
       RUST_LOG: "${HERMES_LOG_LEVEL:-info}"

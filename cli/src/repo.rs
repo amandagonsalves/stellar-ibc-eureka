@@ -1,8 +1,8 @@
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use anyhow::{bail, Result};
 
-const MARKER: &str = "ci/flows/_env.sh";
+const MARKER: &str = "docker-compose.yml";
 
 pub fn find_root() -> Result<PathBuf> {
     if let Ok(explicit) = std::env::var("STELLAR_IBC_ROOT") {
@@ -24,8 +24,4 @@ pub fn find_root() -> Result<PathBuf> {
     }
 
     bail!("could not locate the stellar-ibc repo root (looked for {MARKER} upward from the current directory; set STELLAR_IBC_ROOT to override)");
-}
-
-pub fn script_path(root: &Path, name: &str) -> PathBuf {
-    root.join("ci/flows").join(name)
 }

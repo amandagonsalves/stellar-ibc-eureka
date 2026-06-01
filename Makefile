@@ -82,15 +82,16 @@ health-osmosis:
 	cargo run -p stellar-osmosis -- health
 
 push-hermes:
-	bash ci/flows/build-hermes-image.sh
+	$(CLI) hermes push-image --rebuild
 
 push-gateway:
-	bash ci/flows/build-gateway-image.sh
+	$(CLI) gateway push-image --rebuild
 
 push-api:
-	bash ci/flows/build-api-image.sh
+	$(CLI) api push-image --rebuild
 
 COMPOSE := docker compose --profile local --profile hermes
+CLI := cargo run -q -p stellar-ibc-cli --
 
 # Whole stack
 start-stellar-ibc:
@@ -140,13 +141,16 @@ restart: restart-api restart-gateway restart-hermes
 up: push-api push-gateway push-hermes restart-api restart-gateway restart-hermes
 
 hermes-keys:
-	@$(MAKE) -C ci hermes-keys
+	$(CLI) hermes keys-import
 
 deploy-contracts:
-	bash ci/flows/upload-and-deploy-contracts.sh
+	$(CLI) contracts deploy-all
+
+upload-wasm:
+	$(CLI) contracts upload-wasm
 
 api-doc:
-	@$(MAKE) -C ci api-doc
+	cargo doc -p stellar-api --no-deps --open
 
 up-hermes: push-hermes restart-hermes
 
@@ -157,10 +161,10 @@ up-gateway: push-gateway restart-gateway
 up-hermes-config: up-api up-hermes
 
 f0:
-	@$(MAKE) -C ci f0
+	$(CLI) bootstrap
 
 f1:
-	@$(MAKE) -C ci f1
+	$(CLI) clients cosmos
 
 f1-2:
-	@$(MAKE) -C ci f1-create-client
+	$(CLI) clients stellar

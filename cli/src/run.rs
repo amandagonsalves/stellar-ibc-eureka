@@ -4,35 +4,6 @@ use std::process::{Command, Stdio};
 
 use anyhow::{bail, Context, Result};
 
-use crate::repo;
-
-pub const NO_ENV: &[(&str, &str)] = &[];
-
-pub fn script(root: &Path, name: &str, env: &[(&str, &str)]) -> Result<()> {
-    let path = repo::script_path(root, name);
-    if !path.exists() {
-        bail!("flow script not found: {}", path.display());
-    }
-
-    let mut cmd = Command::new("bash");
-    cmd.arg(&path).current_dir(root);
-    for (key, value) in env {
-        cmd.env(key, value);
-    }
-
-    let status = cmd
-        .status()
-        .with_context(|| format!("failed to spawn {}", path.display()))?;
-    if !status.success() {
-        bail!("{name} exited with {status}");
-    }
-    Ok(())
-}
-
-pub fn script_exists(root: &Path, name: &str) -> bool {
-    repo::script_path(root, name).exists()
-}
-
 pub fn command(root: &Path, program: &str, args: &[&str]) -> Result<()> {
     let status = Command::new(program)
         .args(args)

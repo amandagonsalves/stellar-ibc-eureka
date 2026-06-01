@@ -24,9 +24,9 @@ use config::Config;
     name = "stellaribc",
     version,
     about = "Orchestrator for the Stellar<->Cosmos IBC v2 bridge",
-    long_about = "A caribic-style front door to the ci/flows scripts and services, grouped by \
+    long_about = "A caribic-style orchestrator for the Stellar<->Cosmos bridge, grouped by \
 component: ops (install/doctor/status/up/down/bootstrap), clients, hermes, gateway, api, \
-contracts, and tx.",
+contracts, and tx. Drives docker, the stellar CLI, and the api directly — no shell scripts.",
     propagate_version = true
 )]
 struct Cli {
@@ -331,7 +331,7 @@ async fn main() -> Result<()> {
         Command::Clients { cmd } => match cmd {
             ClientsCmd::Cosmos { force } => clients::cosmos::run(&cfg, root, &http, force).await?,
             ClientsCmd::Stellar { force } => clients::stellar::run(&cfg, root, &http, force).await?,
-            ClientsCmd::Counterparty { chain } => clients::counterparty::run(root, chain.as_str())?,
+            ClientsCmd::Counterparty { chain } => clients::counterparty::run(chain.as_str())?,
             ClientsCmd::List => clients::list::run(&cfg, &http).await?,
         },
 
@@ -381,7 +381,7 @@ async fn main() -> Result<()> {
             },
             TxCmd::Msg { cmd } => match cmd {
                 TxMsgCmd::RegisterCounterparty { chain } => {
-                    tx::msg::register_counterparty(root, chain.as_str())?
+                    tx::msg::register_counterparty(chain.as_str())?
                 }
                 TxMsgCmd::Recv => tx::msg::recv()?,
                 TxMsgCmd::Ack => tx::msg::ack()?,

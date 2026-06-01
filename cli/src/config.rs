@@ -70,7 +70,7 @@ impl Config {
             gateway_grpc_addr: format!("127.0.0.1:{grpc_port}"),
             hermes_config: get(
                 "HERMES_CONFIG",
-                &root.join("ci/hermes-config.toml").display().to_string(),
+                &root.join("hermes-config.toml").display().to_string(),
             ),
             stellar_signing_key: get("STELLAR_SIGNING_KEY", ""),
             stellar_rpc_url: get("STELLAR_RPC_URL", "https://soroban-testnet.stellar.org"),
