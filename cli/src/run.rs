@@ -43,6 +43,30 @@ pub fn command(root: &Path, program: &str, args: &[&str]) -> Result<()> {
     Ok(())
 }
 
+pub fn piped(root: &Path, program: &str, args: &[&str], input: &str) -> Result<()> {
+    let mut child = Command::new(program)
+        .args(args)
+        .current_dir(root)
+        .stdin(Stdio::piped())
+        .spawn()
+        .with_context(|| format!("failed to spawn {program}"))?;
+
+    child
+        .stdin
+        .as_mut()
+        .context("child stdin unavailable")?
+        .write_all(input.as_bytes())
+        .context("failed to write to child stdin")?;
+
+    let status = child.wait().with_context(|| format!("{program} failed"))?;
+
+    if !status.success() {
+        bail!("{program} exited with {status}");
+    }
+
+    Ok(())
+}
+
 pub fn capture(root: &Path, program: &str, args: &[&str]) -> Result<String> {
     let output = Command::new(program)
         .args(args)
