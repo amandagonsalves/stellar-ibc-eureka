@@ -24,6 +24,11 @@ This repository is part of the **Cardano–Stellar IBC bridge** project. It ship
   `wasm32-unknown-unknown`, uploaded to the Cosmos chain via `08-wasm`.
 - **Soroban contracts** — `router`, `transfer-app`, and light clients (`mock`,
   `attestation`, `tendermint`) under `contracts/`.
+- **`stellar-ibc-cli`** (`stellaribc`) — the orchestrator CLI under `cli/`. One
+  binary for the whole bridge: bring the stack up, build/push images, deploy
+  contracts, upload the light client, create clients, register counterparties,
+  and check status. Drives docker, the `stellar` CLI, and `stellar-api` directly
+  — there are no shell scripts.
 - **Hermes fork integration** — `relayer-types::clients::ics10_stellar` and
   `chain::stellar::StellarChainEndpoint` live in the
   [cardano-foundation/hermes-relayer](https://github.com/cardano-foundation/hermes-relayer)
@@ -47,6 +52,7 @@ Related repositories:
 - [gRPC API](#grpc-api)
 - [HTTP API](#http-api)
 - [Configuration](#configuration)
+- [CLI (`stellaribc`)](#cli-stellaribc)
 - [Running](#running)
 - [Manual testing](#manual-testing)
 - [Development](#development)
@@ -113,8 +119,8 @@ The SMT (fixed-depth-64 binary Merkle tree, Cardano-compatible) lives in
 │     /health                                 │    │
 │     /ledger/latest · /ledger/{seq}          │    │
 │     /account/{addr} · /balance/{addr}       │    │
-│     /tx/xdr · /tx/sign · /tx/submit         │    │
-│     /tx/{tx_hash}                           │    │
+│     /tx/prepare · /tx/submit                │    │
+│     /stellar/clients · /events              │    │
 │   owns Soroban RpcClient + signing key      │    │
 └──────────────────┬──────────────────────────┘    │
                    │ JSON-RPC                       │
@@ -156,8 +162,7 @@ The SMT (fixed-depth-64 binary Merkle tree, Cardano-compatible) lives in
 The Cosmos counterparty tracks Stellar via the standard ibc-go `08-wasm` mechanism:
 
 - `light-client-wasm` compiles to `wasm32-unknown-unknown`.
-- Uploaded once to the Cosmos chain via `MsgStoreCode` (see
-  [`ci/flows/upload-lc-wasm.sh`](ci/flows/upload-lc-wasm.sh)).
+- Uploaded once to the Cosmos chain via `MsgStoreCode` (`stellaribc contracts upload-wasm`).
 - Verifies SCP `EXTERNALIZE` envelopes (Ed25519 signatures from a quorum of trusted
   validators) and walks the gateway-produced `MerkleProof` against
   `ConsensusState.root` (the SMT root).
@@ -201,6 +206,16 @@ stellar-ibc/
     integration-tests/    cargo bin: gRPC + RPC smoke tests
     light-client-wasm/    Stellar LC compiled for 08-wasm
 
+  cli/                    stellar-ibc-cli — the `stellaribc` orchestrator
+    src/
+      main.rs             clap command tree + dispatch
+      config.rs repo.rs run.rs probe.rs logger.rs shared.rs   support
+      ops/                install · doctor · status · stack(up/down) · bootstrap
+      clients/            cosmos (F1.1) · stellar (F1.2) · counterparty · list
+      hermes/  gateway/  api/   build-image · push-image · start · stop · restart
+      contracts/          build · upload · deploy · invoke · deploy-all · wasm
+      tx/                 clients · msg · query  (low-level surface)
+
   contracts/              Soroban contracts (workspace members)
     router/               IBC v2 router (create_client, register_counterparty, …)
     transfer-app/         ICS-20 transfer module
@@ -209,19 +224,15 @@ stellar-ibc/
       attestation/        Federated attestation LC (pending)
       tendermint/         Tendermint LC (pending)
 
-  ci/
-    Makefile              make -C ci <target>
-    hermes-config.toml    Host hermes config (127.0.0.1 endpoints)
-    hermes-config.docker.toml  In-compose hermes config (service-name endpoints)
-    flows/                cosmos-only, build-{gateway,api,hermes}-image,
-                          deploy-contracts, upload-lc-wasm, hermes-keys,
-                          f0-bootstrap, caribic-preflight
-
+  hermes-config.toml      Hermes relayer config (mounted into the hermes + api containers)
   Dockerfile              Builds both stellar-gateway + stellar-api binaries
   docker-compose.yml      Profiles: local, hermes, local-stellar, staging
-  Makefile                Top-level dev targets
+  Makefile                Dev targets (fmt/lint/test) + thin `stellaribc` wrappers
   .env / .env.example
 ```
+
+> The bootstrap/flow shell scripts (previously under `ci/`) have been fully
+> migrated into the `stellaribc` CLI; the `ci/` directory no longer exists.
 
 ---
 
@@ -250,8 +261,8 @@ through `ApiClient` against `stellar-api`.
 
 | Method | Inputs | Outputs | Notes |
 |---|---|---|---|
-| `SubmitSignedTx` | `tx_xdr` | `tx_hash`, `events[]` | `POST /tx/submit` on the api |
-| `CreateClient` / `UpdateClient` / `RegisterCounterparty` / `RecvPacket` / `AckPacket` / `TimeoutPacket` / `SubmitMisbehaviour` | (ICS-2 / ICS-4) | (ICS-2 / ICS-4) | Encode `ScVal` args → `POST /contract/invoke` on the api, which builds, simulates, signs, and submits to Soroban |
+| `SubmitSignedTx` | `tx_xdr` | `tx_hash`, `return_value` | `POST /tx/submit` on the api — submits a relayer-signed tx |
+| `CreateClient` / `UpdateClient` / `RegisterCounterparty` / `RecvPacket` / `AckPacket` / `TimeoutPacket` / `SubmitMisbehaviour` | (ICS-2 / ICS-4) | unsigned `tx_xdr` | Gateway re-encodes args to Soroban XDR and builds an **unsigned** tx via `POST /tx/prepare`; the relayer signs with its key and submits via `SubmitSignedTx`. The gateway holds no key. (Today `CreateClient` is fully wired end-to-end; the rest are being migrated.) |
 
 gRPC reflection is on:
 
@@ -269,15 +280,19 @@ Served by **`stellar-api`** on `:8101` (not the gateway). Used both by the gatew
 
 | Method | Path | Description |
 |---|---|---|
-| `GET` | `/health` | Liveness probe; returns `"Stellar IBC API is healthy."` |
-| `GET` | `/ledger/latest` | Latest Stellar ledger sequence, fetched via Soroban RPC |
-| `GET` | `/ledger/{sequence}` | Ledger header + close-metadata XDR (hex) at the given sequence |
-| `GET` | `/account/{address}` | Soroban account info for a Stellar address |
-| `GET` | `/balance/{address}` | Balance for a Stellar address |
-| `GET` | `/tx/xdr` | Build an unsigned transaction envelope |
-| `GET` | `/tx/{tx_hash}` | Fetch a submitted transaction by hash |
-| `POST` | `/tx/sign` | Sign an unsigned envelope using `STELLAR_SIGNING_KEY` |
-| `POST` | `/tx/submit` | Submit a signed envelope to Soroban; waits for inclusion |
+| `GET` | `/health` | Liveness probe |
+| `GET` | `/ledger/latest` · `/ledger/{sequence}` | Latest ledger sequence / ledger header + close-meta |
+| `GET` | `/events` | Soroban contract events (paginated) |
+| `GET` | `/account/{address}` · `/balance/{address}` | Account info / balance for a Stellar address |
+| `GET` | `/stellar/clients` | Clients created on the router (by `client_type`) |
+| `POST` | `/tx/prepare` | Build an **unsigned** Soroban tx (source = api signing key) |
+| `POST` | `/tx/submit` | Submit a relayer-signed tx; waits for inclusion; returns hash + return value |
+| `GET` | `/cosmos/node-info` · `/cosmos/proposer` · `/cosmos/funder` | Cosmos chain + signer info |
+| `POST` | `/cosmos/bank/send` · `/cosmos/gov/vote` | Signed Cosmos txs (proposer/funder keys) |
+| `GET`/`POST` | `/cosmos/gov/proposals*` · `/cosmos/ibc-wasm/{checksums,store-code}` | Gov proposals + 08-wasm store-code |
+| `POST` | `/hermes/wasm-checksum` | Patch `wasm_checksum_hex` in the bound hermes config |
+
+Swagger UI is served at `/docs` (`/api-docs/openapi.json`).
 
 ---
 
@@ -303,7 +318,7 @@ All configuration is via environment variables. Copy `.env.example` to `.env`.
 | `STELLAR_RPC_URL` | `https://soroban-testnet.stellar.org` | Soroban JSON-RPC endpoint |
 | `NETWORK_PASSPHRASE` | `Test SDF Network ; September 2015` | Stellar network identifier |
 | `STELLAR_SIGNING_KEY` | _(required for tx submission)_ | Ed25519 secret (strkey `S…`) |
-| `IBC_CONTRACT_ID` | _(empty)_ | Router contract — used by `/contract/invoke` |
+| `IBC_CONTRACT_ID` | _(empty)_ | Router contract — re-encoded + invoked via `/tx/prepare` |
 | `TRANSFER_CONTRACT_ID` | _(empty)_ | Transfer app contract |
 
 ### Local Osmosis (`osmosis` service / `stellar-osmosis` binary)
@@ -337,6 +352,38 @@ Genesis denoms, accounts, mnemonics, gov voting period, and overrides live in
 
 ---
 
+## CLI (`stellaribc`)
+
+`stellar-ibc-cli` (binary **`stellaribc`**) is the single entry point for bringing
+the bridge up and driving the flows. It discovers the repo root (walking up for
+`docker-compose.yml`, or `STELLAR_IBC_ROOT`), reads `.env`, drives docker / the
+`stellar` CLI / `stellar-api` directly, and probes service health natively.
+
+Install (any of):
+
+```sh
+cargo run -p stellar-ibc-cli -- install   # self-install to the cargo bin dir
+make install                              # cargo install --path cli
+cargo install --path cli
+```
+
+Command groups:
+
+| Group | Commands |
+|---|---|
+| ops | `install` · `doctor` · `status` · `up [--cosmos\|--stellar]` · `down [--volumes]` · `bootstrap` |
+| `clients` | `cosmos` (F1.1) · `stellar` (F1.2) · `counterparty <stellar\|cosmos>` · `list` |
+| `hermes` | `build-image` · `push-image` · `start` · `stop` · `restart` · `keys-import` |
+| `gateway` | `build-image` · `push-image` · `start` · `stop` · `restart` · `query` |
+| `api` | `build-image` · `push-image` · `start` · `stop` · `restart` |
+| `contracts` | `build` · `upload` · `deploy` · `invoke` · `deploy-all` · `upload-wasm` |
+| `tx` | `clients` · `msg` · `query` (low-level; some pending) |
+
+Full reference: [`cli/README.md`](cli/README.md). Several `make` targets are thin
+wrappers over the CLI (e.g. `make f0` → `stellaribc bootstrap`).
+
+---
+
 ## Running
 
 ### Prerequisites
@@ -344,9 +391,8 @@ Genesis denoms, accounts, mnemonics, gov voting period, and overrides live in
 - Docker + Docker Compose
 - Rust ≥ 1.81 (for local crate builds outside Docker)
 - `stellar-cli` (for Soroban contract builds + deploys) — `cargo install --locked stellar-cli`
-- `hermes` ≥ 1.13 (for `make -C ci upload-lc-wasm` from the host) — see
-  [`ci/README.md`](ci/README.md#prerequisites)
-- `grpcurl`, `jq` (probes)
+- `binaryen` (`wasm-opt`, used by `contracts upload-wasm` to lower bulk-memory ops)
+- `grpcurl` (gRPC probes)
 
 ### One-command devnet
 
@@ -394,31 +440,47 @@ make health-osmosis
 make stop-osmosis
 ```
 
-### Bootstrap the bridge (contracts + lc-wasm)
+### Bootstrap the bridge (via `stellaribc`)
 
-After the stack is up:
-
-```sh
-make -C ci deploy-contracts   # build + deploy router/transfer/mock-LC on Stellar testnet,
-                              # writes contract IDs into .env
-make restart-gateway          # gateway reads the new IBC_CONTRACT_ID
-
-make -C ci hermes-keys        # import testkey + stellar-relayer into the hermes-keys volume
-make -C ci upload-lc-wasm     # gov-upload Stellar LC wasm to localosmosis, patch hermes config
-
-# Or run the orchestrator that does all of the above:
-make -C ci f0
-```
-
-### Image push (DockerHub)
+One command does everything — build images, bring up the chains/services, deploy
+the Soroban contracts, gov-upload the light-client wasm, and import the relayer
+keys:
 
 ```sh
-make push-gateway              # docker build + smoke-test + push amandagonsalvesx/stellar-gateway:latest
-make push-api                  # … amandagonsalvesx/stellar-ibc-api:latest
-make push-hermes               # … amandagonsalvesx/stellar-hermes-cardano:latest (from your fork)
-
-PUSH=0 make push-gateway       # build + smoke-test only, no push
+stellaribc bootstrap            # F0 (flags: --skip-images/-contracts/-wasm/-keys, --force-redeploy)
 ```
+
+Or step by step:
+
+```sh
+stellaribc up                   # docker compose up osmosis + api + gateway
+stellaribc contracts deploy-all # deploy router/transfer/mock-LC, wire router, write .env
+stellaribc gateway restart --rebuild   # pick up the new IBC_CONTRACT_ID
+stellaribc contracts upload-wasm       # gov-upload Stellar LC wasm, patch hermes config
+stellaribc hermes keys-import          # import relayer keys into the hermes-keys volume
+stellaribc status               # everything green?
+```
+
+Then create the clients (F1):
+
+```sh
+stellaribc clients cosmos       # F1.1 — Cosmos (Tendermint) client on Stellar
+stellaribc clients stellar      # F1.2 — Stellar (08-wasm) client on Cosmos
+stellaribc clients list
+```
+
+### Images (build / push)
+
+```sh
+stellaribc gateway build-image          # docker build amandagonsalvesx/stellar-gateway:latest
+stellaribc api build-image              # … amandagonsalvesx/stellar-ibc-api:latest
+stellaribc hermes build-image           # … from the hermes-relayer fork (HERMES_REPO)
+
+stellaribc gateway push-image --rebuild # build then push (login from DOCKER_USERNAME/DOCKER_TOKEN)
+```
+
+`make push-gateway` / `push-api` / `push-hermes` are thin wrappers over
+`stellaribc <component> push-image --rebuild`.
 
 ### Probe
 
@@ -496,12 +558,9 @@ cargo test -p stellar-hermes-gateway   # query/msg validation
 cargo test -p mock-light-client
 ```
 
-### CI flows
+### Bootstrap & flows
 
-`ci/flows/` contains one script per bootstrap step (each idempotent, each a
-Make target under `make -C ci <target>`). See
-[`ci/flows/README.md`](ci/flows/README.md) for per-script env vars + common
-failures, and [`ci/README.md`](ci/README.md) for the higher-level T-/D-/lc-wasm
-test suites.
+All bootstrap/flow steps live in the `stellaribc` CLI — see
+[CLI (`stellaribc`)](#cli-stellaribc) above and [`cli/README.md`](cli/README.md).
 
 ---
