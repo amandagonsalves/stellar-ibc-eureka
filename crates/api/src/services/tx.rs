@@ -48,7 +48,7 @@ pub async fn prepare_tx(
     if state.ibc_contract_id.is_empty() {
         return Err(err(
             StatusCode::BAD_GATEWAY,
-            "IBC_CONTRACT_ID not configured",
+            "ROUTER_CONTRACT_ADDRESS not configured",
         ));
     }
 

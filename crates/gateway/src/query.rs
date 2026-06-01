@@ -307,7 +307,7 @@ impl StellarGatewayQuery for QueryHandler {
                     std::sync::atomic::AtomicBool::new(false);
                 if !WARNED_UNCONFIGURED.swap(true, std::sync::atomic::Ordering::Relaxed) {
                     tracing::warn!(
-                        "Events: IBC_CONTRACT_ID is not configured; returning empty event pages. \
+                        "Events: ROUTER_CONTRACT_ADDRESS is not configured; returning empty event pages. \
                          Deploy the router (`make -C ci deploy-contracts`) then restart the gateway."
                     );
                 }

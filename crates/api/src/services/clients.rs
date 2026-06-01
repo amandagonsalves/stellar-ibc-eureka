@@ -56,10 +56,18 @@ pub async fn list_clients(
     tracing::info!("GET /stellar/clients");
 
     if state.ibc_contract_id.is_empty() {
-        return Err(err(StatusCode::BAD_GATEWAY, "IBC_CONTRACT_ID not configured"));
+        return Err(err(
+            StatusCode::BAD_GATEWAY,
+            "ROUTER_CONTRACT_ADDRESS not configured",
+        ));
     }
     let router = stellar_strkey::Contract::from_string(&state.ibc_contract_id)
-        .map_err(|e| err(StatusCode::BAD_GATEWAY, format!("invalid IBC_CONTRACT_ID: {e}")))?
+        .map_err(|e| {
+            err(
+                StatusCode::BAD_GATEWAY,
+                format!("invalid ROUTER_CONTRACT_ADDRESS: {e}"),
+            )
+        })?
         .0;
 
     let types: Vec<String> = match &params.client_type {

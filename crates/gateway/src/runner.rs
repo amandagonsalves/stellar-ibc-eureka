@@ -23,13 +23,13 @@ pub async fn run(cfg: GatewayConfig) {
     let api = ApiClient::new(&cfg.api_url, keypair.public_key());
 
     let ibc_contract_id = if cfg.ibc_contract_id.is_empty() {
-        tracing::warn!("IBC_CONTRACT_ID is empty — state tracker will accept any contract");
+        tracing::warn!("ROUTER_CONTRACT_ADDRESS is empty — state tracker will accept any contract");
         None
     } else {
         match stellar_strkey::Contract::from_string(&cfg.ibc_contract_id) {
             Ok(contract) => Some(contract.0),
             Err(error) => {
-                tracing::warn!(%error, "IBC_CONTRACT_ID could not be parsed as a Stellar contract strkey");
+                tracing::warn!(%error, "ROUTER_CONTRACT_ADDRESS could not be parsed as a Stellar contract strkey");
                 None
             }
         }
