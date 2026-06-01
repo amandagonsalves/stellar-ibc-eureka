@@ -8,9 +8,9 @@ use crate::{logger, run};
 pub fn import(cfg: &Config, root: &Path) -> Result<()> {
     logger::banner("hermes keys-import (relayer key = router admin key)");
 
-    let mnemonic = read_relayer_mnemonic(&cfg.osmosis_config_json)?;
+    let mnemonic = read_relayer_mnemonic(&cfg.cosmos.config_json)?;
 
-    if cfg.stellar_signing_key.is_empty() {
+    if cfg.stellar.signing_key.is_empty() {
         bail!("STELLAR_SIGNING_KEY is empty in .env — it must be the funded contract admin/deployer secret so it can pay fees and satisfy admin.require_auth()");
     }
 
@@ -19,20 +19,22 @@ pub fn import(cfg: &Config, root: &Path) -> Result<()> {
 
     logger::step(&format!(
         "importing {} for {} (cosmos mnemonic)",
-        cfg.local_key_name, cfg.cosmos_chain_id
+        cfg.cosmos.key_name,
+        cfg.cosmos.chain_id.as_str()
     ));
-    import_mnemonic(cfg, root, &cfg.cosmos_chain_id, &cfg.local_key_name, &mnemonic)?;
+    import_mnemonic(cfg, root, cfg.cosmos.chain_id.as_str(), &cfg.cosmos.key_name, &mnemonic)?;
 
     logger::step(&format!(
         "importing {} for {} (from STELLAR_SIGNING_KEY)",
-        cfg.stellar_key_name, cfg.stellar_chain_id
+        cfg.stellar.key_name,
+        cfg.stellar.chain_id.as_str()
     ));
     import_secret(
         cfg,
         root,
-        &cfg.stellar_chain_id,
-        &cfg.stellar_key_name,
-        &cfg.stellar_signing_key,
+        cfg.stellar.chain_id.as_str(),
+        &cfg.stellar.key_name,
+        &cfg.stellar.signing_key,
     )?;
 
     logger::step("starting hermes with keys in place");
@@ -64,7 +66,7 @@ fn import_mnemonic(
 ) -> Result<()> {
     let script = format!(
         "cat > /tmp/m.txt && hermes --config {cfg_path} keys add --chain {chain} --mnemonic-file /tmp/m.txt --key-name {key_name} --overwrite; rc=$?; rm -f /tmp/m.txt; exit $rc",
-        cfg_path = cfg.hermes_config_in_container,
+        cfg_path = cfg.hermes.config_in_container,
     );
 
     run::piped(
@@ -84,7 +86,7 @@ fn import_secret(
 ) -> Result<()> {
     let script = format!(
         "cat > /tmp/k.json && hermes --config {cfg_path} keys add --chain {chain} --key-file /tmp/k.json --key-name {key_name} --overwrite; rc=$?; rm -f /tmp/k.json; exit $rc",
-        cfg_path = cfg.hermes_config_in_container,
+        cfg_path = cfg.hermes.config_in_container,
     );
 
     run::piped(

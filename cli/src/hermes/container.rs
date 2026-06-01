@@ -2,17 +2,17 @@ use std::path::Path;
 
 use anyhow::Result;
 
-use crate::config::Config;
-use crate::hermes::image;
+use crate::config::ImageRef;
 use crate::{logger, run};
 
 const SERVICE: &str = "hermes";
 
-pub fn start(cfg: &Config, root: &Path, rebuild: bool) -> Result<()> {
+pub fn start(image: &ImageRef, root: &Path, pull: bool) -> Result<()> {
     logger::banner("hermes start (relayer container)");
+    logger::detail(&format!("image: {}", image.reference()));
 
-    if rebuild {
-        image::build(cfg, root)?;
+    if pull {
+        run::compose(root, &["pull", SERVICE])?;
     }
 
     logger::step("docker compose up -d hermes");
@@ -34,11 +34,12 @@ pub fn stop(root: &Path) -> Result<()> {
     Ok(())
 }
 
-pub fn restart(cfg: &Config, root: &Path, rebuild: bool) -> Result<()> {
+pub fn restart(image: &ImageRef, root: &Path, pull: bool) -> Result<()> {
     logger::banner("hermes restart");
+    logger::detail(&format!("image: {}", image.reference()));
 
-    if rebuild {
-        image::build(cfg, root)?;
+    if pull {
+        run::compose(root, &["pull", SERVICE])?;
 
         logger::step("docker compose up -d --force-recreate hermes");
         run::compose(root, &["up", "-d", "--force-recreate", SERVICE])?;
