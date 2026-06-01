@@ -84,6 +84,23 @@ pub fn capture(root: &Path, program: &str, args: &[&str]) -> Result<String> {
     Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
 }
 
+pub fn capture_all(root: &Path, program: &str, args: &[&str]) -> Result<String> {
+    let output = Command::new(program)
+        .args(args)
+        .current_dir(root)
+        .output()
+        .with_context(|| format!("failed to spawn {program}"))?;
+
+    let mut combined = String::from_utf8_lossy(&output.stdout).into_owned();
+    combined.push_str(&String::from_utf8_lossy(&output.stderr));
+
+    if !output.status.success() {
+        bail!("{program} exited with {}:\n{combined}", output.status);
+    }
+
+    Ok(combined)
+}
+
 pub fn compose(root: &Path, extra: &[&str]) -> Result<()> {
     let mut args = vec!["compose", "--profile", "local", "--profile", "hermes"];
     args.extend_from_slice(extra);

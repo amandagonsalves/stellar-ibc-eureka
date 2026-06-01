@@ -127,8 +127,8 @@ impl Chain {
 enum ClientsCmd {
     #[command(about = "Create the Cosmos (Tendermint) client on Stellar (F1.1)")]
     Cosmos {
-        #[arg(long, help = "Use the CLI encode->invoke path instead of the relayer")]
-        cli: bool,
+        #[arg(long, help = "Create a new client even if COSMOS_CLIENT_ID is already set")]
+        force: bool,
     },
     #[command(about = "Create the Stellar (08-wasm) client on Cosmos (F1.2)")]
     Stellar {
@@ -329,8 +329,8 @@ async fn main() -> Result<()> {
         }
 
         Command::Clients { cmd } => match cmd {
-            ClientsCmd::Cosmos { cli } => clients::cosmos::run(root, cli)?,
-            ClientsCmd::Stellar { force } => clients::stellar::run(root, force)?,
+            ClientsCmd::Cosmos { force } => clients::cosmos::run(&cfg, root, &http, force).await?,
+            ClientsCmd::Stellar { force } => clients::stellar::run(&cfg, root, &http, force).await?,
             ClientsCmd::Counterparty { chain } => clients::counterparty::run(root, chain.as_str())?,
             ClientsCmd::List => clients::list::run(&cfg, &http).await?,
         },
