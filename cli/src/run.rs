@@ -6,6 +6,8 @@ use anyhow::{bail, Context, Result};
 
 use crate::repo;
 
+pub const NO_ENV: &[(&str, &str)] = &[];
+
 pub fn script(root: &Path, name: &str, env: &[(&str, &str)]) -> Result<()> {
     let path = repo::script_path(root, name);
     if !path.exists() {

@@ -1,4 +1,41 @@
+use std::path::Path;
+
+use anyhow::{Context, Result};
+
 use crate::logger;
+
+pub fn env_upsert(path: &Path, updates: &[(&str, &str)]) -> Result<()> {
+    let mut text = std::fs::read_to_string(path).unwrap_or_default();
+
+    for (key, value) in updates {
+        if value.is_empty() {
+            continue;
+        }
+
+        let prefix = format!("{key}=");
+        let mut lines: Vec<String> = text.lines().map(str::to_string).collect();
+        let mut replaced = false;
+
+        for line in lines.iter_mut() {
+            if line.trim_start().starts_with(&prefix) {
+                *line = format!("{key}={value}");
+                replaced = true;
+                break;
+            }
+        }
+
+        if !replaced {
+            lines.push(format!("{key}={value}"));
+        }
+
+        text = lines.join("\n");
+        text.push('\n');
+    }
+
+    std::fs::write(path, text).with_context(|| format!("writing {}", path.display()))?;
+
+    Ok(())
+}
 
 pub fn pending(label: &str, reason: &str) {
     logger::banner(label);

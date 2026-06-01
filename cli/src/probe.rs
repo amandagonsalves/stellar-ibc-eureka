@@ -10,6 +10,22 @@ pub async fn http_ok(client: &reqwest::Client, url: &str) -> bool {
         .unwrap_or(false)
 }
 
+pub async fn wait_http(client: &reqwest::Client, url: &str, timeout_secs: u64) -> bool {
+    let start = std::time::Instant::now();
+
+    loop {
+        if http_ok(client, url).await {
+            return true;
+        }
+
+        if start.elapsed().as_secs() >= timeout_secs {
+            return false;
+        }
+
+        tokio::time::sleep(Duration::from_secs(5)).await;
+    }
+}
+
 pub async fn get_json(client: &reqwest::Client, url: &str) -> Option<serde_json::Value> {
     let resp = client.get(url).send().await.ok()?;
     if !resp.status().is_success() {

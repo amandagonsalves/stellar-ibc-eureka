@@ -240,10 +240,14 @@ enum ContractsCmd {
         #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
         call: Vec<String>,
     },
-    #[command(about = "Full orchestration: build + upload + deploy + wire router + write .env")]
+    #[command(about = "Full orchestration: build + deploy + wire router + write .env")]
     DeployAll {
         #[arg(long, help = "Redeploy even if IBC_CONTRACT_ID is already set")]
         force: bool,
+        #[arg(long, help = "Also deploy + register the attestation light client")]
+        attestation: bool,
+        #[arg(long, help = "Also deploy + register the tendermint light client")]
+        tendermint: bool,
     },
     #[command(about = "Build + gov-upload the light-client-wasm to Cosmos, patch hermes config")]
     UploadWasm,
@@ -310,14 +314,19 @@ async fn main() -> Result<()> {
         Command::Status => ops::status::run(&cfg, &http).await?,
         Command::Up(args) => ops::stack::up(root, args.cosmos, args.stellar)?,
         Command::Down(args) => ops::stack::down(root, args.volumes)?,
-        Command::Bootstrap(args) => ops::bootstrap::run(
-            root,
-            args.skip_images,
-            args.skip_contracts,
-            args.skip_wasm,
-            args.skip_keys,
-            args.force_redeploy,
-        )?,
+        Command::Bootstrap(args) => {
+            ops::bootstrap::run(
+                &cfg,
+                root,
+                &http,
+                args.skip_images,
+                args.skip_contracts,
+                args.skip_wasm,
+                args.skip_keys,
+                args.force_redeploy,
+            )
+            .await?
+        }
 
         Command::Clients { cmd } => match cmd {
             ClientsCmd::Cosmos { cli } => clients::cosmos::run(root, cli)?,
@@ -357,8 +366,12 @@ async fn main() -> Result<()> {
             ContractsCmd::Upload { wasm } => contracts::upload::run(&cfg, root, &wasm)?,
             ContractsCmd::Deploy { wasm, ctor } => contracts::deploy::run(&cfg, root, &wasm, &ctor)?,
             ContractsCmd::Invoke { id, call } => contracts::invoke::run(&cfg, root, &id, &call)?,
-            ContractsCmd::DeployAll { force } => contracts::deploy_all::run(root, force)?,
-            ContractsCmd::UploadWasm => contracts::wasm::upload(root)?,
+            ContractsCmd::DeployAll {
+                force,
+                attestation,
+                tendermint,
+            } => contracts::deploy_all::run(&cfg, root, force, attestation, tendermint)?,
+            ContractsCmd::UploadWasm => contracts::wasm::upload(&cfg, root, &http).await?,
         },
 
         Command::Tx { cmd } => match cmd {
