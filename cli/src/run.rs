@@ -79,29 +79,6 @@ pub fn compose(root: &Path, extra: &[&str]) -> Result<()> {
     command(root, "docker", &args)
 }
 
-pub fn docker_login(username: &str, token: &str) -> Result<()> {
-    let mut child = Command::new("docker")
-        .args(["login", "-u", username, "--password-stdin"])
-        .stdin(Stdio::piped())
-        .spawn()
-        .context("failed to spawn docker login")?;
-
-    child
-        .stdin
-        .as_mut()
-        .context("docker login stdin unavailable")?
-        .write_all(token.as_bytes())
-        .context("failed to write docker token")?;
-
-    let status = child.wait().context("docker login failed")?;
-
-    if !status.success() {
-        bail!("docker login exited with {status}");
-    }
-
-    Ok(())
-}
-
 pub fn has(program: &str) -> bool {
     Command::new(program)
         .arg("--version")

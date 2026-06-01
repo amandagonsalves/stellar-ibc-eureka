@@ -22,9 +22,12 @@ pub fn run(root: &Path) -> Result<()> {
     )?;
 
     let bin_dir = cargo_bin_dir();
-    logger::ok(&format!("installed: {}", bin_dir.join("stellaribc").display()));
+    logger::ok(&format!(
+        "installed: {}",
+        bin_dir.join("stellaribc").display()
+    ));
 
-    if on_path(&bin_dir) {
+    if on_path(&bin_dir.as_path()) {
         logger::ok(&format!(
             "{} is on PATH — run: stellaribc status",
             bin_dir.display()

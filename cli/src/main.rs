@@ -6,10 +6,12 @@ mod gateway;
 mod hermes;
 mod logger;
 mod ops;
+mod osmosis;
 mod probe;
 mod repo;
 mod run;
 mod shared;
+mod stellar;
 mod tx;
 
 use std::time::Duration;
@@ -39,15 +41,22 @@ enum Command {
     #[command(about = "Install the stellaribc binary to the cargo bin dir")]
     Install,
     #[command(about = "Check prerequisites, configuration, and service health")]
-    Doctor,
+    Check,
     #[command(about = "Show chain/service health, deployed contracts, and created clients")]
     Status,
     #[command(about = "Bring the stack up via docker compose (osmosis + api + gateway)")]
     Up(UpArgs),
     #[command(about = "Stop the stack via docker compose")]
     Down(DownArgs),
-    #[command(alias = "f0", about = "Full bootstrap: images, chains, contracts, wasm, keys (F0)")]
+    #[command(
+        about = "Full bootstrap: build images, start chains, deploy contracts, upload wasm, import keys"
+    )]
     Bootstrap(BootstrapArgs),
+    #[command(about = "Osmosis chain: start/stop the local devnet or point at a testnet")]
+    Osmosis {
+        #[command(subcommand)]
+        cmd: OsmosisCmd,
+    },
     #[command(about = "Client lifecycle: create on each chain, register counterparties, list")]
     Clients {
         #[command(subcommand)]
@@ -104,7 +113,10 @@ struct BootstrapArgs {
     skip_wasm: bool,
     #[arg(long, help = "Skip importing the hermes relayer keys")]
     skip_keys: bool,
-    #[arg(long, help = "Redeploy contracts even if IBC_CONTRACT_ID is already set")]
+    #[arg(
+        long,
+        help = "Redeploy contracts even if ROUTER_CONTRACT_ADDRESS is already set"
+    )]
     force_redeploy: bool,
 }
 
@@ -124,18 +136,36 @@ impl Chain {
 }
 
 #[derive(Subcommand)]
+enum OsmosisCmd {
+    #[command(
+        about = "Start the osmosis chain (local docker; no-op + reachability check for testnet)"
+    )]
+    Start,
+    #[command(about = "Stop the local osmosis chain (no-op for testnet)")]
+    Stop,
+    #[command(about = "Show the osmosis chain network, endpoints, and health")]
+    Status,
+}
+
+#[derive(Subcommand)]
 enum ClientsCmd {
-    #[command(about = "Create the Cosmos (Tendermint) client on Stellar (F1.1)")]
+    #[command(about = "Create the Cosmos (Tendermint) client on Stellar")]
     Cosmos {
-        #[arg(long, help = "Create a new client even if COSMOS_CLIENT_ID is already set")]
+        #[arg(
+            long,
+            help = "Create a new client even if COSMOS_CLIENT_ID is already set"
+        )]
         force: bool,
     },
-    #[command(about = "Create the Stellar (08-wasm) client on Cosmos (F1.2)")]
+    #[command(about = "Create the Stellar (08-wasm) client on Cosmos")]
     Stellar {
-        #[arg(long, help = "Create a new client even if STELLAR_CLIENT_ID is already set")]
+        #[arg(
+            long,
+            help = "Create a new client even if STELLAR_CLIENT_ID is already set"
+        )]
         force: bool,
     },
-    #[command(about = "Register a counterparty: stellar = F1.3, cosmos = F1.4")]
+    #[command(about = "Register a counterparty on the given side (stellar or cosmos)")]
     Counterparty {
         #[arg(value_enum, help = "Which side to register the counterparty on")]
         chain: Chain,
@@ -146,24 +176,17 @@ enum ClientsCmd {
 
 #[derive(Subcommand)]
 enum HermesCmd {
-    #[command(about = "Build the hermes docker image (from the hermes-relayer repo)")]
-    BuildImage,
-    #[command(about = "Push the hermes docker image to the registry")]
-    PushImage {
-        #[arg(long, help = "Rebuild the image before pushing")]
-        rebuild: bool,
-    },
     #[command(about = "Start the hermes relayer container")]
     Start {
-        #[arg(long, help = "Rebuild the image before starting")]
-        rebuild: bool,
+        #[arg(long, help = "Pull the latest image before starting")]
+        pull: bool,
     },
     #[command(about = "Stop the hermes relayer container")]
     Stop,
     #[command(about = "Restart the hermes relayer container")]
     Restart {
-        #[arg(long, help = "Rebuild the image and recreate the container")]
-        rebuild: bool,
+        #[arg(long, help = "Pull the latest image and recreate the container")]
+        pull: bool,
     },
     #[command(about = "Import the relayer keys (must equal the router admin key)")]
     KeysImport,
@@ -171,24 +194,17 @@ enum HermesCmd {
 
 #[derive(Subcommand)]
 enum GatewayCmd {
-    #[command(about = "Build the gateway docker image")]
-    BuildImage,
-    #[command(about = "Push the gateway docker image to the registry")]
-    PushImage {
-        #[arg(long, help = "Rebuild the image before pushing")]
-        rebuild: bool,
-    },
     #[command(about = "Start the gateway container")]
     Start {
-        #[arg(long, help = "Rebuild the image before starting")]
-        rebuild: bool,
+        #[arg(long, help = "Pull the latest image before starting")]
+        pull: bool,
     },
     #[command(about = "Stop the gateway container")]
     Stop,
     #[command(about = "Restart the gateway container")]
     Restart {
-        #[arg(long, help = "Rebuild the image and recreate the container")]
-        rebuild: bool,
+        #[arg(long, help = "Pull the latest image and recreate the container")]
+        pull: bool,
     },
     #[command(about = "Direct gateway gRPC reads")]
     Query,
@@ -196,24 +212,17 @@ enum GatewayCmd {
 
 #[derive(Subcommand)]
 enum ApiCmd {
-    #[command(about = "Build the api docker image")]
-    BuildImage,
-    #[command(about = "Push the api docker image to the registry")]
-    PushImage {
-        #[arg(long, help = "Rebuild the image before pushing")]
-        rebuild: bool,
-    },
     #[command(about = "Start the api container")]
     Start {
-        #[arg(long, help = "Rebuild the image before starting")]
-        rebuild: bool,
+        #[arg(long, help = "Pull the latest image before starting")]
+        pull: bool,
     },
     #[command(about = "Stop the api container")]
     Stop,
     #[command(about = "Restart the api container")]
     Restart {
-        #[arg(long, help = "Rebuild the image and recreate the container")]
-        rebuild: bool,
+        #[arg(long, help = "Pull the latest image and recreate the container")]
+        pull: bool,
     },
 }
 
@@ -242,7 +251,7 @@ enum ContractsCmd {
     },
     #[command(about = "Full orchestration: build + deploy + wire router + write .env")]
     DeployAll {
-        #[arg(long, help = "Redeploy even if IBC_CONTRACT_ID is already set")]
+        #[arg(long, help = "Redeploy even if ROUTER_CONTRACT_ADDRESS is already set")]
         force: bool,
         #[arg(long, help = "Also deploy + register the attestation light client")]
         attestation: bool,
@@ -310,8 +319,8 @@ async fn main() -> Result<()> {
 
     match cli.command {
         Command::Install => ops::install::run(root)?,
-        Command::Doctor => ops::doctor::run(root, &cfg, &http).await?,
-        Command::Status => ops::status::run(&cfg, &http).await?,
+        Command::Check => ops::check::run(root, &ops::config::OpsConfig::from(&cfg), &http).await?,
+        Command::Status => ops::status::run(&ops::config::OpsConfig::from(&cfg), &http).await?,
         Command::Up(args) => ops::stack::up(root, args.cosmos, args.stellar)?,
         Command::Down(args) => ops::stack::down(root, args.volumes)?,
         Command::Bootstrap(args) => {
@@ -328,51 +337,67 @@ async fn main() -> Result<()> {
             .await?
         }
 
-        Command::Clients { cmd } => match cmd {
-            ClientsCmd::Cosmos { force } => clients::cosmos::run(&cfg, root, &http, force).await?,
-            ClientsCmd::Stellar { force } => clients::stellar::run(&cfg, root, &http, force).await?,
-            ClientsCmd::Counterparty { chain } => clients::counterparty::run(chain.as_str())?,
-            ClientsCmd::List => clients::list::run(&cfg, &http).await?,
+        Command::Osmosis { cmd } => match cmd {
+            OsmosisCmd::Start => osmosis::start(&cfg.osmosis, root, &http).await?,
+            OsmosisCmd::Stop => osmosis::stop(&cfg.osmosis, root)?,
+            OsmosisCmd::Status => osmosis::status(&cfg.osmosis, &http).await?,
         },
 
+        Command::Clients { cmd } => {
+            let cc = clients::config::ClientsConfig::from(&cfg);
+
+            match cmd {
+                ClientsCmd::Cosmos { force } => {
+                    clients::cosmos::run(&cc, root, &http, force).await?
+                }
+                ClientsCmd::Stellar { force } => {
+                    clients::stellar::run(&cc, root, &http, force).await?
+                }
+                ClientsCmd::Counterparty { chain } => clients::counterparty::run(chain.as_str())?,
+                ClientsCmd::List => clients::list::run(&cc, &http).await?,
+            }
+        }
+
         Command::Hermes { cmd } => match cmd {
-            HermesCmd::BuildImage => hermes::image::build(&cfg, root)?,
-            HermesCmd::PushImage { rebuild } => hermes::image::push(&cfg, root, rebuild)?,
-            HermesCmd::Start { rebuild } => hermes::container::start(&cfg, root, rebuild)?,
+            HermesCmd::Start { pull } => hermes::container::start(&cfg.hermes, root, pull)?,
             HermesCmd::Stop => hermes::container::stop(root)?,
-            HermesCmd::Restart { rebuild } => hermes::container::restart(&cfg, root, rebuild)?,
+            HermesCmd::Restart { pull } => {
+                hermes::container::restart(&cfg.hermes, root, pull)?
+            }
             HermesCmd::KeysImport => hermes::keys::import(&cfg, root)?,
         },
 
         Command::Gateway { cmd } => match cmd {
-            GatewayCmd::BuildImage => gateway::image::build(&cfg, root)?,
-            GatewayCmd::PushImage { rebuild } => gateway::image::push(&cfg, root, rebuild)?,
-            GatewayCmd::Start { rebuild } => gateway::container::start(&cfg, root, rebuild)?,
+            GatewayCmd::Start { pull } => gateway::container::start(&cfg.gateway, root, pull)?,
             GatewayCmd::Stop => gateway::container::stop(root)?,
-            GatewayCmd::Restart { rebuild } => gateway::container::restart(&cfg, root, rebuild)?,
+            GatewayCmd::Restart { pull } => gateway::container::restart(&cfg.gateway, root, pull)?,
             GatewayCmd::Query => gateway::query::run()?,
         },
 
         Command::Api { cmd } => match cmd {
-            ApiCmd::BuildImage => api::image::build(&cfg, root)?,
-            ApiCmd::PushImage { rebuild } => api::image::push(&cfg, root, rebuild)?,
-            ApiCmd::Start { rebuild } => api::container::start(&cfg, root, rebuild)?,
+            ApiCmd::Start { pull } => api::container::start(&cfg.api, root, pull)?,
             ApiCmd::Stop => api::container::stop(root)?,
-            ApiCmd::Restart { rebuild } => api::container::restart(&cfg, root, rebuild)?,
+            ApiCmd::Restart { pull } => api::container::restart(&cfg.api, root, pull)?,
         },
 
-        Command::Contracts { cmd } => match cmd {
-            ContractsCmd::Build => contracts::build::run(root)?,
-            ContractsCmd::Upload { wasm } => contracts::upload::run(&cfg, root, &wasm)?,
-            ContractsCmd::Deploy { wasm, ctor } => contracts::deploy::run(&cfg, root, &wasm, &ctor)?,
-            ContractsCmd::Invoke { id, call } => contracts::invoke::run(&cfg, root, &id, &call)?,
-            ContractsCmd::DeployAll {
-                force,
-                attestation,
-                tendermint,
-            } => contracts::deploy_all::run(&cfg, root, force, attestation, tendermint)?,
-            ContractsCmd::UploadWasm => contracts::wasm::upload(&cfg, root, &http).await?,
-        },
+        Command::Contracts { cmd } => {
+            let cc = contracts::config::ContractsConfig::from(&cfg);
+
+            match cmd {
+                ContractsCmd::Build => contracts::build::run(root)?,
+                ContractsCmd::Upload { wasm } => contracts::upload::run(&cc, root, &wasm)?,
+                ContractsCmd::Deploy { wasm, ctor } => {
+                    contracts::deploy::run(&cc, root, &wasm, &ctor)?
+                }
+                ContractsCmd::Invoke { id, call } => contracts::invoke::run(&cc, root, &id, &call)?,
+                ContractsCmd::DeployAll {
+                    force,
+                    attestation,
+                    tendermint,
+                } => contracts::deploy_all::run(&cc, root, force, attestation, tendermint)?,
+                ContractsCmd::UploadWasm => contracts::wasm::upload(&cc, root, &http).await?,
+            }
+        }
 
         Command::Tx { cmd } => match cmd {
             TxCmd::Clients { cmd } => match cmd {
