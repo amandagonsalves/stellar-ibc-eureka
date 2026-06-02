@@ -96,6 +96,30 @@ impl ApiClient {
             .ok_or_else(|| anyhow::anyhow!("missing 'sequence' in /ledger/latest response"))
     }
 
+    pub async fn list_client_ids(&self) -> anyhow::Result<Vec<String>> {
+        let body = self.get_json("/stellar/clients").await?;
+        let mut ids = Vec::new();
+        if let Some(groups) = body.get("clients").and_then(|c| c.as_array()) {
+            for group in groups {
+                if let Some(arr) = group.get("client_ids").and_then(|v| v.as_array()) {
+                    ids.extend(arr.iter().filter_map(|v| v.as_str().map(str::to_string)));
+                }
+            }
+        }
+        Ok(ids)
+    }
+
+    pub async fn get_client_state_xdr(&self, client_id: &str) -> anyhow::Result<Vec<u8>> {
+        let body = self
+            .get_json(&format!("/stellar/clients/{client_id}/state"))
+            .await?;
+        let hex = body
+            .get("client_state_xdr")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| anyhow::anyhow!("missing 'client_state_xdr' in response"))?;
+        hex::decode(hex).map_err(|e| anyhow::anyhow!("client_state_xdr hex decode: {e}"))
+    }
+
     pub async fn get_ledger(&self, sequence: u32) -> anyhow::Result<LedgerData> {
         let body = self.get_json(&format!("/ledger/{sequence}")).await?;
 

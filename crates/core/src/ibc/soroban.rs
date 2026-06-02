@@ -1,10 +1,66 @@
 use anyhow::{anyhow, Result};
+use ibc::clients::tendermint::client_state::ClientState as TmClientState;
+use ibc::core::commitment_types::specs::ProofSpecs;
+use ibc_proto::google::protobuf::Duration;
+use ibc_proto::ibc::core::client::v1::Height as RawHeight;
+use ibc_proto::ibc::lightclients::tendermint::v1::{ClientState as RawTmClientState, Fraction};
 use stellar_xdr::curr::{
-    Limits, ScBytes, ScMap, ScMapEntry, ScString, ScSymbol, ScVal, StringM, VecM, WriteXdr,
+    Limits, ReadXdr, ScBytes, ScMap, ScMapEntry, ScString, ScSymbol, ScVal, StringM, VecM, WriteXdr,
 };
 
 use super::client_state::AnyClientState;
 use super::consensus_state::AnyConsensusState;
+
+fn sc_field<'a>(map: &'a ScMap, name: &str) -> Result<&'a ScVal> {
+    map.0
+        .iter()
+        .find(|e| matches!(&e.key, ScVal::Symbol(ScSymbol(s)) if s.to_string() == name))
+        .map(|e| &e.val)
+        .ok_or_else(|| anyhow!("missing client state field: {name}"))
+}
+
+fn sc_as_map<'a>(val: &'a ScVal, name: &str) -> Result<&'a ScMap> {
+    match val {
+        ScVal::Map(Some(m)) => Ok(m),
+        _ => Err(anyhow!("field {name} is not a map")),
+    }
+}
+
+fn sc_u64(map: &ScMap, name: &str) -> Result<u64> {
+    match sc_field(map, name)? {
+        ScVal::U64(n) => Ok(*n),
+        _ => Err(anyhow!("field {name} is not u64")),
+    }
+}
+
+fn sc_u32(map: &ScMap, name: &str) -> Result<u32> {
+    match sc_field(map, name)? {
+        ScVal::U32(n) => Ok(*n),
+        _ => Err(anyhow!("field {name} is not u32")),
+    }
+}
+
+fn sc_bool(map: &ScMap, name: &str) -> Result<bool> {
+    match sc_field(map, name)? {
+        ScVal::Bool(b) => Ok(*b),
+        _ => Err(anyhow!("field {name} is not bool")),
+    }
+}
+
+fn sc_str(map: &ScMap, name: &str) -> Result<String> {
+    match sc_field(map, name)? {
+        ScVal::String(ScString(s)) => Ok(s.to_string()),
+        _ => Err(anyhow!("field {name} is not a string")),
+    }
+}
+
+fn sc_get_height(map: &ScMap, name: &str) -> Result<RawHeight> {
+    let h = sc_as_map(sc_field(map, name)?, name)?;
+    Ok(RawHeight {
+        revision_number: sc_u64(h, "revision_number")?,
+        revision_height: sc_u64(h, "revision_height")?,
+    })
+}
 
 fn sc_symbol(s: &str) -> Result<ScVal> {
     let m: StringM<32> = s
@@ -98,6 +154,51 @@ impl AnyClientState {
         state
             .to_xdr(Limits::none())
             .map_err(|e| anyhow!("client_state to_xdr: {e}"))
+    }
+
+    pub fn from_soroban_xdr(bytes: &[u8]) -> Result<Self> {
+        let val = ScVal::from_xdr(bytes, Limits::none())
+            .map_err(|e| anyhow!("client_state from_xdr: {e}"))?;
+        let map = sc_as_map(&val, "client_state")?;
+
+        let trust = sc_as_map(sc_field(map, "trust_level")?, "trust_level")?;
+        let is_frozen = sc_bool(map, "is_frozen")?;
+        let frozen_height = if is_frozen {
+            Some(sc_get_height(map, "frozen_height")?)
+        } else {
+            None
+        };
+
+        let raw = RawTmClientState {
+            chain_id: sc_str(map, "chain_id")?,
+            trust_level: Some(Fraction {
+                numerator: sc_u32(trust, "numerator")? as u64,
+                denominator: sc_u32(trust, "denominator")? as u64,
+            }),
+            trusting_period: Some(Duration {
+                seconds: sc_u64(map, "trusting_period_secs")? as i64,
+                nanos: 0,
+            }),
+            unbonding_period: Some(Duration {
+                seconds: sc_u64(map, "unbonding_period_secs")? as i64,
+                nanos: 0,
+            }),
+            max_clock_drift: Some(Duration {
+                seconds: sc_u64(map, "max_clock_drift_secs")? as i64,
+                nanos: 0,
+            }),
+            frozen_height,
+            latest_height: Some(sc_get_height(map, "latest_height")?),
+            proof_specs: ProofSpecs::cosmos().into(),
+            upgrade_path: vec!["upgrade".to_string(), "upgradedIBCState".to_string()],
+            allow_update_after_expiry: false,
+            allow_update_after_misbehaviour: false,
+        };
+
+        let cs = TmClientState::try_from(raw)
+            .map_err(|e| anyhow!("tendermint client state from raw: {e}"))?;
+
+        Ok(AnyClientState::Tendermint(cs))
     }
 }
 
