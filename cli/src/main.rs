@@ -12,6 +12,7 @@ mod repo;
 mod run;
 mod shared;
 mod stellar;
+mod transfer;
 mod tx;
 
 use std::time::Duration;
@@ -82,11 +83,31 @@ enum Command {
         #[command(subcommand)]
         cmd: ContractsCmd,
     },
+    #[command(about = "Originate an ICS-20 transfer from the given source chain")]
+    Transfer(TransferArgs),
     #[command(about = "Low-level tx surface: clients, msg, query")]
     Tx {
         #[command(subcommand)]
         cmd: TxCmd,
     },
+}
+
+#[derive(clap::Args)]
+struct TransferArgs {
+    #[arg(value_enum, help = "Source chain to send from")]
+    from: Chain,
+    #[arg(long, help = "Token denom to transfer")]
+    denom: String,
+    #[arg(long, help = "Amount to transfer")]
+    amount: i128,
+    #[arg(long, help = "Receiver address on the destination chain")]
+    receiver: String,
+    #[arg(long, default_value = "", help = "Optional transfer memo")]
+    memo: String,
+    #[arg(long, default_value_t = 600, help = "Timeout in seconds from now")]
+    timeout_secs: u64,
+    #[arg(long, help = "Mint the amount to the sender before transferring (devnet)")]
+    mint: bool,
 }
 
 #[derive(clap::Args)]
@@ -394,6 +415,22 @@ async fn main() -> Result<()> {
                     tendermint,
                 } => contracts::deploy_all::run(&cc, root, force, attestation, tendermint)?,
                 ContractsCmd::UploadWasm => contracts::wasm::upload(&cc, root, &http).await?,
+            }
+        }
+
+        Command::Transfer(args) => {
+            let ta = transfer::TransferArgs {
+                denom: args.denom,
+                amount: args.amount,
+                receiver: args.receiver,
+                memo: args.memo,
+                timeout_secs: args.timeout_secs,
+                mint: args.mint,
+            };
+
+            match args.from {
+                Chain::Stellar => transfer::stellar_to_cosmos(&cfg, root, &ta)?,
+                Chain::Cosmos => transfer::cosmos_to_stellar(&cfg, root, &ta)?,
             }
         }
 
