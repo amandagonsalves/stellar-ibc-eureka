@@ -22,7 +22,7 @@ pub fn run(cfg: &ClientsConfig, root: &Path, side: &str) -> Result<()> {
         ),
         _ => (
             "clients counterparty cosmos (register the Stellar client as counterparty on Cosmos)",
-            cfg.osmosis_chain_id.as_str(),
+            cfg.cosmos_chain_id.as_str(),
             stellar_client,
             cosmos_client,
         ),

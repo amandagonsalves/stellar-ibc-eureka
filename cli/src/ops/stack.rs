@@ -4,15 +4,15 @@ use anyhow::Result;
 
 use crate::{logger, run};
 
-pub fn up(root: &Path, osmosis_only: bool, stellar_only: bool) -> Result<()> {
+pub fn up(root: &Path, cosmos_only: bool, stellar_only: bool) -> Result<()> {
     logger::banner("up — docker compose");
 
-    let services: Vec<&str> = if osmosis_only {
-        vec!["osmosis"]
+    let services: Vec<&str> = if cosmos_only {
+        vec!["cosmos"]
     } else if stellar_only {
         vec!["api", "gateway"]
     } else {
-        vec!["osmosis", "api", "gateway"]
+        vec!["cosmos", "api", "gateway"]
     };
 
     logger::step(&format!("starting: {}", services.join(", ")));

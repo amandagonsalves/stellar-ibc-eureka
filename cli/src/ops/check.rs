@@ -60,8 +60,8 @@ pub async fn run(root: &Path, cfg: &OpsConfig, http: &reqwest::Client) -> Result
 
     logger::step("Services");
 
-    let cosmos = probe::http_ok(http, &format!("{}/cosmos", cfg.osmosis_rest_url)).await;
-    logger::status_line(&cfg.osmosis_chain_id, cosmos, &cfg.osmosis_rest_url);
+    let cosmos = probe::http_ok(http, &format!("{}/cosmos", cfg.cosmos_rest_url)).await;
+    logger::status_line(&cfg.cosmos_chain_id, cosmos, &cfg.cosmos_rest_url);
 
     let api = probe::http_ok(http, &format!("{}/health", cfg.api_url)).await;
     logger::status_line("stellar-api", api, &cfg.api_url);

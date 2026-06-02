@@ -51,12 +51,12 @@ pub(crate) async fn create(
 
     logger::step(&format!(
         "probing Cosmos RPC at {}",
-        cfg.osmosis_status_url()
+        cfg.cosmos_status_url()
     ));
-    if !probe::http_ok(http, &cfg.osmosis_status_url()).await {
+    if !probe::http_ok(http, &cfg.cosmos_status_url()).await {
         bail!(
             "Cosmos RPC not reachable at {} — start it with: stellaribc up --cosmos",
-            cfg.osmosis_rpc_url
+            cfg.cosmos_rpc_url
         );
     }
 

@@ -8,7 +8,7 @@ use crate::{logger, run};
 pub fn import(cfg: &Config, root: &Path) -> Result<()> {
     logger::banner("hermes keys-import (relayer key = router admin key)");
 
-    if cfg.osmosis.relayer_mnemonic.is_empty() {
+    if cfg.cosmos.relayer_mnemonic.is_empty() {
         bail!("COSMOS_RELAYER_MNEMONIC is empty in .env — set the cosmos relayer mnemonic (a faucet-funded account)");
     }
 
@@ -21,15 +21,15 @@ pub fn import(cfg: &Config, root: &Path) -> Result<()> {
 
     logger::step(&format!(
         "importing {} for {} (cosmos mnemonic)",
-        cfg.osmosis.key_name,
-        cfg.osmosis.chain_id.as_str()
+        cfg.cosmos.key_name,
+        cfg.cosmos.chain_id.as_str()
     ));
     import_mnemonic(
         cfg,
         root,
-        cfg.osmosis.chain_id.as_str(),
-        &cfg.osmosis.key_name,
-        &cfg.osmosis.relayer_mnemonic,
+        cfg.cosmos.chain_id.as_str(),
+        &cfg.cosmos.key_name,
+        &cfg.cosmos.relayer_mnemonic,
     )?;
 
     logger::step(&format!(

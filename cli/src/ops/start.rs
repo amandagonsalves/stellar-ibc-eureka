@@ -5,7 +5,7 @@ use anyhow::{bail, Result};
 use crate::config::Config;
 use crate::contracts::config::ContractsConfig;
 use crate::ops::config::OpsConfig;
-use crate::{hermes, logger, osmosis, probe, run};
+use crate::{hermes, logger, cosmos, probe, run};
 
 const WAIT_TIMEOUT_SECS: u64 = 300;
 
@@ -30,12 +30,12 @@ pub async fn run(
     if skip_images {
         logger::detail("skip image pull");
     } else {
-        logger::step("Step 0: pulling images (osmosis, api, gateway, hermes)");
-        run::compose(root, &["pull", "osmosis", "api", "gateway", "hermes"])?;
+        logger::step("Step 0: pulling images (cosmos, api, gateway, hermes)");
+        run::compose(root, &["pull", "cosmos", "api", "gateway", "hermes"])?;
     }
 
-    logger::step("Step 1: ensuring osmosis is up");
-    osmosis::start(&cfg.osmosis, root, http, false).await?;
+    logger::step("Step 1: ensuring cosmos is up");
+    cosmos::start(&cfg.cosmos, root, http).await?;
 
     logger::step("Step 2: ensuring api + gateway are up");
     if probe::http_ok(http, &ops.api_health_url()).await {

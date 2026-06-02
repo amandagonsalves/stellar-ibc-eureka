@@ -12,7 +12,7 @@ pub async fn run(cfg: &OpsConfig, http: &reqwest::Client) -> Result<()> {
     logger::status_line("gateway-grpc", gateway, &cfg.gateway_url);
 
     logger::step("Endpoints");
-    logger::detail(&format!("cosmos rpc   {}", cfg.osmosis_rpc_url));
+    logger::detail(&format!("cosmos rpc   {}", cfg.cosmos_rpc_url));
     logger::detail(&format!("hermes cfg   {}", cfg.hermes_config));
 
     logger::step("Images");

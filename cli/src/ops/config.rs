@@ -1,9 +1,9 @@
 use crate::config::{Config, StellarAddresses};
 
 pub struct OpsConfig {
-    pub osmosis_chain_id: String,
-    pub osmosis_rest_url: String,
-    pub osmosis_rpc_url: String,
+    pub cosmos_chain_id: String,
+    pub cosmos_rest_url: String,
+    pub cosmos_rpc_url: String,
     pub api_url: String,
     pub gateway_url: String,
     pub hermes_config: String,
@@ -26,9 +26,9 @@ impl From<&Config> for OpsConfig {
         ];
 
         Self {
-            osmosis_chain_id: cfg.osmosis.chain_id.as_str().to_string(),
-            osmosis_rest_url: cfg.osmosis.rest_url.clone(),
-            osmosis_rpc_url: cfg.osmosis.rpc_url.clone(),
+            cosmos_chain_id: cfg.cosmos.chain_id.as_str().to_string(),
+            cosmos_rest_url: cfg.cosmos.rest_url.clone(),
+            cosmos_rpc_url: cfg.cosmos.rpc_url.clone(),
             api_url: cfg.stellar.api_url.clone(),
             gateway_url: cfg.stellar.gateway_url.clone(),
             hermes_config: cfg.hermes.config.clone(),
