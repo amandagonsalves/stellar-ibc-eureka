@@ -13,5 +13,5 @@ soroban-sdk = { workspace = true }
 
 [dev-dependencies]
 soroban-sdk = { workspace = true, features = ["testutils"] }
-stellar-ibc-router = { path = "../router" }
+stellar-ibc-router = { path = "../ibc-router" }
 stellar-mock-light-client = { workspace = true }

@@ -1,8 +1,8 @@
 [workspace]
 members = [
     "light-clients/*",
-    "transfer-app",
-    "router"
+    "ibc-transfer",
+    "ibc-router"
 ]
 resolver = "2"
 
