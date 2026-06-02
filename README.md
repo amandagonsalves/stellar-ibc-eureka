@@ -14,7 +14,7 @@ This repository is part of the **Cardano–Stellar IBC bridge** project. It ship
 | **`stellar-hermes-gateway`** | gRPC gateway the Hermes relayer talks to. Speaks no Soroban RPC directly; every chain read/write goes through `stellar-api`. |
 | **`stellar-api`** | Standalone HTTP/REST service that owns the Soroban RPC connection and Stellar signing key. Exposes `/ledger/*`, `/account/*`, `/balance/*`, `/tx/*` for the gateway to call. |
 | **`stellar-ibc-core`** | Shared library: SMT, ICS-23 proof serializer, IBC protocol context, plus the `RpcClient` (Soroban JSON-RPC) and `ApiClient` (HTTP client the gateway uses to reach `stellar-api`). |
-| **Local Osmosis** (`cli/src/osmosis`) | Local Osmosis (`localosmosis`) lifecycle, driven by the `stellaribc osmosis` commands. Boots a prebuilt `osmolabs/osmosis:<ver>-alpine` image from a declarative `default-config.json`. Acts as the Cosmos counterparty for local devnets. |
+| **Local Cosmos** (`cli/src/cosmos`) | Local Cosmos chain (`simd-1`) lifecycle, driven by the `stellaribc cosmos` commands. Boots the prebuilt `ghcr.io/cosmos/ibc-go-wasm-simd:v11.0.0` image (ibc-go v11 + `08-wasm`) from a declarative `default-config.json`. Acts as the Cosmos counterparty for local devnets. |
 | **`light-client-wasm`** | Stellar light client compiled to `wasm32-unknown-unknown`, uploaded to the Cosmos chain via `08-wasm` (`contracts/cosmwasm/light-client`). |
 | **Soroban contracts** | `ibc-router`, `ibc-transfer`, and light clients (`mock`, `attestation`, `tendermint`) under `contracts/soroban/`. |
 | **`stellar-ibc-cli`** (`stellaribc`) | The orchestrator CLI under `cli/`. One binary for the whole bridge: bring the stack up, pull + run images, deploy contracts, upload the light client, create clients, register counterparties, and check status. Drives docker, the `stellar` CLI, and `stellar-api` directly — no shell scripts. |
@@ -50,7 +50,7 @@ Related repositories:
 **IBC version:** v2 (Eureka) — no connection or channel handshake.
 **On-chain runtime:** Soroban (Stellar's WebAssembly smart-contract platform).
 **Relayer:** Hermes fork with a `StellarChainEndpoint`.
-**Counterparty:** Cosmos chain (ibc-go v10) hosting an `08-wasm` Stellar light client.
+**Counterparty:** Cosmos chain (ibc-go v11 `simd`) hosting an `08-wasm` Stellar light client.
 
 IBC v2 collapses the v1 protocol significantly:
 
@@ -112,9 +112,9 @@ The SMT (fixed-depth-64 binary Merkle tree, Cardano-compatible) lives in
                    │ JSON-RPC                       │
                    ▼                                ▼
 ┌─────────────────────────────────┐  ┌──────────────────────────────────┐
-│  Stellar Soroban RPC            │  │  localosmosis (Cosmos)           │
-│  soroban-testnet.stellar.org    │  │  osmolabs/osmosis:31-alpine      │
-│  or in-compose stellar-node     │  │  ibc-go v10 + 08-wasm            │
+│  Stellar Soroban RPC            │  │  cosmos (simd-1)                 │
+│  soroban-testnet.stellar.org    │  │  ibc-go-wasm-simd:v11.0.0        │
+│  or in-compose stellar-node     │  │  ibc-go v11 + 08-wasm            │
 └──────────────────┬──────────────┘  └─────────────────────────────────┬┘
                    │ contract invokes                                   │
                    ▼                                                    │
@@ -189,8 +189,8 @@ stellar-ibc/
       main.rs             clap command tree + dispatch
       config.rs repo.rs run.rs probe.rs logger.rs shared.rs   base config + support
       ops/                install · check · status · stack(up/down) · start
-      osmosis/            local Osmosis lifecycle + config (start/stop/status)
-        assets/           default-config.json + setup.sh (mounted into the osmosis container)
+      cosmos/             local Cosmos (simd-1) lifecycle + config (start/stop/status/keygen)
+        assets/           default-config.json + setup.sh (mounted into the cosmos container)
       stellar/            stellar chain config + lifecycle
       clients/            cosmos · stellar · counterparty · list (+ config)
       hermes/  gateway/  api/   start · stop · restart (pull-and-run; each owns its config)
@@ -210,7 +210,7 @@ stellar-ibc/
 
   hermes-config.toml      Hermes relayer config (mounted into the hermes + api containers)
   Dockerfile              Builds the stellar-gateway + stellar-api binaries
-  docker-compose.yml      Profiles: local, osmosis, hermes, local-stellar, staging
+  docker-compose.yml      Profiles: local, cosmos, hermes, local-stellar, staging
   Makefile                Image build/push (SERVICE=gateway|hermes|api) + fmt/test/cargo-build
   .env / .env.example
 ```
@@ -246,7 +246,7 @@ through `ApiClient` against `stellar-api`.
 | Method | Inputs | Outputs | Notes |
 |---|---|---|---|
 | `SubmitSignedTx` | `tx_xdr` | `tx_hash`, `return_value` | `POST /tx/submit` on the api — submits a relayer-signed tx |
-| `CreateClient` / `UpdateClient` / `RegisterCounterparty` / `RecvPacket` / `AckPacket` / `TimeoutPacket` / `SubmitMisbehaviour` | (ICS-2 / ICS-4) | unsigned `tx_xdr` | Gateway re-encodes args to Soroban XDR and builds an **unsigned** tx via `POST /tx/prepare`; the relayer signs with its key and submits via `SubmitSignedTx`. The gateway holds no key. (Today `CreateClient` is fully wired end-to-end; the rest are being migrated.) |
+| `CreateClient` / `UpdateClient` / `RegisterCounterparty` / `RecvPacket` / `AckPacket` / `TimeoutPacket` / `SubmitMisbehaviour` | (ICS-2 / ICS-4) | unsigned `tx_xdr` | Gateway re-encodes args to Soroban XDR and builds an **unsigned** tx via `POST /tx/prepare`; the relayer signs with its key and submits via `SubmitSignedTx`. The gateway holds no key. (All message types are wired end-to-end through this prepare→sign→submit path.) |
 
 gRPC reflection is on:
 
@@ -305,20 +305,19 @@ All configuration is via environment variables. Copy `.env.example` to `.env`.
 | `ROUTER_CONTRACT_ADDRESS` | _(empty)_ | Router contract — re-encoded + invoked via `/tx/prepare` |
 | `TRANSFER_CONTRACT_ADDRESS` | _(empty)_ | Transfer app contract |
 
-### Local Osmosis (`osmosis` compose service / `stellaribc osmosis`)
+### Local Cosmos (`cosmos` compose service / `stellaribc cosmos`)
 
 | Variable | Default | Description |
 |---|---|---|
-| `OSMOSIS_VERSION` | `31.0.3` | `osmolabs/osmosis` image tag (`-alpine` variant used) |
-| `OSMOSIS_LOCAL_GENESIS_TIME` | _(now)_ | Override genesis_time; defaults to current UTC at boot |
-| `COSMOS_CHAIN_ID` | `localosmosis` | Chain id |
+| `COSMOS_CHAIN_IMAGE` | `ghcr.io/cosmos/ibc-go-wasm-simd:v11.0.0` | simd image (ibc-go v11 + `08-wasm`, multi-arch) |
+| `COSMOS_CHAIN_ID` | `simd-1` | Chain id |
 | `COSMOS_VALIDATOR_MNEMONIC` | _(empty)_ | Validator account mnemonic, recovered + funded at genesis |
 | `COSMOS_RELAYER_MNEMONIC` | _(empty)_ | Relayer account mnemonic, funded at genesis + imported into Hermes |
 
 Genesis denoms, balances, gov voting period, and overrides live in
-[`cli/src/osmosis/assets/default-config.json`](cli/src/osmosis/assets/default-config.json);
+[`cli/src/cosmos/assets/default-config.json`](cli/src/cosmos/assets/default-config.json);
 the account **mnemonics are sourced from env** (above), not the JSON, and are
-passed into the `osmosis` container by `docker-compose.yml`.
+passed into the `cosmos` container by `docker-compose.yml`.
 
 ### Image build / CI
 
@@ -359,7 +358,9 @@ Command groups:
 | Group | Commands |
 |---|---|
 | ops | `install` · `doctor` · `status` · `up [--cosmos\|--stellar]` · `down [--volumes]` · `start` |
+| `cosmos` | `keygen` · `start [--fresh]` · `stop` · `status` |
 | `clients` | `cosmos` · `stellar` · `counterparty <stellar\|cosmos>` · `list` |
+| `transfer` | `<stellar\|cosmos>` — originate an ICS-20 transfer (`--denom --amount --receiver --memo --timeout-secs --no-mint`) |
 | `hermes` | `start` · `stop` · `restart` · `keys-import` |
 | `gateway` | `start` · `stop` · `restart` · `query` |
 | `api` | `start` · `stop` · `restart` |
@@ -384,14 +385,14 @@ fmt`/`test`/`cargo-build`; everything else runs through `stellaribc` directly.
 
 ### One-command devnet
 
-Brings up `osmosis`, `api`, `gateway`, `hermes` with healthchecks and dependency
+Brings up `cosmos`, `api`, `gateway`, `hermes` with healthchecks and dependency
 ordering. Detached so you can inspect status; logs are followed separately.
 
 ```sh
 cp .env.example .env
 # edit .env: STELLAR_SIGNING_KEY (and ROUTER_CONTRACT_ADDRESS if already deployed)
 
-stellaribc up                   # osmosis + api + gateway via docker compose
+stellaribc up                   # cosmos + api + gateway via docker compose
 docker compose --profile local --profile hermes logs -f api gateway hermes
 ```
 
@@ -418,13 +419,14 @@ $COMPOSE exec hermes sh      # interactive shell inside the hermes container
 $COMPOSE ps
 ```
 
-### Local Osmosis on its own
+### Local Cosmos on its own
 
 ```sh
-stellaribc osmosis start            # start the local osmosis devnet
-stellaribc osmosis start --fresh    # wipe ~/.osmosisd-local first, then start
-stellaribc osmosis status
-stellaribc osmosis stop
+stellaribc cosmos keygen            # generate validator+relayer mnemonics + signer keys → .env
+stellaribc cosmos start             # start the local simd-1 devnet
+stellaribc cosmos start --fresh     # wipe the cosmos-home volume first, then start
+stellaribc cosmos status
+stellaribc cosmos stop
 ```
 
 ### Start the bridge (via `stellaribc`)
@@ -440,7 +442,7 @@ stellaribc start            # flags: --skip-images/-contracts/-wasm/-keys, --for
 Or step by step:
 
 ```sh
-stellaribc up                   # docker compose up osmosis + api + gateway
+stellaribc up                   # docker compose up cosmos + api + gateway
 stellaribc contracts deploy-all # deploy router/transfer/mock-LC, wire router, write .env
 stellaribc gateway restart --pull      # pull latest + pick up the new ROUTER_CONTRACT_ADDRESS
 stellaribc contracts upload-wasm       # gov-upload Stellar LC wasm, patch hermes config
@@ -477,7 +479,7 @@ pull-and-run a published image: `stellaribc <service> start --pull` (or
 curl -s http://127.0.0.1:8101/health
 curl -s http://127.0.0.1:8101/ledger/latest | jq .
 grpcurl -plaintext 127.0.0.1:50052 stellar.gateway.v1.StellarGatewayQuery/LatestHeight
-curl -s http://127.0.0.1:26657/status | jq .result.sync_info     # Osmosis
+curl -s http://127.0.0.1:26657/status | jq .result.sync_info     # Cosmos (simd-1)
 docker compose --profile local --profile hermes logs -f hermes
 ```
 

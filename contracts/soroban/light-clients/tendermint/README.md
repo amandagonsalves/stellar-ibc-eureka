@@ -53,7 +53,7 @@ in place.
 
 ## When to use it
 
-- Cosmos counterparty (Cosmos Hub, Osmosis, cardano-entrypoint, etc.) where
+- Cosmos counterparty (simd, Cosmos Hub, Osmosis, etc.) where
   the chain runs Tendermint and IAVL.
 - Registered under `client_type = "07-tendermint"` for the standard naming
   convention.

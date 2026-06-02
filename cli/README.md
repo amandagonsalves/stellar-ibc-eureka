@@ -50,8 +50,9 @@ stellaribc <group> <command> --help
 | Group | Commands |
 |---|---|
 | ops | `install` · `check` · `status` · `up` · `down` · `start` |
-| `osmosis` | `start [--fresh]` · `stop` · `status` · `keygen [--force]` |
+| `cosmos` | `keygen [--force]` · `start [--fresh]` · `stop` · `status` |
 | `clients` | `cosmos` · `stellar` · `counterparty` · `list` |
+| `transfer` | `<stellar \| cosmos>` — originate an ICS-20 transfer |
 | `hermes` | `start` · `stop` · `restart` · `keys-import` |
 | `gateway` | `start` · `stop` · `restart` · `query` |
 | `api` | `start` · `stop` · `restart` |
@@ -70,7 +71,7 @@ Installs the `stellaribc` binary to the cargo bin dir (`cargo install --path cli
 Checks prerequisites and configuration, then probes service health. Reports:
 toolchain (`docker`, `stellar`, `cargo`), `.env` presence, key config vars
 (`STELLAR_SIGNING_KEY`, `ROUTER_CONTRACT_ADDRESS`, …), and the live state of
-`localosmosis`, `stellar-api`, and the gateway gRPC port. Always exits 0.
+the `cosmos` (`simd-1`) chain, `stellar-api`, and the gateway gRPC port. Always exits 0.
 
 ### `stellaribc status`
 Probes chains/services, prints the configured endpoints, the deployed contract
@@ -81,8 +82,8 @@ Brings the stack up via `docker compose up -d`.
 
 | Flag | Effect |
 |---|---|
-| _(none)_ | start `osmosis` + `api` + `gateway` |
-| `--cosmos` | start only `osmosis` |
+| _(none)_ | start `cosmos` + `api` + `gateway` |
+| `--cosmos` | start only `cosmos` |
 | `--stellar` | start only `api` + `gateway` |
 
 ### `stellaribc down [--volumes]`
@@ -93,7 +94,7 @@ Stops the stack via `docker compose down`.
 | `--volumes` | also remove named volumes (wipes chain + hermes-key state) |
 
 ### `stellaribc start`
-Full start: pull images → start `osmosis` → start `api` + `gateway` → deploy
+Full start: pull images → start `cosmos` → start `api` + `gateway` → deploy
 contracts → upload the light-client wasm → import relayer keys. Each step is
 skippable; the chain/service steps are idempotent (probe first, start if down).
 
@@ -107,17 +108,18 @@ skippable; the chain/service steps are idempotent (probe first, start if down).
 
 ---
 
-## `osmosis` — local Cosmos devnet
+## `cosmos` — local Cosmos devnet
 
-Lifecycle for the `localosmosis` chain (the `osmosis` compose service). On
+Lifecycle for the `simd-1` chain (the `cosmos` compose service —
+`ghcr.io/cosmos/ibc-go-wasm-simd:v11.0.0`, ibc-go v11 + `08-wasm`). On
 `COSMOS_NETWORK=testnet` the start/stop become reachability checks / no-ops.
 
 | Command | Flags | What it does |
 |---|---|---|
-| `start` | `--fresh` | `docker compose up -d osmosis` + wait for the first block; `--fresh` wipes `~/.osmosisd-local` and rebuilds genesis |
-| `stop` | — | `docker compose stop osmosis` |
+| `keygen` | `--force` | generate the validator + relayer accounts and write **all four** vars to `.env` — the two mnemonics plus the matching hex signer keys (skips when the mnemonic is already set; `--force` regenerates). Uses the simd image — no local `simd` needed |
+| `start` | `--fresh` | `docker compose up -d cosmos` + wait for the first block; `--fresh` wipes the `cosmos-home` volume and rebuilds genesis |
+| `stop` | — | `docker compose stop cosmos` |
 | `status` | — | probe RPC + print network/endpoints |
-| `keygen` | `--force` | generate the validator + relayer accounts and write **all four** vars to `.env` — the two mnemonics plus the matching hex signer keys (skips when the mnemonic is already set; `--force` regenerates). Uses the `osmolabs/osmosis` image — no local `osmosisd` needed |
 
 The two genesis accounts each map to two `.env` vars:
 
@@ -126,7 +128,7 @@ The two genesis accounts each map to two `.env` vars:
 | validator | `COSMOS_VALIDATOR_MNEMONIC` | `COSMOS_FUNDER_PRIVATE_KEY` | genesis validator; the api's gov **funder/voter** (votes with stake) |
 | relayer | `COSMOS_RELAYER_MNEMONIC` | `COSMOS_PROPOSER_PRIVATE_KEY` | Hermes relayer key; the api's gov **proposer** |
 
-`docker-compose.yml` passes the mnemonics into the osmosis container and
+`docker-compose.yml` passes the mnemonics into the cosmos container and
 `setup.sh` recovers + funds those accounts at genesis; the api signs gov
 messages (store-code proposal during `upload-wasm`) with the hex keys. Because
 the hex key is just the mnemonic's private key, `keygen` writes both together so
@@ -140,23 +142,46 @@ fresh checkout.
 ### `stellaribc clients cosmos [--force]`
 Create the Cosmos (Tendermint) client on Stellar. Probes the gateway + Cosmos
 RPC, runs `hermes create client --host-chain stellar-testnet --reference-chain
-localosmosis`, extracts the `07-tendermint-N` id, and writes `COSMOS_CLIENT_ID`
+simd-1`, extracts the `07-tendermint-N` id, and writes `COSMOS_CLIENT_ID`
 to `.env`. `--force` creates another even if already set.
 
 ### `stellaribc clients stellar [--force]`
 Create the Stellar (08-wasm) client on Cosmos. Requires `wasm_checksum_hex` to
 be set in the hermes config (run `contracts upload-wasm` first). Runs `hermes
-create client --host-chain localosmosis --reference-chain stellar-testnet`,
+create client --host-chain simd-1 --reference-chain stellar-testnet`,
 extracts the `08-wasm-N` id, and writes `STELLAR_CLIENT_ID`.
 
 ### `stellaribc clients counterparty <stellar | cosmos>`
-Register a counterparty on the given side. *Pending* — blocked on migrating the
-gateway's `register_counterparty` RPC to prepare→sign→submit; prints a "not
-wired yet" notice until then.
+Register a counterparty on the given side (IBC v2 `registerCounterparty`, one
+call per side, no handshake). Runs `hermes create counterparty` for the chosen
+side; the Stellar side goes through the gateway prepare→sign→submit path, the
+Cosmos side through ibc-go.
 
 ### `stellaribc clients list`
 Lists the clients created on the Stellar router (`GET /stellar/clients`),
 grouped by `client_type`.
+
+---
+
+## `transfer` — originate an ICS-20 transfer
+
+```sh
+stellaribc transfer [stellar|cosmos] [--denom --amount --receiver --memo --timeout-secs --no-mint]
+```
+
+| Arg / flag | Default | What it does |
+|---|---|---|
+| `<from>` | `stellar` | source chain; `stellar` → Cosmos (wired), `cosmos` → Stellar (pending, M4) |
+| `--denom` | `stake` | token denom to transfer |
+| `--amount` | `1000` | amount |
+| `--receiver` | _(derived)_ | destination address; when omitted, derived from the simd `relayer` key |
+| `--memo` | _(empty)_ | optional transfer memo (JSON-quoted for soroban) |
+| `--timeout-secs` | `600` | packet timeout, seconds from now |
+| `--no-mint` | _(off)_ | skip minting the amount to the sender first (devnet mints by default) |
+
+For `stellar`, invokes the transfer-app `initiate_transfer` (sender =
+`DEPLOYER_ADDRESS`, source client = `COSMOS_CLIENT_ID`) which escrows the asset
+and emits an IBC v2 `SendPacket` through the router.
 
 ---
 
@@ -296,8 +321,8 @@ Read from `stellar-ibc/.env` (shell env overrides). Defaults shown.
 | Variable | Default | Used by |
 |---|---|---|
 | `STELLAR_IBC_ROOT` | _(auto-discovered)_ | repo-root override |
-| `COSMOS_CHAIN_ID` | `localosmosis` | status, clients, keys |
-| `COSMOS_REST_URL` | `http://127.0.0.1:1318` | check/status/start probes |
+| `COSMOS_CHAIN_ID` | `simd-1` | status, clients, keys |
+| `COSMOS_REST_URL` | `http://127.0.0.1:1317` | check/status/start probes |
 | `COSMOS_RPC_URL` | `http://127.0.0.1:26657` | clients (RPC probe) |
 | `STELLAR_API_URL` | `http://127.0.0.1:8101` | status, clients list, upload-wasm |
 | `STELLAR_GATEWAY_GRPC_PORT` | `50052` | gateway gRPC probe |
@@ -323,16 +348,17 @@ Read from `stellar-ibc/.env` (shell env overrides). Defaults shown.
 ```
 cli/src/
   main.rs            clap command tree + dispatch
-  config.rs          base Config: osmosis · stellar · hermes · api · gateway · deployment
+  config.rs          base Config: cosmos · stellar · hermes · api · gateway · deployment
   repo.rs            repo-root discovery
   run.rs             process helpers (command / capture / compose / piped)
   probe.rs           http / tcp health probes
   logger.rs          TTY-aware status logger
   shared.rs          print_clients / env_upsert / pending / check helpers
   ops/               install · check · status · stack (up/down) · start · config
-  osmosis/           osmosis chain config + lifecycle (start/stop/status)
+  cosmos/            cosmos (simd-1) chain config + lifecycle (keygen/start/stop/status)
   stellar/           stellar chain config + lifecycle
   clients/           cosmos · stellar · counterparty · list · config
+  transfer/          ICS-20 transfer origination (stellar → cosmos)
   hermes/            container (start/stop/restart) · keys · config
   gateway/           container · query · config
   api/               container

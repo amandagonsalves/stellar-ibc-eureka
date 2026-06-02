@@ -26,6 +26,6 @@ stellaribc contracts upload-wasm
 ```
 
 `08-wasm` store-code is governance-gated, so upload goes through a gov proposal
-(auto-handled against the local Osmosis devnet). The SMT + ICS-23 helpers it
+(auto-handled against the local Cosmos `simd-1` devnet). The SMT + ICS-23 helpers it
 shares with the rest of the stack live in
 [`crates/core/src/ibc/`](../../crates/core/src/ibc/).
