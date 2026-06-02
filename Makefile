@@ -6,10 +6,10 @@ build:
 	case "$(SERVICE)" in \
 	  api) \
 	    IMG="$${API_IMAGE:-amandagonsalvesx/stellar-ibc-api}:$${API_TAG:-latest}"; \
-	    docker build -t "$$IMG" -f Dockerfile . ;; \
+	    docker build -t "$$IMG" -f crates/api/Dockerfile . ;; \
 	  gateway) \
 	    IMG="$${GATEWAY_IMAGE:-amandagonsalvesx/stellar-gateway}:$${GATEWAY_TAG:-latest}"; \
-	    docker build -t "$$IMG" -f Dockerfile . ;; \
+	    docker build -t "$$IMG" -f crates/gateway/Dockerfile . ;; \
 	  hermes) \
 	    REPO="$${HERMES_REPO:-../hermes-relayer}"; \
 	    IMG="$${HERMES_IMAGE:-amandagonsalvesx/stellar-hermes-cardano}:$${HERMES_TAG:-latest}"; \

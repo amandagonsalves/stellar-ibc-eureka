@@ -45,7 +45,7 @@ services:
   gateway:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: crates/gateway/Dockerfile
     image: ${GATEWAY_IMAGE}:${GATEWAY_TAG}
     profiles: [local, staging]
     restart: unless-stopped
@@ -71,7 +71,7 @@ services:
   api:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: crates/api/Dockerfile
     image: ${API_IMAGE}:${API_TAG}
     entrypoint: ["stellar-api"]
     profiles: [local, staging]
