@@ -56,7 +56,7 @@ impl StellarGatewayQuery for QueryHandler {
             Status::internal(format!("get_latest_ledger failed: {error}"))
         })?;
 
-        tracing::info!(revision_height = latest_sequence, "latest height");
+        tracing::debug!(revision_height = latest_sequence, "latest height");
         Ok(Response::new(LatestHeightResponse {
             revision_height: latest_sequence.into(),
             revision_number: 0,
@@ -178,9 +178,12 @@ impl StellarGatewayQuery for QueryHandler {
             PathLookup::Absent { proof_bytes } => (Vec::new(), proof_bytes),
         };
         tracing::info!(
+            client_id = %req.client_id,
+            sequence = req.sequence,
             commitment_bytes = commitment.len(),
             proof_bytes = proof.len(),
-            "served packet commitment"
+            present = !commitment.is_empty(),
+            "served packet commitment proof"
         );
 
         Ok(Response::new(QueryPacketCommitmentResponse {
@@ -295,7 +298,7 @@ impl StellarGatewayQuery for QueryHandler {
         };
 
         let seq = request.into_inner().height as u32;
-        tracing::info!(sequence = seq, "gRPC QueryIbcHeader");
+        tracing::debug!(sequence = seq, "gRPC QueryIbcHeader");
 
         let ledger = self.api.get_ledger(seq).await.map_err(|error| {
             tracing::error!(%error, sequence = seq, "get_ledger failed");
@@ -407,12 +410,20 @@ impl StellarGatewayQuery for QueryHandler {
                 Status::internal(format!("getEvents failed: {error}"))
             })?;
 
-        tracing::info!(
-            events = page.events.len(),
-            latest_ledger = page.latest_ledger,
-            %contract_id,
-            "events"
-        );
+        if page.events.is_empty() {
+            tracing::debug!(
+                latest_ledger = page.latest_ledger,
+                %contract_id,
+                "events poll: none"
+            );
+        } else {
+            tracing::info!(
+                events = page.events.len(),
+                latest_ledger = page.latest_ledger,
+                %contract_id,
+                "events poll: found router event(s)"
+            );
+        }
 
         let events = page
             .events

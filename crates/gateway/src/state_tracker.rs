@@ -95,12 +95,21 @@ impl StateTracker {
 
         let root = self.smt.root();
         self.roots.insert(seq, root);
-        tracing::info!(
-            sequence = seq,
-            changes_applied,
-            root = %hex::encode(root),
-            "ledger processed into SMT"
-        );
+        if changes_applied > 0 {
+            tracing::info!(
+                sequence = seq,
+                changes_applied,
+                root = %hex::encode(root),
+                "ledger applied ibc state changes into smt"
+            );
+        } else {
+            tracing::debug!(
+                sequence = seq,
+                changes_applied,
+                root = %hex::encode(root),
+                "ledger processed into smt (no ibc changes)"
+            );
+        }
         Ok(root)
     }
 

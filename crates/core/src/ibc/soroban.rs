@@ -40,13 +40,6 @@ fn sc_u32(map: &ScMap, name: &str) -> Result<u32> {
     }
 }
 
-fn sc_bool(map: &ScMap, name: &str) -> Result<bool> {
-    match sc_field(map, name)? {
-        ScVal::Bool(b) => Ok(*b),
-        _ => Err(anyhow!("field {name} is not bool")),
-    }
-}
-
 fn sc_str(map: &ScMap, name: &str) -> Result<String> {
     match sc_field(map, name)? {
         ScVal::String(ScString(s)) => Ok(s.to_string()),
@@ -163,12 +156,7 @@ impl AnyClientState {
         let map = sc_as_map(&val, "client_state")?;
 
         let trust = sc_as_map(sc_field(map, "trust_level")?, "trust_level")?;
-        let is_frozen = sc_bool(map, "is_frozen")?;
-        let frozen_height = if is_frozen {
-            Some(sc_get_height(map, "frozen_height")?)
-        } else {
-            None
-        };
+        let frozen_height = Some(sc_get_height(map, "frozen_height")?);
 
         let raw = RawTmClientState {
             chain_id: sc_str(map, "chain_id")?,
