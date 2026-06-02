@@ -14,7 +14,7 @@ This repository is part of the **Cardano–Stellar IBC bridge** project. It ship
 | **`stellar-hermes-gateway`** | gRPC gateway the Hermes relayer talks to. Speaks no Soroban RPC directly; every chain read/write goes through `stellar-api`. |
 | **`stellar-api`** | Standalone HTTP/REST service that owns the Soroban RPC connection and Stellar signing key. Exposes `/ledger/*`, `/account/*`, `/balance/*`, `/tx/*` for the gateway to call. |
 | **`stellar-ibc-core`** | Shared library: SMT, ICS-23 proof serializer, IBC protocol context, plus the `RpcClient` (Soroban JSON-RPC) and `ApiClient` (HTTP client the gateway uses to reach `stellar-api`). |
-| **`stellar-osmosis`** | Local Osmosis (`localosmosis`) lifecycle crate. Boots a prebuilt `osmolabs/osmosis:<ver>-alpine` image from a declarative `default-config.json`. Acts as the Cosmos counterparty for local devnets. |
+| **Local Osmosis** (`cli/src/osmosis`) | Local Osmosis (`localosmosis`) lifecycle, driven by the `stellaribc osmosis` commands. Boots a prebuilt `osmolabs/osmosis:<ver>-alpine` image from a declarative `default-config.json`. Acts as the Cosmos counterparty for local devnets. |
 | **`light-client-wasm`** | Stellar light client compiled to `wasm32-unknown-unknown`, uploaded to the Cosmos chain via `08-wasm` (`contracts/cosmwasm/light-client`). |
 | **Soroban contracts** | `ibc-router`, `ibc-transfer`, and light clients (`mock`, `attestation`, `tendermint`) under `contracts/soroban/`. |
 | **`stellar-ibc-cli`** (`stellaribc`) | The orchestrator CLI under `cli/`. One binary for the whole bridge: bring the stack up, pull + run images, deploy contracts, upload the light client, create clients, register counterparties, and check status. Drives docker, the `stellar` CLI, and `stellar-api` directly — no shell scripts. |
@@ -184,18 +184,13 @@ stellar-ibc/
         main.rs, config.rs, runner.rs, state.rs
         services/         account, balance, events, ledgers, tx/
 
-    osmosis/              stellar-osmosis — local Osmosis lifecycle crate
-      assets/
-        default-config.json   Declarative chain config (denoms, gov, keys)
-        setup.sh              Container entrypoint (jq + dasel data-driven)
-      src/                main.rs, lifecycle.rs, config.rs
-
   cli/                    stellar-ibc-cli — the `stellaribc` orchestrator
     src/
       main.rs             clap command tree + dispatch
       config.rs repo.rs run.rs probe.rs logger.rs shared.rs   base config + support
       ops/                install · check · status · stack(up/down) · start
-      osmosis/            osmosis chain lifecycle + config (start/stop/status)
+      osmosis/            local Osmosis lifecycle + config (start/stop/status)
+        assets/           default-config.json + setup.sh (mounted into the osmosis container)
       stellar/            stellar chain config + lifecycle
       clients/            cosmos · stellar · counterparty · list (+ config)
       hermes/  gateway/  api/   start · stop · restart (pull-and-run; each owns its config)
@@ -310,7 +305,7 @@ All configuration is via environment variables. Copy `.env.example` to `.env`.
 | `ROUTER_CONTRACT_ADDRESS` | _(empty)_ | Router contract — re-encoded + invoked via `/tx/prepare` |
 | `TRANSFER_CONTRACT_ADDRESS` | _(empty)_ | Transfer app contract |
 
-### Local Osmosis (`osmosis` service / `stellar-osmosis` binary)
+### Local Osmosis (`osmosis` compose service / `stellaribc osmosis`)
 
 | Variable | Default | Description |
 |---|---|---|
@@ -319,7 +314,7 @@ All configuration is via environment variables. Copy `.env.example` to `.env`.
 | `COSMOS_CHAIN_ID` | `localosmosis` | Chain id |
 
 Genesis denoms, accounts, mnemonics, gov voting period, and overrides live in
-[`crates/osmosis/assets/default-config.json`](crates/osmosis/assets/default-config.json).
+[`cli/src/osmosis/assets/default-config.json`](cli/src/osmosis/assets/default-config.json).
 
 ### Image build / CI
 
@@ -422,10 +417,10 @@ $COMPOSE ps
 ### Local Osmosis on its own
 
 ```sh
-stellaribc osmosis start     # start the local osmosis devnet
+stellaribc osmosis start            # start the local osmosis devnet
+stellaribc osmosis start --fresh    # wipe ~/.osmosisd-local first, then start
 stellaribc osmosis status
 stellaribc osmosis stop
-# (the stellar-osmosis crate also runs standalone: cargo run -p stellar-osmosis -- start [--stateful])
 ```
 
 ### Start the bridge (via `stellaribc`)
