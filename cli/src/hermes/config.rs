@@ -5,7 +5,7 @@ use crate::config::{get, ImageRef};
 pub struct HermesConfig {
     pub image: ImageRef,
     pub config: String,
-    pub config_in_container: String,
+    pub config_path: String,
 }
 
 impl HermesConfig {
@@ -16,14 +16,8 @@ impl HermesConfig {
                 tag: get("HERMES_TAG", "latest"),
                 registry: get("HERMES_REGISTRY", ""),
             },
-            config: get(
-                "HERMES_CONFIG",
-                &root.join("hermes-config.toml").display().to_string(),
-            ),
-            config_in_container: get(
-                "HERMES_CONFIG_IN_CONTAINER",
-                "/home/hermes/.hermes/config.toml",
-            ),
+            config: root.join("hermes-config.toml").display().to_string(),
+            config_path: get("HERMES_CONFIG_PATH", "/home/hermes/.hermes/config.toml"),
         }
     }
 }

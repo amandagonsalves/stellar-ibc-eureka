@@ -140,7 +140,10 @@ enum OsmosisCmd {
     #[command(
         about = "Start the osmosis chain (local docker; no-op + reachability check for testnet)"
     )]
-    Start,
+    Start {
+        #[arg(long, help = "Wipe local chain state (~/.osmosisd-local) before starting")]
+        fresh: bool,
+    },
     #[command(about = "Stop the local osmosis chain (no-op for testnet)")]
     Stop,
     #[command(about = "Show the osmosis chain network, endpoints, and health")]
@@ -338,7 +341,7 @@ async fn main() -> Result<()> {
         }
 
         Command::Osmosis { cmd } => match cmd {
-            OsmosisCmd::Start => osmosis::start(&cfg.osmosis, root, &http).await?,
+            OsmosisCmd::Start { fresh } => osmosis::start(&cfg.osmosis, root, &http, fresh).await?,
             OsmosisCmd::Stop => osmosis::stop(&cfg.osmosis, root)?,
             OsmosisCmd::Status => osmosis::status(&cfg.osmosis, &http).await?,
         },

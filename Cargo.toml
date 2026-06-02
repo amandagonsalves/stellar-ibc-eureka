@@ -4,9 +4,7 @@ members = [
     "crates/api",
     "crates/core",
     "crates/gateway",
-    "crates/osmosis",
-    "contracts/cosmwasm/light-client"
-    "contracts/soroban/*"
+    "contracts/cosmwasm/light-client",
 ]
 resolver = "2"
 

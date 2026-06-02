@@ -35,7 +35,7 @@ pub async fn run(
     }
 
     logger::step("Step 1: ensuring osmosis is up");
-    osmosis::start(&cfg.osmosis, root, http).await?;
+    osmosis::start(&cfg.osmosis, root, http, false).await?;
 
     logger::step("Step 2: ensuring api + gateway are up");
     if probe::http_ok(http, &ops.api_health_url()).await {

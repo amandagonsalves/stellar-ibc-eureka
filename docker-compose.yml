@@ -23,8 +23,8 @@ services:
     platform: linux/amd64
     entrypoint: ["sh", "/setup.sh"]
     volumes:
-      - ./crates/osmosis/assets/setup.sh:/setup.sh:ro
-      - ./crates/osmosis/assets/default-config.json:/config/default-config.json:ro
+      - ./cli/src/osmosis/assets/setup.sh:/setup.sh:ro
+      - ./cli/src/osmosis/assets/default-config.json:/config/default-config.json:ro
       - ${HOME}/.osmosisd-local:/osmosis/.osmosisd
     environment:
       COSMOS_CHAIN_ID: "${COSMOS_CHAIN_ID:-localosmosis}"

@@ -4209,16 +4209,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "stellar-osmosis"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "reqwest 0.12.28",
- "serde_json",
- "tokio",
-]
-
-[[package]]
 name = "stellar-strkey"
 version = "0.0.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"

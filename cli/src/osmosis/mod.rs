@@ -1,6 +1,7 @@
 pub mod config;
 
-use std::path::Path;
+use std::env;
+use std::path::{Path, PathBuf};
 
 use anyhow::{bail, Result};
 
@@ -8,8 +9,14 @@ use crate::osmosis::config::{OsmosisConfig, COMPOSE_SERVICE};
 use crate::{logger, probe, run};
 
 const WAIT_TIMEOUT_SECS: u64 = 300;
+const LOCAL_STATE_DIR: &str = ".osmosisd-local";
 
-pub async fn start(cfg: &OsmosisConfig, root: &Path, http: &reqwest::Client) -> Result<()> {
+pub async fn start(
+    cfg: &OsmosisConfig,
+    root: &Path,
+    http: &reqwest::Client,
+    fresh: bool,
+) -> Result<()> {
     logger::banner(&format!("osmosis start ({})", cfg.chain_id.as_str()));
 
     if !cfg.is_local() {
@@ -24,7 +31,11 @@ pub async fn start(cfg: &OsmosisConfig, root: &Path, http: &reqwest::Client) -> 
         return Ok(());
     }
 
-    if probe::http_ok(http, &cfg.status_url()).await {
+    if fresh {
+        logger::step("resetting local chain state");
+        let _ = run::compose(root, &["down"]);
+        reset_local_state();
+    } else if probe::http_ok(http, &cfg.status_url()).await {
         logger::ok("already running");
 
         return Ok(());
@@ -75,4 +86,21 @@ pub async fn status(cfg: &OsmosisConfig, http: &reqwest::Client) -> Result<()> {
     logger::detail(&format!("grpc      {}", cfg.grpc_url));
 
     Ok(())
+}
+
+fn reset_local_state() {
+    let Some(home) = env::var_os("HOME").map(PathBuf::from) else {
+        return;
+    };
+
+    let dir = home.join(LOCAL_STATE_DIR);
+
+    if !dir.exists() {
+        return;
+    }
+
+    match std::fs::remove_dir_all(&dir) {
+        Ok(()) => logger::detail(&format!("removed {}", dir.display())),
+        Err(error) => logger::warn(&format!("could not remove {} ({error})", dir.display())),
+    }
 }

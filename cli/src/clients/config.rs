@@ -7,7 +7,7 @@ pub struct ClientsConfig {
     pub osmosis_rpc_url: String,
     pub api_url: String,
     pub hermes_config: String,
-    pub hermes_config_in_container: String,
+    pub hermes_config_path: String,
     pub cosmos_client: Option<ClientId>,
     pub stellar_client: Option<ClientId>,
 }
@@ -21,7 +21,7 @@ impl From<&Config> for ClientsConfig {
             osmosis_rpc_url: cfg.osmosis.rpc_url.clone(),
             api_url: cfg.stellar.api_url.clone(),
             hermes_config: cfg.hermes.config.clone(),
-            hermes_config_in_container: cfg.hermes.config_in_container.clone(),
+            hermes_config_path: cfg.hermes.config_path.clone(),
             cosmos_client: cfg.deployment.cosmos_client(),
             stellar_client: cfg.deployment.stellar_client(),
         }

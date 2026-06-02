@@ -70,7 +70,7 @@ pub(crate) async fn create(
             "--rm",
             "hermes",
             "--config",
-            cfg.hermes_config_in_container.as_str(),
+            cfg.hermes_config_path.as_str(),
             "create",
             "client",
             "--host-chain",

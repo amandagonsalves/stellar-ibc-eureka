@@ -62,7 +62,7 @@ fn import_mnemonic(
 ) -> Result<()> {
     let script = format!(
         "cat > /tmp/m.txt && hermes --config {cfg_path} keys add --chain {chain} --mnemonic-file /tmp/m.txt --key-name {key_name} --overwrite; rc=$?; rm -f /tmp/m.txt; exit $rc",
-        cfg_path = cfg.hermes.config_in_container,
+        cfg_path = cfg.hermes.config_path,
     );
 
     run::piped(
@@ -82,7 +82,7 @@ fn import_secret(
 ) -> Result<()> {
     let script = format!(
         "cat > /tmp/k.json && hermes --config {cfg_path} keys add --chain {chain} --key-file /tmp/k.json --key-name {key_name} --overwrite; rc=$?; rm -f /tmp/k.json; exit $rc",
-        cfg_path = cfg.hermes.config_in_container,
+        cfg_path = cfg.hermes.config_path,
     );
 
     run::piped(
