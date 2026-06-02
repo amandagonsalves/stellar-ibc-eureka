@@ -33,7 +33,7 @@ pub fn run(
     let deployer = deployer_address(cfg, root)?;
     logger::detail(&format!("deployer: {deployer}"));
 
-    let wasm_dir = root.join("contracts/target/wasm32v1-none/contract");
+    let wasm_dir = root.join("contracts/soroban/target/wasm32v1-none/contract");
     let wasm = |name: &str| wasm_dir.join(name).display().to_string();
 
     logger::step("deploying mock light client");
@@ -53,7 +53,7 @@ pub fn run(
     let transfer = super::deploy(
         cfg,
         root,
-        &wasm("stellar_transfer_app.wasm"),
+        &wasm("stellar_ibc_transfer.wasm"),
         &["--router", &router, "--admin", &deployer],
     )?;
     logger::ok(&format!("transfer-app: {transfer}"));

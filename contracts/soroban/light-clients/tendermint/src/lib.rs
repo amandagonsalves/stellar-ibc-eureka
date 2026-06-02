@@ -276,5 +276,3 @@ fn decode_header(env: &Env, bytes: &Bytes) -> TendermintHeader {
 fn _proof_specs_carrier(cs: &TendermintClientState) -> &Bytes {
     &cs.proof_specs
 }
-
-mod test;
