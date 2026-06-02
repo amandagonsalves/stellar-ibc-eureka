@@ -20,7 +20,6 @@ services:
   cosmos:
     profiles: [local, cosmos]
     image: ${COSMOS_CHAIN_IMAGE:-ghcr.io/cosmos/ibc-go-wasm-simd:v11.0.0}
-    platform: linux/amd64
     user: "0:0"
     entrypoint: ["sh", "/setup.sh"]
     volumes:
