@@ -6,7 +6,7 @@ mod gateway;
 mod hermes;
 mod logger;
 mod ops;
-mod osmosis;
+mod cosmos;
 mod probe;
 mod repo;
 mod run;
@@ -44,7 +44,7 @@ enum Command {
     Check,
     #[command(about = "Show chain/service health, deployed contracts, and created clients")]
     Status,
-    #[command(about = "Bring the stack up via docker compose (osmosis + api + gateway)")]
+    #[command(about = "Bring the stack up via docker compose (cosmos + api + gateway)")]
     Up(UpArgs),
     #[command(about = "Stop the stack via docker compose")]
     Down(DownArgs),
@@ -52,10 +52,10 @@ enum Command {
         about = "Full start: pull images, start chains, deploy contracts, upload wasm, import keys"
     )]
     Start(StartArgs),
-    #[command(about = "Osmosis chain: start/stop the local devnet or point at a testnet")]
-    Osmosis {
+    #[command(about = "Cosmos chain: start/stop the local devnet or point at a testnet")]
+    Cosmos {
         #[command(subcommand)]
-        cmd: OsmosisCmd,
+        cmd: CosmosCmd,
     },
     #[command(about = "Client lifecycle: create on each chain, register counterparties, list")]
     Clients {
@@ -91,7 +91,7 @@ enum Command {
 
 #[derive(clap::Args)]
 struct UpArgs {
-    #[arg(long, help = "Start only the Cosmos chain (osmosis)")]
+    #[arg(long, help = "Start only the Cosmos chain (cosmos)")]
     cosmos: bool,
     #[arg(long, help = "Start only the Stellar-side services (api + gateway)")]
     stellar: bool,
@@ -136,26 +136,13 @@ impl Chain {
 }
 
 #[derive(Subcommand)]
-enum OsmosisCmd {
-    #[command(
-        about = "Start the osmosis chain (local docker; no-op + reachability check for testnet)"
-    )]
-    Start {
-        #[arg(
-            long,
-            help = "Wipe local chain state (~/.osmosisd-local) before starting"
-        )]
-        fresh: bool,
-    },
-    #[command(about = "Stop the local osmosis chain (no-op for testnet)")]
+enum CosmosCmd {
+    #[command(about = "Start the local Cosmos chain (cardano-entrypoint, ibc-go v10 + 08-wasm)")]
+    Start,
+    #[command(about = "Stop the local Cosmos chain")]
     Stop,
-    #[command(about = "Show the osmosis chain network, endpoints, and health")]
+    #[command(about = "Show the Cosmos chain endpoints and health")]
     Status,
-    #[command(about = "Generate validator + relayer mnemonics and write them to .env")]
-    Keygen {
-        #[arg(long, help = "Regenerate even if the mnemonics are already set")]
-        force: bool,
-    },
 }
 
 #[derive(Subcommand)]
@@ -348,11 +335,10 @@ async fn main() -> Result<()> {
             .await?
         }
 
-        Command::Osmosis { cmd } => match cmd {
-            OsmosisCmd::Start { fresh } => osmosis::start(&cfg.osmosis, root, &http, fresh).await?,
-            OsmosisCmd::Stop => osmosis::stop(&cfg.osmosis, root)?,
-            OsmosisCmd::Status => osmosis::status(&cfg.osmosis, &http).await?,
-            OsmosisCmd::Keygen { force } => osmosis::keygen(root, force)?,
+        Command::Cosmos { cmd } => match cmd {
+            CosmosCmd::Start => cosmos::start(&cfg.cosmos, root, &http).await?,
+            CosmosCmd::Stop => cosmos::stop(&cfg.cosmos, root)?,
+            CosmosCmd::Status => cosmos::status(&cfg.cosmos, &http).await?,
         },
 
         Command::Clients { cmd } => {

@@ -3,7 +3,7 @@ use std::path::Path;
 
 use crate::gateway::config::GatewayConfig;
 use crate::hermes::config::HermesConfig;
-use crate::osmosis::config::OsmosisConfig;
+use crate::cosmos::config::CosmosConfig;
 use crate::stellar::config::StellarConfig;
 
 pub enum ChainId {
@@ -128,7 +128,7 @@ impl DeploymentConfig {
 }
 
 pub struct Config {
-    pub osmosis: OsmosisConfig,
+    pub cosmos: CosmosConfig,
     pub stellar: StellarConfig,
     pub hermes: HermesConfig,
     pub api: ImageRef,
@@ -145,7 +145,7 @@ impl Config {
         let _ = dotenvy::from_path(root.join(".env"));
 
         Self {
-            osmosis: OsmosisConfig::from_env(),
+            cosmos: CosmosConfig::from_env(),
             stellar: StellarConfig::from_env(),
             hermes: HermesConfig::from_env(root),
             api: ImageRef {
