@@ -1,4 +1,4 @@
-name: CI
+name: rust
 
 on:
   pull_request:
@@ -22,20 +22,20 @@ env:
 
 jobs:
   rust:
-    name: Rust
+    name: rust
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
     steps:
-      - name: Checkout
+      - name: checkout
         uses: actions/checkout@v4
 
-      - name: Setup Rust
+      - name: setup rust
         uses: dtolnay/rust-toolchain@1.91.1
         with:
           components: rustfmt, clippy
 
-      - name: Cache cargo
+      - name: cache cargo
         uses: actions/cache@v4
         with:
           path: |
@@ -46,23 +46,23 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-cargo-crates-
 
-      - name: Install protoc
+      - name: install protoc
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y protobuf-compiler
 
-      - name: Cache cargo-audit binary
+      - name: cache cargo-audit binary
         id: cache-cargo-audit
         uses: actions/cache@v4
         with:
           path: ~/.cargo/bin/cargo-audit
           key: ${{ runner.os }}-cargo-audit-latest-2
 
-      - name: Install cargo-audit
+      - name: install cargo-audit
         if: steps.cache-cargo-audit.outputs.cache-hit != 'true'
         run: cargo install cargo-audit
 
-      - name: Audit Rust dependencies
+      - name: audit rust dependencies
         run: >
           cargo audit --file Cargo.lock
           --ignore RUSTSEC-2026-0104
@@ -71,15 +71,15 @@ jobs:
           --ignore RUSTSEC-2026-0049
           --ignore RUSTSEC-2026-0009
 
-      - name: Check formatting
+      - name: check formatting
         run: cargo fmt -- --check
 
-      - name: Lint
+      - name: lint
         run: >
           cargo clippy --locked --all-targets --
           -D warnings
           -A clippy::manual_is_multiple_of
           -A clippy::too_many_arguments
 
-      - name: Test
+      - name: test
         run: cargo test --locked

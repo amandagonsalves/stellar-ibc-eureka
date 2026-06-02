@@ -1,4 +1,4 @@
-name: Gateway CI
+name: gateway ci
 
 on:
   pull_request:
@@ -28,18 +28,18 @@ concurrency:
 
 jobs:
   build-test:
-    name: Build & smoke-test gateway image
+    name: build & test
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
     steps:
-      - name: Checkout
+      - name: checkout
         uses: actions/checkout@v4
 
-      - name: Set up Buildx
+      - name: set up buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build gateway image
+      - name: build gateway image
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -49,13 +49,13 @@ jobs:
           cache-from: type=gha,scope=gateway
           cache-to: type=gha,mode=max,scope=gateway
 
-      - name: Install grpcurl
+      - name: install grpcurl
         run: |
           curl -sSL https://github.com/fullstorydev/grpcurl/releases/download/v1.9.1/grpcurl_1.9.1_linux_x86_64.tar.gz \
             | sudo tar -xz -C /usr/local/bin grpcurl
           grpcurl --version
 
-      - name: Run gateway
+      - name: run gateway
         run: |
           docker run -d --name gateway -p 50052:50052 \
             -e STELLAR_GATEWAY_HOST=0.0.0.0 \
@@ -63,7 +63,7 @@ jobs:
             -e STELLAR_API_URL=http://127.0.0.1:8101 \
             stellar-gateway:ci
 
-      - name: Make a gRPC request (reflection)
+      - name: grpc request
         run: |
           for i in $(seq 1 30); do
             if grpcurl -plaintext localhost:50052 list >/dev/null 2>&1; then
@@ -78,10 +78,10 @@ jobs:
           echo "gateway did not start serving gRPC in time" >&2
           exit 1
 
-      - name: Container logs
+      - name: container logs
         if: always()
         run: docker logs gateway || true
 
-      - name: Cleanup
+      - name: cleanup
         if: always()
         run: docker rm -f gateway || true
