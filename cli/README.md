@@ -249,9 +249,9 @@ in the hermes config.
 ## `tx` — low-level tx surface
 
 These mirror the gateway's write/query RPCs and are mostly **pending** (they
-print a "not wired yet" notice) — they depend on migrating the gateway's
-remaining RPCs to prepare→sign→submit (TASKS.md Task 3) and the packet worker
-(Task 5).
+print a "not wired yet" notice) — the gateway now returns signable txs for all
+of them, so they depend on the relayer (hermes fork) signing + submitting those
+txs and the packet worker.
 
 | Command | Status |
 |---|---|

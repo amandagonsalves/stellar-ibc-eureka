@@ -12,7 +12,6 @@ pub fn run(side: &str) -> Result<()> {
 
     logger::banner(label);
     logger::warn("not wired yet");
-    logger::detail("counterparty registration needs the gateway's register_counterparty RPC migrated to prepare->sign->submit (TASKS.md Task 3), then a native flow here.");
 
     Ok(())
 }

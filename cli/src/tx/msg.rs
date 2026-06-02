@@ -4,7 +4,7 @@ use crate::clients;
 use crate::shared;
 
 const REASON: &str =
-    "packet messages need the gateway's recv/ack/timeout RPCs migrated to prepare->sign->submit (TASKS.md Task 3), then the relayer packet worker (Task 5).";
+    "the gateway now returns signable recv/ack/timeout txs; these need the relayer (hermes fork) to sign + submit them, then the relayer packet worker.";
 
 pub fn register_counterparty(side: &str) -> Result<()> {
     clients::counterparty::run(side)
