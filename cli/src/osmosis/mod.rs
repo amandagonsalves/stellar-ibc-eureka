@@ -89,7 +89,7 @@ pub async fn status(cfg: &OsmosisConfig, http: &reqwest::Client) -> Result<()> {
 }
 
 pub fn keygen(root: &Path, force: bool) -> Result<()> {
-    logger::banner("osmosis keygen (validator + relayer mnemonics → .env)");
+    logger::banner("osmosis keygen (validator + relayer → .env mnemonics + signer keys)");
 
     if !run::has("docker") {
         bail!("docker not found in PATH — required to generate keys via the osmosis image");
@@ -102,20 +102,21 @@ pub fn keygen(root: &Path, force: bool) -> Result<()> {
 
     let mut updates: Vec<(&str, String)> = Vec::new();
 
-    for (var, name) in [
-        ("COSMOS_VALIDATOR_MNEMONIC", "validator"),
-        ("COSMOS_RELAYER_MNEMONIC", "relayer"),
+    for (name, mnemonic_var, key_var) in [
+        ("validator", "COSMOS_VALIDATOR_MNEMONIC", "COSMOS_FUNDER_PRIVATE_KEY"),
+        ("relayer", "COSMOS_RELAYER_MNEMONIC", "COSMOS_PROPOSER_PRIVATE_KEY"),
     ] {
-        if !crate::config::get(var, "").is_empty() && !force {
-            logger::detail(&format!("{var} already set — skip (--force to regenerate)"));
+        if !crate::config::get(mnemonic_var, "").is_empty() && !force {
+            logger::detail(&format!("{mnemonic_var} already set — skip (--force to regenerate)"));
 
             continue;
         }
 
         logger::step(&format!("generating {name} key"));
-        let (address, mnemonic) = generate_key(root, &image, name)?;
-        logger::ok(&format!("{var} = {address}"));
-        updates.push((var, mnemonic));
+        let (address, mnemonic, key_hex) = generate_key(root, &image, name)?;
+        logger::ok(&format!("{name} = {address}"));
+        updates.push((mnemonic_var, mnemonic));
+        updates.push((key_var, key_hex));
     }
 
     if updates.is_empty() {
@@ -125,41 +126,33 @@ pub fn keygen(root: &Path, force: bool) -> Result<()> {
     }
 
     let refs: Vec<(&str, &str)> = updates.iter().map(|(k, v)| (*k, v.as_str())).collect();
-    shared::env_upsert(&root.join(".env").as_path(), &refs)?;
+    shared::env_upsert(&root.join(".env"), &refs)?;
 
-    logger::ok("wrote mnemonics to .env");
+    logger::ok("wrote mnemonics + signer keys to .env");
     logger::hint("rebuild genesis to fund the new accounts: stellaribc osmosis start --fresh");
 
     Ok(())
 }
 
-fn generate_key(root: &Path, image: &str, name: &str) -> Result<(String, String)> {
+fn generate_key(root: &Path, image: &str, name: &str) -> Result<(String, String, String)> {
+    let script = format!(
+        "osmosisd keys add {name} --keyring-backend test --output json; \
+         printf 'y\\n' | osmosisd keys export {name} --unarmored-hex --unsafe --keyring-backend test"
+    );
+
     let out = run::capture_all(
         root,
         "docker",
-        &[
-            "run",
-            "--rm",
-            "--entrypoint",
-            "osmosisd",
-            image,
-            "keys",
-            "add",
-            name,
-            "--keyring-backend",
-            "test",
-            "--output",
-            "json",
-        ],
+        &["run", "--rm", "--entrypoint", "sh", image, "-c", &script],
     )?;
 
-    let line = out
+    let json_line = out
         .lines()
         .find(|l| l.trim_start().starts_with('{'))
         .context("osmosisd keys add produced no JSON output")?;
 
     let json: serde_json::Value =
-        serde_json::from_str(line.trim()).context("parsing osmosisd keys add output")?;
+        serde_json::from_str(json_line.trim()).context("parsing osmosisd keys add output")?;
 
     let mnemonic = json["mnemonic"]
         .as_str()
@@ -168,7 +161,14 @@ fn generate_key(root: &Path, image: &str, name: &str) -> Result<(String, String)
 
     let address = json["address"].as_str().unwrap_or_default().to_string();
 
-    Ok((address, mnemonic))
+    let key_hex = out
+        .lines()
+        .map(str::trim)
+        .find(|l| l.len() == 64 && l.bytes().all(|b| b.is_ascii_hexdigit()))
+        .context("no unarmored hex key in osmosisd keys export output")?
+        .to_string();
+
+    Ok((address, mnemonic, key_hex))
 }
 
 fn reset_local_state() {

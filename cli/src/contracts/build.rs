@@ -7,11 +7,11 @@ use crate::{logger, run};
 pub fn run(root: &Path) -> Result<()> {
     logger::banner("contracts build");
 
-    let contracts_dir = root.join("contracts");
+    let contracts_dir = root.join("contracts/soroban");
 
     logger::step("stellar contract build --profile contract");
     run::command(
-        &contracts_dir,
+        &contracts_dir.as_path(),
         "stellar",
         &["contract", "build", "--profile", "contract"],
     )?;

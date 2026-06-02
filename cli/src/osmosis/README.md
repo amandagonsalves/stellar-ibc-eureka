@@ -18,7 +18,7 @@ so the `stellaribc contracts upload-wasm` proposal lands deterministically.
 | `assets/default-config.json` | Declarative chain config: chain id, moniker, genesis time, the `val`/`relayer` funded balances, the gentx, and the `genesis`/`app`/`config` override lists (each entry a `{path, type, value}` applied with `dasel`). Holds **no secrets** — the account mnemonics come from env. Edit this, not the script. |
 | `assets/setup.sh` | Container entrypoint. On first boot it `apk add jq dasel`, runs `osmosisd init`, applies every override from `default-config.json`, recovers each account from its env mnemonic (`COSMOS_VALIDATOR_MNEMONIC` / `COSMOS_RELAYER_MNEMONIC`) and funds it, builds the gentx, then `osmosisd start`. |
 | `config.rs` | `OsmosisConfig::from_env()` — local/testnet presets overridable via `COSMOS_*`. |
-| `mod.rs` | `start`/`stop`/`status`/`keygen` — drive `docker compose --profile osmosis up/down`; `start --fresh` wipes `~/.osmosisd-local` first; `keygen` generates the validator + relayer mnemonics into `.env`. |
+| `mod.rs` | `start`/`stop`/`status`/`keygen` — drive `docker compose --profile osmosis up/down`; `start --fresh` wipes `~/.osmosisd-local` first; `keygen` generates the validator + relayer accounts and writes their mnemonics **and** matching hex signer keys to `.env`. |
 
 ## Usage
 
@@ -45,10 +45,8 @@ Chain id `localosmosis`, account prefix `osmo`, gas denom `uosmo` — these matc
 `COSMOS_*` in `.env` and the `localosmosis` chain block in `hermes-config.toml`.
 Two accounts are recovered into genesis from env mnemonics: `val` (validator,
 `COSMOS_VALIDATOR_MNEMONIC`) and `relayer` (a funded account for Hermes,
-`COSMOS_RELAYER_MNEMONIC`). Generate a fresh relayer key with:
-
-```sh
-docker run --rm --entrypoint osmosisd osmolabs/osmosis:31.0.3-alpine \
-  keys add relayer --keyring-backend test --dry-run --output json | jq -r '.mnemonic'
-```
+`COSMOS_RELAYER_MNEMONIC`). Each account also has a hex signer key the api uses
+for the gov store-code flow — `COSMOS_FUNDER_PRIVATE_KEY` (= validator) and
+`COSMOS_PROPOSER_PRIVATE_KEY` (= relayer). `stellaribc osmosis keygen` generates
+all four together so the mnemonic↔hex pairs never drift; don't set them by hand.
 

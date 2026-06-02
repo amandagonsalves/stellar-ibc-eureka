@@ -117,12 +117,21 @@ Lifecycle for the `localosmosis` chain (the `osmosis` compose service). On
 | `start` | `--fresh` | `docker compose up -d osmosis` + wait for the first block; `--fresh` wipes `~/.osmosisd-local` and rebuilds genesis |
 | `stop` | — | `docker compose stop osmosis` |
 | `status` | — | probe RPC + print network/endpoints |
-| `keygen` | `--force` | generate the validator + relayer mnemonics and write them to `.env` (skips ones already set; `--force` regenerates). Uses the `osmolabs/osmosis` image — no local `osmosisd` needed |
+| `keygen` | `--force` | generate the validator + relayer accounts and write **all four** vars to `.env` — the two mnemonics plus the matching hex signer keys (skips when the mnemonic is already set; `--force` regenerates). Uses the `osmolabs/osmosis` image — no local `osmosisd` needed |
 
-The validator/relayer mnemonics live in `.env` (`COSMOS_VALIDATOR_MNEMONIC` /
-`COSMOS_RELAYER_MNEMONIC`); `docker-compose.yml` passes them into the container
-and `setup.sh` recovers + funds those accounts at genesis. `keygen` is the
-one-command way to populate them on a fresh checkout.
+The two genesis accounts each map to two `.env` vars:
+
+| Account | Mnemonic var | Hex signer var | Used by |
+|---|---|---|---|
+| validator | `COSMOS_VALIDATOR_MNEMONIC` | `COSMOS_FUNDER_PRIVATE_KEY` | genesis validator; the api's gov **funder/voter** (votes with stake) |
+| relayer | `COSMOS_RELAYER_MNEMONIC` | `COSMOS_PROPOSER_PRIVATE_KEY` | Hermes relayer key; the api's gov **proposer** |
+
+`docker-compose.yml` passes the mnemonics into the osmosis container and
+`setup.sh` recovers + funds those accounts at genesis; the api signs gov
+messages (store-code proposal during `upload-wasm`) with the hex keys. Because
+the hex key is just the mnemonic's private key, `keygen` writes both together so
+they never drift — `keygen` is the one-command way to populate all four on a
+fresh checkout.
 
 ---
 
