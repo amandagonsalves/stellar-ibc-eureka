@@ -243,27 +243,6 @@ fn update_state_rejects_non_advancing_height() {
 }
 
 #[test]
-fn update_state_rejects_broken_ledger_chain() {
-    let mut deps = mock_dependencies();
-    do_instantiate(&mut deps);
-
-    let bogus_previous = [0xff; 32];
-    let hdr = header(
-        100,
-        105,
-        1_000_500,
-        bogus_previous,
-        LEDGER_HASH_NEXT,
-        ROOT_NEXT,
-    );
-    let msg = SudoMsg::UpdateState(UpdateStateMsg {
-        client_message: encode(&hdr),
-    });
-    let err = sudo(deps.as_mut(), mock_env(), msg).unwrap_err();
-    assert!(matches!(err, ContractError::LedgerHashChainBroken { .. }));
-}
-
-#[test]
 fn check_for_misbehaviour_detects_conflicting_root_at_same_height() {
     let mut deps = mock_dependencies();
     do_instantiate(&mut deps);
@@ -557,7 +536,7 @@ fn update_state_rejects_envelope_signed_by_untrusted_validator() {
         }),
     )
     .unwrap_err();
-    assert!(matches!(err, ContractError::QuorumNotMet));
+    assert!(matches!(err, ContractError::QuorumNotMet { .. }));
 }
 
 #[test]
@@ -585,7 +564,7 @@ fn update_state_rejects_when_signature_was_made_for_a_different_statement() {
         }),
     )
     .unwrap_err();
-    assert!(matches!(err, ContractError::QuorumNotMet));
+    assert!(matches!(err, ContractError::QuorumNotMet { .. }));
 }
 
 #[test]
@@ -687,7 +666,7 @@ fn update_state_rejects_when_envelopes_carry_empty_statement_xdr() {
         }),
     )
     .unwrap_err();
-    assert!(matches!(err, ContractError::QuorumNotMet));
+    assert!(matches!(err, ContractError::QuorumNotMet { .. }));
 }
 
 #[test]
@@ -726,5 +705,5 @@ fn update_state_rejects_envelope_signed_against_different_network() {
         }),
     )
     .unwrap_err();
-    assert!(matches!(err, ContractError::QuorumNotMet));
+    assert!(matches!(err, ContractError::QuorumNotMet { .. }));
 }

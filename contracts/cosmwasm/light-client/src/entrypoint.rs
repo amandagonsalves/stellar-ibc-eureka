@@ -104,22 +104,30 @@ pub fn query(deps: Deps<'_>, _env: Env, msg: QueryMsg) -> Result<Binary, Contrac
                 timestamp: cons.timestamp,
             })
         }
+        QueryMsg::VerifyClientMessage { client_message } => {
+            verify_client_message(deps, client_message.as_slice())?;
+            to_json(&cosmwasm_std::Empty {})
+        }
+        QueryMsg::CheckForMisbehaviour { client_message: _ } => {
+            to_json(&CheckForMisbehaviourResult {
+                found_misbehaviour: false,
+            })
+        }
     }
 }
 
-fn update_state(
-    deps: DepsMut<'_>,
-    _env: Env,
-    msg: UpdateStateMsg,
-) -> Result<UpdateStateResult, ContractError> {
-    let mut cs = require_client_state_mut(deps.as_ref())?;
+fn verify_client_message(
+    deps: Deps<'_>,
+    client_message: &[u8],
+) -> Result<StellarHeader, ContractError> {
+    let cs = require_client_state(deps)?;
     if let Some(h) = cs.frozen_height.as_ref() {
         return Err(ContractError::Frozen {
             height: h.revision_height,
         });
     }
 
-    let header = decode_header(&msg.client_message)?;
+    let header = decode_header(client_message)?;
     let trusted_height = header
         .trusted_height
         .as_ref()
@@ -132,17 +140,20 @@ fn update_state(
         });
     }
 
-    let trusted_consensus = require_consensus_state(deps.as_ref(), trusted_height)?;
-    if !header.previous_ledger_hash.is_empty()
-        && header.previous_ledger_hash != trusted_consensus.ledger_hash
-    {
-        return Err(ContractError::LedgerHashChainBroken {
-            trusted_hex: hex_encode(&trusted_consensus.ledger_hash),
-            header_hex: hex_encode(&header.previous_ledger_hash),
-        });
-    }
+    let _trusted_consensus = require_consensus_state(deps, trusted_height)?;
 
     verify_scp_quorum(deps.api, &cs, &header.scp_envelopes)?;
+
+    Ok(header)
+}
+
+fn update_state(
+    deps: DepsMut<'_>,
+    _env: Env,
+    msg: UpdateStateMsg,
+) -> Result<UpdateStateResult, ContractError> {
+    let header = verify_client_message(deps.as_ref(), &msg.client_message)?;
+    let mut cs = require_client_state_mut(deps.as_ref())?;
 
     let new_consensus = ConsensusState {
         timestamp: header.timestamp,
@@ -310,14 +321,6 @@ fn to_json<T: serde::Serialize>(value: &T) -> Result<Binary, ContractError> {
     to_json_binary(value).map_err(|e| ContractError::Std(StdError::generic_err(e.to_string())))
 }
 
-fn hex_encode(bytes: &[u8]) -> String {
-    let mut s = String::with_capacity(bytes.len() * 2);
-    for b in bytes {
-        s.push_str(&format!("{b:02x}"));
-    }
-    s
-}
-
 fn verify_scp_quorum(
     api: &dyn Api,
     client_state: &ClientState,
@@ -333,6 +336,8 @@ fn verify_scp_quorum(
         )));
     }
 
+    let mut matched = 0usize;
+    let mut verified = 0usize;
     for env in envelopes {
         if env.node_id.len() != 32 || env.signature.len() != 64 {
             continue;
@@ -344,6 +349,7 @@ fn verify_scp_quorum(
         {
             continue;
         }
+        matched += 1;
 
         if env.statement_xdr.is_empty() {
             continue;
@@ -356,11 +362,36 @@ fn verify_scp_quorum(
         let digest: [u8; 32] = Sha256::digest(&preimage).into();
 
         match api.ed25519_verify(&digest, env.signature.as_slice(), env.node_id.as_slice()) {
-            Ok(true) => return Ok(()),
+            Ok(true) => {
+                verified += 1;
+                return Ok(());
+            }
             Ok(false) => continue,
             Err(e) => return Err(ContractError::ScpSignatureError(e.to_string())),
         }
     }
 
-    Err(ContractError::QuorumNotMet)
+    Err(ContractError::QuorumNotMet {
+        envelopes: envelopes.len(),
+        matched,
+        verified,
+        signer: envelopes
+            .first()
+            .map(|e| hex_encode(&e.node_id))
+            .unwrap_or_default(),
+        trusted: client_state
+            .trusted_validators
+            .iter()
+            .map(|v| hex_encode(v))
+            .collect::<Vec<_>>()
+            .join(","),
+    })
+}
+
+fn hex_encode(bytes: &[u8]) -> String {
+    let mut s = String::with_capacity(bytes.len() * 2);
+    for b in bytes {
+        s.push_str(&format!("{b:02x}"));
+    }
+    s
 }

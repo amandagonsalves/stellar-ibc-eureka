@@ -27,19 +27,19 @@ pub enum ContractError {
     #[error("header height {target} must be greater than trusted height {trusted}")]
     NonAdvancingHeight { trusted: u64, target: u64 },
 
-    #[error(
-        "header ledger_hash chain mismatch (trusted={trusted_hex}, header_previous={header_hex})"
-    )]
-    LedgerHashChainBroken {
-        trusted_hex: String,
-        header_hex: String,
-    },
-
     #[error("conflicting consensus state already stored at height {height}")]
     ConsensusStateConflict { height: u64 },
 
-    #[error("scp quorum not met")]
-    QuorumNotMet,
+    #[error(
+        "scp quorum not met (envelopes={envelopes}, matched_trusted={matched}, verified={verified}, signer={signer}, trusted=[{trusted}])"
+    )]
+    QuorumNotMet {
+        envelopes: usize,
+        matched: usize,
+        verified: usize,
+        signer: String,
+        trusted: String,
+    },
 
     #[error("scp network_id is not configured on the client state")]
     NetworkIdMissing,

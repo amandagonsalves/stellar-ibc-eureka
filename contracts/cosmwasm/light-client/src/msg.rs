@@ -66,6 +66,8 @@ pub enum QueryMsg {
     LatestHeight {},
     Status {},
     TimestampAtHeight { height: Height },
+    VerifyClientMessage { client_message: Binary },
+    CheckForMisbehaviour { client_message: Binary },
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
