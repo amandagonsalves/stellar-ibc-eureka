@@ -31,6 +31,7 @@ pub struct StateTracker {
     roots: HashMap<u32, [u8; 32]>,
     ibc_contract_id: Option<[u8; 32]>,
     smt: Smt,
+    last_processed: Option<u32>,
 }
 
 impl StateTracker {
@@ -40,6 +41,7 @@ impl StateTracker {
             roots: HashMap::new(),
             ibc_contract_id,
             smt: Smt::new(),
+            last_processed: None,
         }
     }
 
@@ -47,7 +49,7 @@ impl StateTracker {
         if let Some(&root) = self.roots.get(&seq) {
             return Ok(root);
         }
-        self.process(seq).await
+        self.process_through(seq).await
     }
 
     pub async fn proof_for_path(&mut self, seq: u32, key: &[u8]) -> anyhow::Result<PathLookup> {
@@ -78,8 +80,36 @@ impl StateTracker {
         }
     }
 
-    async fn process(&mut self, seq: u32) -> anyhow::Result<[u8; 32]> {
-        tracing::debug!(sequence = seq, "fetching ledger via api");
+    async fn process_through(&mut self, seq: u32) -> anyhow::Result<[u8; 32]> {
+        let start = match self.last_processed {
+            Some(last) if last >= seq => {
+                let root = self.smt.root();
+                self.roots.insert(seq, root);
+                return Ok(root);
+            }
+            Some(last) => last + 1,
+            None => seq,
+        };
+
+        if start < seq {
+            tracing::info!(
+                from = start,
+                to = seq,
+                "replaying ledger range into smt (cumulative)"
+            );
+        }
+
+        for ledger_seq in start..=seq {
+            self.apply_ledger(ledger_seq).await?;
+        }
+
+        self.last_processed = Some(seq);
+        let root = self.smt.root();
+        self.roots.insert(seq, root);
+        Ok(root)
+    }
+
+    async fn apply_ledger(&mut self, seq: u32) -> anyhow::Result<()> {
         let ledger = self.api.get_ledger(seq).await?;
 
         let mut changes_applied = 0usize;
@@ -93,24 +123,22 @@ impl StateTracker {
             }
         }
 
-        let root = self.smt.root();
-        self.roots.insert(seq, root);
         if changes_applied > 0 {
             tracing::info!(
                 sequence = seq,
                 changes_applied,
-                root = %hex::encode(root),
+                root = %hex::encode(self.smt.root()),
                 "ledger applied ibc state changes into smt"
             );
         } else {
             tracing::debug!(
                 sequence = seq,
                 changes_applied,
-                root = %hex::encode(root),
                 "ledger processed into smt (no ibc changes)"
             );
         }
-        Ok(root)
+
+        Ok(())
     }
 
     fn apply(&mut self, change: LedgerEntryChange) {
