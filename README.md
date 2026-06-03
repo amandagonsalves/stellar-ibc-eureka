@@ -18,7 +18,7 @@ This repository is part of the **Cardano–Stellar IBC bridge** project. It ship
 | **`light-client-wasm`** | Stellar light client compiled to `wasm32-unknown-unknown`, uploaded to the Cosmos chain via `08-wasm` (`contracts/cosmwasm/light-client`). |
 | **Soroban contracts** | `ibc-router`, `ibc-transfer`, and light clients (`mock`, `attestation`, `tendermint`) under `contracts/soroban/`. |
 | **`stellar-ibc-cli`** (`stellaribc`) | The orchestrator CLI under `cli/`. One binary for the whole bridge: bring the stack up, pull + run images, deploy contracts, upload the light client, create clients, register counterparties, and check status. Drives docker, the `stellar` CLI, and `stellar-api` directly — no shell scripts. |
-| **Hermes fork integration** | `relayer-types::clients::ics10_stellar` and `chain::stellar::StellarChainEndpoint` live in the [cardano-foundation/hermes-relayer](https://github.com/cardano-foundation/hermes-relayer) fork. |
+| **Hermes fork integration** | `relayer-types::clients::ics10_stellar`, `chain::stellar::StellarChainEndpoint`, and the v2/Eureka `worker::stellar_packet` (client-paired packet relay: decode → commitment proof → `update_client` → `recv`) live in the [cardano-foundation/hermes-relayer](https://github.com/cardano-foundation/hermes-relayer) fork. |
 
 Related repositories:
 
@@ -135,13 +135,21 @@ The SMT (fixed-depth-64 binary Merkle tree, Cardano-compatible) lives in
         │  router stores (clientId → counterparty)
         ▼
 2. sendPacket(Packet{sequence, sourceClient, destClient, payloads[]})
-        │  Hermes observes SendPacket, fetches proof from source chain
+        │  gateway decodes the Soroban event; the Stellar packet-relay worker
+        │  observes it, fetches the commitment proof from the gateway, and
+        │  updateClient(destClient) → proof height before submitting
         ▼
-3. recvPacket(packet, proof, proofHeight)              ← LC verify_membership
-        │  Hermes observes WriteAcknowledgement, fetches proof from dest
+3. recvPacket(packet, proof, proofHeight)              ← dest LC verify_membership
+        │  worker observes WriteAcknowledgement, fetches the ack proof
         ▼
 4. ackPacket(packet, ack, proof, proofHeight)          ← clears source commitment
 ```
+
+Hermes's stock packet relay is channel-based; IBC v2/Eureka has no channels, so a
+**client-paired packet worker** in the fork (`worker::stellar_packet`) drives the
+flow above. The gateway's `StateTracker` reconstructs the SMT from ledger
+close-meta (cumulative replay; parses `TransactionMeta` V4) to serve the
+commitment proofs.
 
 ### Light-client verification
 
@@ -239,7 +247,9 @@ through `ApiClient` against `stellar-api`.
 | `QueryPacketReceipt` | `client_id`, `sequence`, `height` | `received` (bool), `proof`, `proof_height` | v2 path `… 0x02 …` |
 | `QueryAcknowledgement` | `client_id`, `sequence`, `height` | `acknowledgement`, `proof`, `proof_height` | v2 path `… 0x03 …` |
 | `Events` | `contract_id`, `cursor`, `start_ledger`, `limit` | `events[]`, `latest_ledger`, `cursor` | Backed by api `GET /events` (planned) |
-| `QueryClientState` / `QueryConsensusState` / `QueryNextSeqRecv` | — | — | Return `Unimplemented` — non-provable in v2 |
+| `QueryClientState` | `client_id`, `height` | `client_state` (ibc `Any`) | Reads the router/LC state and re-encodes the Soroban client state to an ibc `Any` (Tendermint) |
+| `QueryClientStates` | — | `client_states[]` | Lists the clients on the router (used by the relayer scan) |
+| `QueryConsensusState` / `QueryNextSeqRecv` | — | — | Return `Unimplemented` — non-provable in v2 |
 
 ### `StellarGatewayMsg`
 

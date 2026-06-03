@@ -247,12 +247,45 @@ Cardano Foundation fork added `CardanoChainEndpoint`; this project adds
 - **polls** the gateway for Stellar events (`SendPacket`, `WriteAcknowledgement`),
 - **builds** IBC v2 messages and obtains unsigned txs from the gateway,
 - **signs** with the relayer key and **submits** via `SubmitSignedTx`,
-- **queries** packet commitments / receipts / acks with proofs for the other side.
+- **queries** clients, packet commitments / receipts / acks with proofs.
 
-Everything else — event loop, tx queueing, client refresh, timeouts, fee
-estimation, key management, config — is inherited from Hermes unchanged. Because
-the whole stack is Rust (contracts, core, gateway, api, wasm LC, and Hermes), the
-relayer integration is debuggable end-to-end in one toolchain.
+Client/consensus tracking: `AnyClientState` / `AnyConsensusState` route the
+`/ibc.lightclients.wasm.v1.*` envelope to the Stellar parser, so Hermes tracks
+the Stellar `08-wasm` client on Cosmos like a native one; the SDK/ibc-go compat
+gates are widened to admit simd v11.
+
+### v2 (Eureka) packet relay — what Hermes doesn't give us
+
+Hermes's stock packet relay (`Link`/`RelayPath`) is **channel-based**: a worker
+spawns when the scan finds a v1 channel. IBC v2/Eureka has **no channels**, so
+that worker never spawns — and everything below is the v2 equivalent we supply:
+
+```
+1. router emits send_packet (Soroban ScVal event: topics + packet map)
+2. gateway decodes the event → `attributes` text on the Events RPC
+3. StellarChainEndpoint poller → IbcEvent::AppModule(stellaribcrouter, …) → event bus
+4. stellar_packet worker (custom, client-paired — not channel-paired):
+     a. decode the v2 Packet (sequence, source/dest client, payloads)
+     b. query the commitment proof from the gateway (ICS-23 vs the SMT root)
+     c. build MsgUpdateClient for the dest 08-wasm client → the proof height
+        (the dest client MUST be ≥ proof height or ibc-go rejects the proof —
+         exactly the step Hermes's RelayPath does automatically for v1)
+     d. build MsgRecvPacket (ibc.core.channel.v2)
+     e. submit [update, recv] to Cosmos via the chain handle
+5. ibc-go runs the 08-wasm Stellar LC to verify the commitment proof
+```
+
+The **gateway state tracker** is what makes step (b) possible: it reconstructs
+the SMT by replaying ledger close-meta cumulatively (every ledger from the last
+processed up to the queried height, so the send ledger's commitment write is
+ingested) and parses Soroban `TransactionMeta` **V4** (the format soroban-testnet
+emits). The commitment proof is generated against the same SMT root the
+consensus state carries, so the on-chain verify is consistent.
+
+Everything else — event loop, tx queueing, client refresh, fee estimation, key
+management, config — is inherited from Hermes unchanged. Because the whole stack
+is Rust (contracts, core, gateway, api, wasm LC, and Hermes), the relayer
+integration is debuggable end-to-end in one toolchain.
 
 ---
 

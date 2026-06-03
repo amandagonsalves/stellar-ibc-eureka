@@ -30,12 +30,12 @@ The Stellar IBC v2 stack is implemented and demonstrably working end-to-end on a
 
 - **Both light clients are live.** A Tendermint client (`07-tendermint`) created on the Stellar router, and a Stellar `08-wasm` client created on the Cosmos chain (the Stellar light client compiled to wasm and gov-uploaded via `MsgStoreCode`).
 - **Counterparties registered in both directions** (IBC v2 `registerCounterparty`) — the chains are bound and ready to carry packets, with no v1 connection/channel handshake.
-- **ICS-20 transfer origination working on Stellar** — the transfer app escrows assets and emits an IBC v2 `SendPacket` through the router, driven by `stellaribc transfer`.
+- **End-to-end Stellar→Cosmos relay running.** `stellaribc transfer` escrows assets and emits an IBC v2 `SendPacket`; the relayer observes it, decodes the v2 packet, fetches the commitment proof from the Stellar gateway, updates the Stellar light client on Cosmos, and submits `MsgRecvPacket` to the Cosmos chain — where ibc-go runs the `08-wasm` light client to verify the proof. The full pipeline (event → proof → client update → recv) executes against a live testnet + simd.
 - **Soroban protocol layer complete** — `ibc-router`, `ibc-transfer`, light clients, the Cardano-compatible SMT, and the ICS-23 proof serializer, all in Rust with unit tests.
-- **Relayer integration** — a `StellarChainEndpoint` and `ics10_stellar` client types in the shared Hermes fork; the relayer recognizes and tracks the Stellar `08-wasm` client and health-checks the Cosmos chain.
+- **IBC v2 relayer built on the shared Hermes fork** — a `StellarChainEndpoint` and `ics10_stellar` client types, plus a v2/Eureka packet-relay worker (Hermes's stock relay is channel-based and v2 has no channels, so this supplies the v2 equivalents): event decoding, a cumulative SMT state tracker, client/packet queries with proofs, and `update_client` + `recv` submission.
 - **Built on the only production non-Cosmos IBC stack.** This project reuses the Cardano Foundation's Hermes fork, light-client patterns, and reference Cosmos entrypoint — cutting years off the work and validating that the architecture generalizes across consensus families (Ouroboros, SCP, Tendermint).
 
-The one piece between here and a fully relayed transfer is the relayer's packet worker (observe `SendPacket` → submit `RecvPacket` with proof → `AckPacket`), which is the first MVP deliverable below.
+The remaining step to a verified ICS-20 transfer is the on-chain `08-wasm` proof verification on Cosmos (consensus-root/commitment-prefix consistency) and the acknowledgement leg back to Stellar — the MVP deliverable below.
 
 ## SCF Build Tranche Deliverables
 
