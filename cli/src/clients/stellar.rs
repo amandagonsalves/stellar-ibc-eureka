@@ -11,7 +11,7 @@ pub async fn run(
     root: &Path,
     http: &reqwest::Client,
     force: bool,
-) -> Result<()> {
+) -> Result<String> {
     logger::banner("clients stellar (Stellar client on Cosmos, 08-wasm)");
 
     if !force {
@@ -21,7 +21,7 @@ pub async fn run(
                 existing.as_str()
             ));
 
-            return Ok(());
+            return Ok(existing.as_str().to_string());
         }
     }
 
@@ -40,10 +40,10 @@ pub async fn run(
         existing: cfg.stellar_client.as_ref().map(|c| c.as_str()),
     };
 
-    super::create(cfg, root, http, &spec, force).await?;
+    let client_id = super::create(cfg, root, http, &spec, force).await?;
     logger::hint("next: stellaribc clients counterparty stellar / cosmos");
 
-    Ok(())
+    Ok(client_id)
 }
 
 fn wasm_checksum_present(hermes_config: &str) -> bool {

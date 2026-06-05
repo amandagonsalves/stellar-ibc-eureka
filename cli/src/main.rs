@@ -200,6 +200,13 @@ enum ClientsCmd {
         #[arg(value_enum, help = "Which side to register the counterparty on")]
         chain: Chain,
     },
+    #[command(
+        about = "Create both clients and register both counterparties atomically (ids can't drift)"
+    )]
+    Bootstrap {
+        #[arg(long, help = "Force-create fresh clients even if ids are already set")]
+        force: bool,
+    },
     #[command(about = "List clients created on the Stellar router")]
     List,
 }
@@ -378,13 +385,16 @@ async fn main() -> Result<()> {
 
             match cmd {
                 ClientsCmd::Cosmos { force } => {
-                    clients::cosmos::run(&cc, root, &http, force).await?
+                    clients::cosmos::run(&cc, root, &http, force).await?;
                 }
                 ClientsCmd::Stellar { force } => {
-                    clients::stellar::run(&cc, root, &http, force).await?
+                    clients::stellar::run(&cc, root, &http, force).await?;
                 }
                 ClientsCmd::Counterparty { chain } => {
                     clients::counterparty::run(&cc, root, chain.as_str())?
+                }
+                ClientsCmd::Bootstrap { force } => {
+                    clients::bootstrap(&cc, root, &http, force).await?
                 }
                 ClientsCmd::List => clients::list::run(&cc, &http).await?,
             }

@@ -11,7 +11,7 @@ pub async fn run(
     root: &Path,
     http: &reqwest::Client,
     force: bool,
-) -> Result<()> {
+) -> Result<String> {
     logger::banner("clients cosmos (Cosmos client on Stellar)");
 
     let spec = CreateSpec {
@@ -22,8 +22,8 @@ pub async fn run(
         existing: cfg.cosmos_client.as_ref().map(|c| c.as_str()),
     };
 
-    super::create(cfg, root, http, &spec, force).await?;
+    let client_id = super::create(cfg, root, http, &spec, force).await?;
     logger::hint("next: stellaribc clients stellar");
 
-    Ok(())
+    Ok(client_id)
 }

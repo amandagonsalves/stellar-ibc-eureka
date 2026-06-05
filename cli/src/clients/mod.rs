@@ -25,7 +25,7 @@ pub(crate) async fn create(
     http: &reqwest::Client,
     spec: &CreateSpec<'_>,
     force: bool,
-) -> Result<()> {
+) -> Result<String> {
     if let Some(existing) = spec.existing {
         if !force {
             logger::warn(&format!(
@@ -33,7 +33,7 @@ pub(crate) async fn create(
                 spec.result_env_var
             ));
 
-            return Ok(());
+            return Ok(existing.to_string());
         }
     }
 
@@ -93,6 +93,27 @@ pub(crate) async fn create(
         &[(spec.result_env_var, client_id.as_str())],
     )?;
     logger::detail(&format!("{}={client_id}", spec.result_env_var));
+
+    Ok(client_id)
+}
+
+pub async fn bootstrap(
+    cfg: &ClientsConfig,
+    root: &Path,
+    http: &reqwest::Client,
+    force: bool,
+) -> Result<()> {
+    logger::banner("clients bootstrap (create both clients + register both counterparties)");
+
+    let cosmos_client = cosmos::run(cfg, root, http, force).await?;
+    let stellar_client = stellar::run(cfg, root, http, force).await?;
+
+    counterparty::register(cfg, root, "stellar", &cosmos_client, &stellar_client)?;
+    counterparty::register(cfg, root, "cosmos", &cosmos_client, &stellar_client)?;
+
+    logger::ok(&format!(
+        "bootstrap complete: cosmos={cosmos_client} stellar={stellar_client} (counterparties paired)"
+    ));
 
     Ok(())
 }

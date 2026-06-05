@@ -13,6 +13,16 @@ pub fn run(cfg: &ClientsConfig, root: &Path, side: &str) -> Result<()> {
         .map(|c| c.as_str())
         .unwrap_or("");
 
+    register(cfg, root, side, cosmos_client, stellar_client)
+}
+
+pub fn register(
+    cfg: &ClientsConfig,
+    root: &Path,
+    side: &str,
+    cosmos_client: &str,
+    stellar_client: &str,
+) -> Result<()> {
     let (label, chain, client, counterparty) = match side {
         "stellar" => (
             "clients counterparty stellar (register the Cosmos client as counterparty on Stellar)",
