@@ -434,7 +434,7 @@ fn verify_membership_accepts_valid_proof_against_matching_root() {
         proofs: vec![CommitmentProof {
             proof: Some(Proof::Exist(ExistenceProof {
                 key: key.to_vec(),
-                value: value.to_vec(),
+                value: sha256(value).to_vec(),
                 leaf: Some(LeafOp::default()),
                 path: path_ops,
             })),

@@ -256,7 +256,7 @@ fn verify_membership(
     let (proof_key, proof_value, siblings) = decode_membership_proof(msg.proof.as_slice())?;
 
     let key_match = proof_key == key;
-    let value_match = proof_value.as_slice() == msg.value.as_slice();
+    let value_match = proof_value.as_slice() == sha256(msg.value.as_slice()).as_slice();
     let computed_root = if siblings.len() == TREE_DEPTH && !msg.value.is_empty() {
         let leaf = leaf_hash(sha256(&key), sha256(msg.value.as_slice()));
         Some(fold_siblings(key_index(&key), leaf, &siblings))
