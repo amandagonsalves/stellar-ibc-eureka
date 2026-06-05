@@ -64,16 +64,10 @@ pub(crate) async fn create(
         "hermes create client --host-chain {} --reference-chain {}",
         spec.host_chain, spec.reference_chain
     ));
-    let output = run::capture_all(
+    let output = crate::hermes::container::exec(
         root,
-        "docker",
+        cfg.hermes_config_path.as_str(),
         &[
-            "compose",
-            "run",
-            "--rm",
-            "hermes",
-            "--config",
-            cfg.hermes_config_path.as_str(),
             "create",
             "client",
             "--host-chain",

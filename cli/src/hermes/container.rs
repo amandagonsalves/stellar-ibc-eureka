@@ -34,6 +34,27 @@ pub fn stop(root: &Path) -> Result<()> {
     Ok(())
 }
 
+pub fn exec(root: &Path, config_path: &str, args: &[&str]) -> Result<String> {
+    run::compose(root, &["up", "-d", SERVICE])?;
+
+    let mut full: Vec<&str> = vec![
+        "compose",
+        "--profile",
+        "local",
+        "--profile",
+        "hermes",
+        "exec",
+        "-T",
+        SERVICE,
+        "hermes",
+        "--config",
+        config_path,
+    ];
+    full.extend_from_slice(args);
+
+    run::capture_all(root, "docker", &full)
+}
+
 pub fn restart(cfg: &HermesConfig, root: &Path, pull: bool) -> Result<()> {
     logger::banner("hermes restart");
     logger::detail(&format!("image: {}", cfg.image.reference()));

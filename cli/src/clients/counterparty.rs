@@ -52,16 +52,10 @@ pub fn register(
         "hermes create counterparty --chain {chain} --client {client} --counterparty-client {counterparty}"
     ));
 
-    let output = run::capture_all(
+    let output = crate::hermes::container::exec(
         root,
-        "docker",
+        cfg.hermes_config_path.as_str(),
         &[
-            "compose",
-            "run",
-            "--rm",
-            "hermes",
-            "--config",
-            cfg.hermes_config_path.as_str(),
             "create",
             "counterparty",
             "--chain",
