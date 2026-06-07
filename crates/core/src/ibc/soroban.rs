@@ -7,7 +7,9 @@ use ibc_proto::ibc::core::client::v1::Height as RawHeight;
 use ibc_proto::ibc::core::commitment::v1::MerkleRoot;
 use ibc_proto::ibc::lightclients::tendermint::v1::{
     ClientState as RawTmClientState, ConsensusState as RawTmConsensusState, Fraction,
+    Header as RawTmHeader,
 };
+use prost::Message;
 use stellar_xdr::curr::{
     Limits, ReadXdr, ScBytes, ScMap, ScMapEntry, ScString, ScSymbol, ScVal, StringM, VecM, WriteXdr,
 };
@@ -200,6 +202,72 @@ impl AnyClientState {
 
         Ok(AnyClientState::Tendermint(cs))
     }
+}
+
+pub fn tendermint_header_to_soroban_xdr(header_bytes: &[u8]) -> Result<Vec<u8>> {
+    let header =
+        RawTmHeader::decode(header_bytes).map_err(|e| anyhow!("decode tendermint header: {e}"))?;
+
+    let signed_header = header
+        .signed_header
+        .ok_or_else(|| anyhow!("tendermint header missing signed_header"))?;
+    let inner = signed_header
+        .header
+        .as_ref()
+        .ok_or_else(|| anyhow!("signed_header missing inner header"))?;
+    let trusted_height = header
+        .trusted_height
+        .ok_or_else(|| anyhow!("tendermint header missing trusted_height"))?;
+
+    let target_revision_height =
+        u64::try_from(inner.height).map_err(|_| anyhow!("negative target height"))?;
+    let timestamp_secs = inner
+        .time
+        .as_ref()
+        .map(|t| t.seconds.max(0) as u64)
+        .unwrap_or(0);
+    let next_validators_hash = inner.next_validators_hash.clone();
+    let app_hash = inner.app_hash.clone();
+
+    if next_validators_hash.len() != 32 {
+        return Err(anyhow!(
+            "next_validators_hash is {} bytes, expected 32",
+            next_validators_hash.len()
+        ));
+    }
+    if app_hash.len() != 32 {
+        return Err(anyhow!("app_hash is {} bytes, expected 32", app_hash.len()));
+    }
+
+    let validator_set_bytes = header
+        .validator_set
+        .as_ref()
+        .map(|v| v.encode_to_vec())
+        .unwrap_or_default();
+    let signed_header_bytes = signed_header.encode_to_vec();
+
+    let state = sc_struct(vec![
+        (
+            "trusted_height",
+            sc_height(
+                trusted_height.revision_number,
+                trusted_height.revision_height,
+            )?,
+        ),
+        (
+            "target_height",
+            sc_height(trusted_height.revision_number, target_revision_height)?,
+        ),
+        ("timestamp_secs", ScVal::U64(timestamp_secs)),
+        ("next_validators_hash", sc_bytes(next_validators_hash)?),
+        ("app_hash", sc_bytes(app_hash)?),
+        ("signed_header_bytes", sc_bytes(signed_header_bytes)?),
+        ("validator_set_bytes", sc_bytes(validator_set_bytes)?),
+    ])?;
+
+    state
+        .to_xdr(Limits::none())
+        .map_err(|e| anyhow!("tendermint header to_xdr: {e}"))
 }
 
 impl AnyConsensusState {

@@ -163,7 +163,16 @@ impl StellarGatewayMsg for MsgHandler {
             header_bytes = req.header.len(),
             "gRPC UpdateClient"
         );
-        let args = vec![scval_string(&req.client_id)?, scval_bytes(&req.header)?];
+
+        let header_xdr = if req.client_id.starts_with("07-tendermint") {
+            stellar_ibc_core::ibc::soroban::tendermint_header_to_soroban_xdr(&req.header).map_err(
+                |e| Status::invalid_argument(format!("tendermint header to soroban xdr: {e}")),
+            )?
+        } else {
+            req.header.clone()
+        };
+
+        let args = vec![scval_string(&req.client_id)?, scval_bytes(&header_xdr)?];
         let tx_xdr = self.prepare_msg_tx("update_client", args).await?;
         Ok(Response::new(MsgUpdateClientResponse { tx_xdr }))
     }
