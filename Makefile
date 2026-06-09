@@ -42,3 +42,6 @@ lint:
 
 install:
 	cargo run -p stellar-ibc-cli -- install
+
+push-all:
+	make push SERVICE=hermes && make push SERVICE=gateway && make push SERVICE=api

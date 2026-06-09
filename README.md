@@ -10,13 +10,24 @@ The first counterparty is a Cosmos chain (ibc-go v10+ with the `08-wasm`
 light-client module); the same machinery extends to Cardano and beyond.
 
 > **Status — early, under active development. This is a test implementation, not
-> production-ready.** On a local devnet (live Soroban testnet + ibc-go v11
-> `simd`), a single ICS-20 transfer Stellar→Cosmos has been relayed and
-> **verified on-chain** by the `08-wasm` light client (SCP header + ICS-23/SMT
-> commitment proof), after which Cosmos minted the IBC voucher with a success
+> production-ready.** Progress is tracked against the Interchain Standards the
+> stack implements, on a local devnet (live Soroban testnet + ibc-go v11 `simd`):
+>
+> | ICS standard | What it covers here | State |
+> |---|---|---|
+> | **ICS-26 — Routing** | `ibc-router` dispatch + IBC v2 counterparty registration (both sides) | done |
+> | **ICS-24 — Host paths** | commitment / receipt / ack paths in the provable SMT store | done |
+> | **ICS-02 — Clients** | `07-tendermint` on Stellar, Stellar `08-wasm` on Cosmos — create / update / verify | done; `08-wasm` verified on-chain |
+> | **ICS-23 — Commitments** | membership / non-membership `MerkleProof`s over the SMT | membership verified on-chain; non-membership (timeout) implemented |
+> | **ICS-04 — Packets** | `send` + `recv` verified (Stellar→Cosmos); `acknowledge` wired; `timeout` implemented | in progress |
+> | **ICS-20 — Token transfer** | escrow → relay → mint (`FungibleTokenPacketData`) | Stellar→Cosmos proven on-chain; reverse next |
+>
+> A single ICS-20 transfer Stellar→Cosmos has been relayed and **verified
+> on-chain** by the `08-wasm` light client (SCP header + ICS-23/SMT commitment
+> proof), after which Cosmos minted the IBC voucher with a success
 > acknowledgement. The acknowledgement back-leg and the reverse direction
-> (Cosmos→Stellar) are in progress, and error/timeout paths, broader test
-> coverage, and a security review are still ahead.
+> (Cosmos→Stellar) are in progress; broader test coverage and a security review
+> are still ahead.
 
 ---
 

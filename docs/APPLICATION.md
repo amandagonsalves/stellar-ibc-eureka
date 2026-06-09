@@ -43,13 +43,14 @@ This is a pre-launch infrastructure project, so traction is **technical proof + 
 
 ### Technical traction
 
-Already built and demonstrably working. The Stellar IBC v2 stack runs end-to-end on a local devnet against a real ibc-go v11 + `08-wasm` Cosmos chain:
+Already built and demonstrably working, tracked against the Interchain Standards the stack implements. The Stellar IBC v2 stack runs end-to-end on a local devnet against a real ibc-go v11 + `08-wasm` Cosmos chain:
 
-- **Both light clients live:** a `07-tendermint` client on the Stellar router, and a Stellar `08-wasm` client on Cosmos (the Stellar LC compiled to wasm and gov-uploaded via `MsgStoreCode`).
-- **Counterparties registered both directions** (IBC v2 `registerCounterparty`) — no v1 handshake.
-- **End-to-end Stellar→Cosmos transfer verified on-chain:** `stellaribc transfer` escrows + emits a `SendPacket`; the relayer fetches the commitment proof and submits `MsgRecvPacket`; the `08-wasm` Stellar LC runs `VerifyClientMessage` (SCP quorum) → `UpdateState` → `VerifyMembership` (ICS-23/SMT) — all passing on-chain — and mints an `ibc/<hash>` voucher with a success acknowledgement.
-- **Complete Soroban protocol layer** — router, transfer, light clients, Cardano-compatible SMT, ICS-23 serializer — in Rust with unit tests.
-- **IBC v2 relayer on the shared Hermes fork:** `StellarChainEndpoint`, `ics10_stellar` types, and a custom v2/Eureka packet-relay worker.
+- **ICS-26 (Routing) — done.** The `ibc-router` Soroban contract dispatches `send` / `recv` / `ack` / `timeout`, and IBC v2 counterparty registration (`registerCounterparty`) is complete on both sides — no v1 connection or channel handshake.
+- **ICS-24 (Host requirements) — done.** Packet commitment, receipt, and acknowledgement paths live in a deterministic fixed-depth-64, Cardano-compatible Sparse Merkle Tree whose root is the consensus root counterparty clients verify against.
+- **ICS-02 (Client semantics) — done, verification proven on-chain.** A `07-tendermint` client on the Stellar router, and a Stellar `08-wasm` client on Cosmos (the Stellar LC compiled to wasm and gov-uploaded via `MsgStoreCode`); the `08-wasm` client runs `VerifyClientMessage` (SCP quorum) → `UpdateState` on-chain.
+- **ICS-23 (Vector commitments) — membership proven on-chain.** The `08-wasm` LC runs `VerifyMembership` (ICS-23 over the SMT) on-chain for `recv`; non-membership (for `timeout`) is implemented.
+- **ICS-20 (Fungible token transfer) — Stellar→Cosmos proven on-chain.** `stellaribc transfer` escrows + emits a `SendPacket`; the relayer fetches the commitment proof and submits `MsgRecvPacket`; on-chain verification passes and Cosmos mints an `ibc/<hash>` voucher with a success acknowledgement. The reverse direction (Cosmos→Stellar) is next.
+- **IBC v2 relayer on the shared Hermes fork:** `StellarChainEndpoint`, `ics10_stellar` types, and a custom v2/Eureka packet-relay worker drive ICS-04 packet semantics (`send` + `recv` verified; `acknowledge` wired; `timeout` implemented).
 
 [TODO: add txs and code]
 
@@ -67,15 +68,15 @@ Already built and demonstrably working. The Stellar IBC v2 stack runs end-to-end
 
 **Goal:** Close the Stellar↔Cosmos ICS-20 loop in both directions, with on-chain proof verification on both sides, on the devnet where the forward leg is already proven.
 
-**Deliverable 1 — Full ICS-20 round-trip, both directions (Stellar↔Cosmos).**
-- *Description:* Complete the Hermes v2 packet-relay worker for the Stellar endpoint: relay `SendPacket`→`RecvPacket`, `WriteAcknowledgement`→`AckPacket`, and timeout handling. Deliver `stellar→cosmos` (escrow → received → acknowledged) and the reverse `cosmos→stellar` (`MsgTransfer` → credited/minted on Stellar → acknowledged), driven by `stellaribc transfer`.
+**Deliverable 1 — Full ICS-04 + ICS-20 round-trip, both directions (Stellar↔Cosmos).**
+- *Description:* Complete ICS-04 packet semantics (`send` / `recv` / `acknowledge` / `timeout`) end-to-end via the Hermes v2 packet-relay worker for the Stellar endpoint — relay `SendPacket`→`RecvPacket`, `WriteAcknowledgement`→`AckPacket`, and timeout handling — closing the ICS-20 transfer loop. Deliver `stellar→cosmos` (escrow → received → acknowledged) and the reverse `cosmos→stellar` (`MsgTransfer` → credited/minted on Stellar → acknowledged), driven by `stellaribc transfer`.
 - *Completion criteria:* A single command runs a full round-trip in each direction on the devnet; relayer logs show ack relayed back and the source commitment cleared; screen recording + GitHub commit range.
 - *Estimated completion:* 4 weeks after approval.
 - *Budget:* $19,000.
 
-**Deliverable 2 — Light-client correctness + proof verification, both directions.**
-- *Description:* Validate the `07-tendermint` LC on Stellar against real Cosmos headers (`update_client`, `verify_membership`) and the Stellar `08-wasm` LC against SCP `EXTERNALIZE` proofs + ICS-23 membership/non-membership, so packet proofs are verified on-chain in both directions (membership for recv/ack, non-membership for timeout).
-- *Completion criteria:* Test suite demonstrating header updates and membership + non-membership proof verification passing on both clients; GitHub link to tests + results.
+**Deliverable 2 — ICS-02 + ICS-23 conformance on both light clients.**
+- *Description:* Bring both light clients to full ICS-02 (client semantics) and ICS-23 (vector commitments) conformance, in both directions. **ICS-02:** validate the `07-tendermint` LC on Stellar against real Cosmos headers (`update_client`) and the Stellar `08-wasm` LC against SCP `EXTERNALIZE` proofs (`VerifyClientMessage` → `UpdateState`). **ICS-23:** verify membership (`verify_membership`, for recv/ack) and non-membership (for timeout) proofs on-chain on both clients, against the Cosmos consensus root and the Stellar SMT root respectively.
+- *Completion criteria:* Test suite demonstrating ICS-02 header updates and ICS-23 membership + non-membership proof verification passing on both clients; GitHub link to tests + results.
 - *Estimated completion:* 6 weeks after approval.
 - *Budget:* $11,000.
 
