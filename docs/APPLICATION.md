@@ -7,10 +7,10 @@
 > Bridge
 
 ## Project URL
-> [Github](https://github.com/amandagonsalves/stellar-ibc)
+> [Overview](https://amandagonsalves.github.io/sdf-ibc-proposal/index.html)
 
 ## Technical Architecture Document
-> [Architecture](https://gist.github.com/amandagonsalves/230821f0c455ac18ae776c05dd3592cc)
+> [Architecture](https://amandagonsalves.github.io/sdf-ibc-proposal/architecture.html)
 
 ## Video URL
 [TODO: add youtube url]
