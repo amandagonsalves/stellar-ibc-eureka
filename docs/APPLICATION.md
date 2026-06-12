@@ -57,14 +57,14 @@ Already built and demonstrably working, tracked against the Interchain Standards
 **From the demo video**
 
 Transactions:
-[create_client](https://stellar.expert/explorer/testnet/tx/13070912626638848)
-[register_counterparty](https://stellar.expert/explorer/testnet/tx/13070925511528448)
-[update_client](https://stellar.expert/explorer/testnet/tx/13070964166250496)
+[create_client](https://stellar.expert/explorer/testnet/tx/13070912626638848) | 
+[register_counterparty](https://stellar.expert/explorer/testnet/tx/13070925511528448) | 
+[update_client](https://stellar.expert/explorer/testnet/tx/13070964166250496) | 
 [acknowledge_packet](https://stellar.expert/explorer/testnet/tx/13070968461209600)
 
 Contracts:
-[IBC Router](https://stellar.expert/explorer/testnet/contract/CCI4Q3XPN33J7NGFRZASFXB4H6LWVKOMOJUFYQZE6O2MOBZOYXFILZUH)
-[IBC Transfer](https://stellar.expert/explorer/testnet/contract/CBPQ6JJSKMKGQ4TRZKFUFS5RD2B2EYMJJDORZPKYRGQOBJYSCAMWCCN7)
+[IBC Router](https://stellar.expert/explorer/testnet/contract/CCI4Q3XPN33J7NGFRZASFXB4H6LWVKOMOJUFYQZE6O2MOBZOYXFILZUH) | 
+[IBC Transfer](https://stellar.expert/explorer/testnet/contract/CBPQ6JJSKMKGQ4TRZKFUFS5RD2B2EYMJJDORZPKYRGQOBJYSCAMWCCN7) | 
 [Tendermint Light Client](https://stellar.expert/explorer/testnet/contract/CAJM575RWFTPWBGAIYIVWS4XKHAQLZPZI4H3GWPZPRZ467WHFMZM7YHL)
 
 ### Market validation
