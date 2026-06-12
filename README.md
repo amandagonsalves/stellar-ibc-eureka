@@ -59,7 +59,9 @@ The pieces:
 
 - **Soroban contracts** — the `ibc-router` (IBC v2 core: client/counterparty
   registration, `send` / `recv` / `ack` / `timeout`, and the provable
-  commitment/receipt/ack store), the `ibc-transfer` ICS-20 application, and the
+  commitment/receipt/ack store), the `ibc-transfer` ICS-20 application — escrow
+  and mint over the **Stellar Asset Contract (SAC)** token interface, so native
+  XLM and issued assets (USDC, EURC) move by their canonical SAC address — and the
   on-chain light clients (`tendermint`, `attestation`, `mock`).
 - **`light-client-wasm`** — the Stellar light client compiled to wasm and
   deployed on the counterparty via `08-wasm`; verifies SCP `EXTERNALIZE`
@@ -87,8 +89,8 @@ handshake — IBC v2 keeps only the packet lifecycle):
 
 - **Setup** — `RegisterCounterparty` per side (**ICS-26**), binding each client to
   its counterparty id and commitment prefix (**ICS-24**).
-- **Stellar → Cosmos** — `ibc-transfer` escrows and builds the
-  `FungibleTokenPacketData` (**ICS-20** `OnSendPacket`); `ibc-router.send_packet`
+- **Stellar → Cosmos** — `ibc-transfer` escrows the asset via its **SAC** token
+  contract and builds the `FungibleTokenPacketData` (**ICS-20** `OnSendPacket`); `ibc-router.send_packet`
   writes the commitment (**ICS-04** / **ICS-24**); the relayer proves it
   (**ICS-23**) and the Cosmos `08-wasm` Stellar LC verifies the SCP header
   (**ICS-02** `VerifyClientMessage` → `UpdateState`) and the commitment
@@ -112,7 +114,7 @@ stellar-ibc/
 │   ├── core/        shared library — SMT, ICS-23 proofs, commitment paths, RPC + HTTP clients
 │   ├── gateway/     stellar-hermes-gateway — keyless gRPC service
 │   └── api/         stellar-api — HTTP service that owns the Soroban RPC + signing key
-├── eureka/             interstellar — the orchestrator CLI
+├── interstellar/       the orchestrator CLI — deploy, clients, relayer, transfer
 ├── contracts/
 │   ├── soroban/     ibc-router, ibc-transfer, light-clients/{tendermint,attestation,mock}
 │   └── cosmwasm/    light-client — the Stellar light client built for Cosmos 08-wasm
