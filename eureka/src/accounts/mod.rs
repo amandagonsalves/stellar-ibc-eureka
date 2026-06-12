@@ -11,6 +11,36 @@ const COSMOS_FUND_AMOUNT: &str = "1000000000stake";
 
 const KEYRING_FLAGS: [&str; 4] = ["--keyring-backend", "test", "--home", COSMOS_HOME];
 
+pub fn show(cfg: &Config) {
+    logger::banner("accounts (dedicated sender + receiver per chain)");
+
+    logger::step("Stellar (Soroban) — origin of a stellar→cosmos transfer");
+    account_line("sender", &cfg.accounts.stellar_sender_address);
+    account_line("receiver", &cfg.accounts.stellar_receiver_address);
+    account_line("deployer / admin", &cfg.deployment.deployer_address);
+    logger::detail(&format!(
+        "relayer signer key: {} (held by stellar-api, not the gateway)",
+        cfg.stellar.key_name
+    ));
+
+    logger::step("Cosmos (ibc-go v11 simd) — destination");
+    account_line("sender", &cfg.accounts.cosmos_sender_address);
+    account_line("receiver", &cfg.accounts.cosmos_receiver_address);
+    logger::detail(&format!("relayer signer key: {}", cfg.cosmos.key_name));
+
+    logger::hint("sender & receiver are dedicated accounts, distinct from the deployer/relayer keys");
+}
+
+fn account_line(label: &str, address: &str) {
+    if address.is_empty() {
+        logger::warn(&format!(
+            "{label:<18} (not provisioned — run `eurekastellar start`)"
+        ));
+    } else {
+        logger::ok(&format!("{label:<18} {address}"));
+    }
+}
+
 pub fn provision(cfg: &Config, root: &Path, force: bool) -> Result<()> {
     logger::banner("accounts (dedicated sender + receiver per chain)");
 

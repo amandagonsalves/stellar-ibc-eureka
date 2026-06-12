@@ -1,5 +1,6 @@
 mod accounts;
 mod api;
+mod balances;
 mod clients;
 mod config;
 mod contracts;
@@ -7,6 +8,7 @@ mod cosmos;
 mod gateway;
 mod hermes;
 mod logger;
+mod logs;
 mod ops;
 mod probe;
 mod repo;
@@ -86,11 +88,33 @@ enum Command {
     },
     #[command(about = "Originate an ICS-20 transfer from the given source chain")]
     Transfer(TransferArgs),
+    #[command(about = "Show the dedicated sender + receiver accounts on each chain")]
+    Accounts,
+    #[command(about = "Show the Cosmos receiver voucher and the Stellar sender + escrow balances")]
+    Balances(BalancesArgs),
+    #[command(about = "Show the staged round-trip relay lines from the gateway + hermes logs")]
+    Logs(LogsArgs),
     #[command(about = "Low-level tx surface: clients, msg, query")]
     Tx {
         #[command(subcommand)]
         cmd: TxCmd,
     },
+}
+
+#[derive(clap::Args)]
+struct BalancesArgs {
+    #[arg(long, default_value = "stake", help = "Token denom to read")]
+    denom: String,
+}
+
+#[derive(clap::Args)]
+struct LogsArgs {
+    #[arg(
+        long,
+        default_value = "120s",
+        help = "How far back to pull container logs"
+    )]
+    since: String,
 }
 
 #[derive(clap::Args)]
@@ -486,6 +510,10 @@ async fn main() -> Result<()> {
                 Chain::Cosmos => transfer::cosmos_to_stellar(&cfg, root, &ta)?,
             }
         }
+
+        Command::Accounts => accounts::show(&cfg),
+        Command::Balances(args) => balances::run(&cfg, root, &http, &args.denom).await?,
+        Command::Logs(args) => logs::run(root, &args.since)?,
 
         Command::Tx { cmd } => match cmd {
             TxCmd::Clients { cmd } => match cmd {
