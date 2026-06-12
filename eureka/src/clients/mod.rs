@@ -44,7 +44,7 @@ pub(crate) async fn create(
     logger::step(&format!("probing gateway gRPC at {}", cfg.gateway_url));
     if !probe::tcp_ok(&cfg.gateway_url) {
         bail!(
-            "gateway not reachable at {} — start it with: stellaribc gateway start",
+            "gateway not reachable at {} — start it with: eurekastellar gateway start",
             cfg.gateway_url
         );
     }
@@ -55,7 +55,7 @@ pub(crate) async fn create(
     ));
     if !probe::http_ok(http, &cfg.cosmos_status_url()).await {
         bail!(
-            "Cosmos RPC not reachable at {} — start it with: stellaribc up --cosmos",
+            "Cosmos RPC not reachable at {} — start it with: eurekastellar up --cosmos",
             cfg.cosmos_rpc_url
         );
     }

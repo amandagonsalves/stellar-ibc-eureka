@@ -43,7 +43,7 @@ pub fn register(
     logger::banner(label);
 
     if client.is_empty() || counterparty.is_empty() {
-        bail!("both COSMOS_CLIENT_ID and STELLAR_CLIENT_ID must be set — run `stellaribc clients cosmos` and `stellaribc clients stellar` first");
+        bail!("both COSMOS_CLIENT_ID and STELLAR_CLIENT_ID must be set — run `eurekastellar clients cosmos` and `eurekastellar clients stellar` first");
     }
 
     if !run::has("docker") {

@@ -27,7 +27,7 @@ pub async fn run(
 
     if !wasm_checksum_present(&cfg.hermes_config) {
         bail!(
-            "wasm_checksum_hex is empty in {} — upload the light client first: stellaribc contracts upload-wasm",
+            "wasm_checksum_hex is empty in {} — upload the light client first: eurekastellar contracts upload-wasm",
             cfg.hermes_config
         );
     }
@@ -41,7 +41,7 @@ pub async fn run(
     };
 
     let client_id = super::create(cfg, root, http, &spec, force).await?;
-    logger::hint("next: stellaribc clients counterparty stellar / cosmos");
+    logger::hint("next: eurekastellar clients counterparty stellar / cosmos");
 
     Ok(client_id)
 }

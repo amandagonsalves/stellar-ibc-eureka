@@ -27,7 +27,7 @@
 
 > **A transfer in ICS terms.** Setup is `RegisterCounterparty` per side (**ICS-26**). Stellar→Cosmos: `ibc-transfer` escrows + builds `FungibleTokenPacketData` (**ICS-20** `OnSendPacket`) → `ibc-router.send_packet` writes the commitment (**ICS-04**/**ICS-24**) → relayer proves it (**ICS-23**) → the Cosmos `08-wasm` Stellar LC verifies the SCP header (**ICS-02**) and commitment (**ICS-23**) on-chain → mints the voucher (**ICS-20** `OnRecvPacket`). Ack back: the success ack `{"result":"AQ=="}` is proven (**ICS-23**) and relayed to `acknowledge_packet` (**ICS-04**), which settles the escrow (**ICS-20**); timeouts refund via an **ICS-23** non-membership proof.
 
-**`stellaribc` orchestration CLI + a reusable multi-chain stack.** A single Rust binary that deploys the contracts, uploads the Stellar `08-wasm` light client, creates clients, registers counterparties, and runs the relayer — no shell scripts.
+**`eurekastellar` orchestration CLI + a reusable multi-chain stack.** A single Rust binary that deploys the contracts, uploads the Stellar `08-wasm` light client, creates clients, registers counterparties, and runs the relayer — no shell scripts.
 - *How Stellar is used:* it drives the Soroban CLI, `stellar-api`, and Docker to stand up and operate a complete Stellar IBC deployment reproducibly.
 - *Impact:* the same protocol layer, relayer, and tooling that connect Stellar to Cosmos extend to Cardano and any future IBC chain — the marginal cost of the next chain is one light client + one endpoint, so the bridge scales O(n), not O(n²).
 
@@ -51,7 +51,7 @@ Already built and demonstrably working, tracked against the Interchain Standards
 - **ICS-24 (Host requirements) — done.** Packet commitment, receipt, and acknowledgement paths live in a deterministic fixed-depth-64, Cardano-compatible Sparse Merkle Tree whose root is the consensus root counterparty clients verify against.
 - **ICS-02 (Client semantics) — done, verification proven on-chain.** A `07-tendermint` client on the Stellar router, and a Stellar `08-wasm` client on Cosmos (the Stellar LC compiled to wasm and gov-uploaded via `MsgStoreCode`); the `08-wasm` client runs `VerifyClientMessage` (SCP quorum) → `UpdateState` on-chain.
 - **ICS-23 (Vector commitments) — membership proven on-chain.** The `08-wasm` LC runs `VerifyMembership` (ICS-23 over the SMT) on-chain for `recv`; non-membership (for `timeout`) is implemented.
-- **ICS-20 (Fungible token transfer) — Stellar→Cosmos proven on-chain.** `stellaribc transfer` escrows + emits a `SendPacket`; the relayer fetches the commitment proof and submits `MsgRecvPacket`; on-chain verification passes and Cosmos mints an `ibc/<hash>` voucher with a success acknowledgement. The reverse direction (Cosmos→Stellar) is next.
+- **ICS-20 (Fungible token transfer) — Stellar→Cosmos proven on-chain.** `eurekastellar transfer` escrows + emits a `SendPacket`; the relayer fetches the commitment proof and submits `MsgRecvPacket`; on-chain verification passes and Cosmos mints an `ibc/<hash>` voucher with a success acknowledgement. The reverse direction (Cosmos→Stellar) is next.
 - **IBC v2 relayer on the shared Hermes fork:** `StellarChainEndpoint`, `ics10_stellar` types, and a custom v2/Eureka packet-relay worker drive ICS-04 packet semantics (`send` + `recv` verified; `acknowledge` wired; `timeout` implemented).
 
 [TODO: add txs]
@@ -71,7 +71,7 @@ Already built and demonstrably working, tracked against the Interchain Standards
 **Goal:** Close the Stellar↔Cosmos ICS-20 loop in both directions, with on-chain proof verification on both sides, on the devnet where the forward leg is already proven.
 
 **Deliverable 1 — Full ICS-04 + ICS-20 round-trip, both directions (Stellar↔Cosmos).**
-- *Description:* Complete ICS-04 packet semantics (`send` / `recv` / `acknowledge` / `timeout`) end-to-end via the Hermes v2 packet-relay worker for the Stellar endpoint — relay `SendPacket`→`RecvPacket`, `WriteAcknowledgement`→`AckPacket`, and timeout handling — closing the ICS-20 transfer loop. Deliver `stellar→cosmos` (escrow → received → acknowledged) and the reverse `cosmos→stellar` (`MsgTransfer` → credited/minted on Stellar → acknowledged), driven by `stellaribc transfer`.
+- *Description:* Complete ICS-04 packet semantics (`send` / `recv` / `acknowledge` / `timeout`) end-to-end via the Hermes v2 packet-relay worker for the Stellar endpoint — relay `SendPacket`→`RecvPacket`, `WriteAcknowledgement`→`AckPacket`, and timeout handling — closing the ICS-20 transfer loop. Deliver `stellar→cosmos` (escrow → received → acknowledged) and the reverse `cosmos→stellar` (`MsgTransfer` → credited/minted on Stellar → acknowledged), driven by `eurekastellar transfer`.
 - *Completion criteria:* A single command runs a full round-trip in each direction on the devnet; relayer logs show ack relayed back and the source commitment cleared; screen recording + GitHub commit range.
 - *Estimated completion:* 4 weeks after approval.
 - *Budget:* $19,000.
@@ -101,7 +101,7 @@ Already built and demonstrably working, tracked against the Interchain Standards
 - *Budget:* $18,000.
 
 **Deliverable 3 — Integration test suite + community testable build.**
-- *Description:* End-to-end integration tests covering both corridors and edge cases (timeouts, failed acks, client refresh); a documented, reproducible `stellaribc` devnet/testnet build shared with the Stellar Discord for feedback.
+- *Description:* End-to-end integration tests covering both corridors and edge cases (timeouts, failed acks, client refresh); a documented, reproducible `eurekastellar` devnet/testnet build shared with the Stellar Discord for feedback.
 - *Completion criteria:* Passing CI test suite (GitHub link); testable build + instructions shared in Discord; collected feedback summary.
 - *Estimated completion:* 15 weeks after approval.
 - *Budget:* $7,000.
@@ -130,7 +130,7 @@ Already built and demonstrably working, tracked against the Interchain Standards
 - *Budget:* $16,000.
 
 **Deliverable 4 — Operator/integrator UX + documentation.**
-- *Description:* Polished `stellaribc` operator UX, an operator runbook (run your own Stellar IBC relayer), an integrator guide (plug an app into the transfer flow), a public monitoring dashboard, and a published docs site.
+- *Description:* Polished `eurekastellar` operator UX, an operator runbook (run your own Stellar IBC relayer), an integrator guide (plug an app into the transfer flow), a public monitoring dashboard, and a published docs site.
 - *Completion criteria:* Docs site live at a public URL (with TOC); operator + integrator guides published; dashboard URL showing relay/transfer activity.
 - *Estimated completion:* 24 weeks after approval.
 - *Budget:* $7,000.

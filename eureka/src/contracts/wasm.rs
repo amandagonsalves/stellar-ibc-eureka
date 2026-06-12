@@ -43,7 +43,7 @@ pub async fn upload(
 
     if !probe::http_ok(http, &format!("{}/cosmos/node-info", cfg.api_url)).await {
         logger::warn(&format!(
-            "api not reachable at {} — start it with: stellaribc api start",
+            "api not reachable at {} — start it with: eurekastellar api start",
             cfg.api_url
         ));
 

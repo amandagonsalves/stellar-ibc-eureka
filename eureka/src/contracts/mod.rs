@@ -23,11 +23,15 @@ pub(crate) fn last_line(out: &str) -> String {
 }
 
 fn stellar_base(cfg: &ContractsConfig, sub: &str) -> Vec<String> {
+    stellar_base_as(cfg, sub, &cfg.cli_identity)
+}
+
+fn stellar_base_as(cfg: &ContractsConfig, sub: &str, source: &str) -> Vec<String> {
     let mut args = vec![
         "contract".to_string(),
         sub.to_string(),
         "--source".to_string(),
-        cfg.cli_identity.clone(),
+        source.to_string(),
     ];
     args.extend(cfg.net_flags());
 
@@ -55,7 +59,17 @@ pub(crate) fn deploy(
 }
 
 pub(crate) fn invoke(cfg: &ContractsConfig, root: &Path, id: &str, call: &[&str]) -> Result<()> {
-    let mut args = stellar_base(cfg, "invoke");
+    invoke_as(cfg, root, id, call, &cfg.cli_identity)
+}
+
+pub(crate) fn invoke_as(
+    cfg: &ContractsConfig,
+    root: &Path,
+    id: &str,
+    call: &[&str],
+    source: &str,
+) -> Result<()> {
+    let mut args = stellar_base_as(cfg, "invoke", source);
     args.push("--id".to_string());
     args.push(id.to_string());
     args.push("--".to_string());

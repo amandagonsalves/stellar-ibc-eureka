@@ -22,7 +22,7 @@ Rust dependency (in cross-contract tests) and as a deployable wasm contract.
 ```sh
 stellar contract build --profile contract
 # or, from the repo root:
-stellaribc contracts build
+eurekastellar contracts build
 ```
 
 Artifacts land under the workspace `target/wasm32v1-none/contract/`. See each

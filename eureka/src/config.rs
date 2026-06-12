@@ -129,6 +129,32 @@ impl DeploymentConfig {
     }
 }
 
+pub struct AccountsConfig {
+    pub stellar_sender_identity: String,
+    pub stellar_sender_address: String,
+    pub stellar_receiver_identity: String,
+    pub stellar_receiver_address: String,
+    pub cosmos_sender_key_name: String,
+    pub cosmos_sender_address: String,
+    pub cosmos_receiver_key_name: String,
+    pub cosmos_receiver_address: String,
+}
+
+impl AccountsConfig {
+    pub fn from_env() -> Self {
+        Self {
+            stellar_sender_identity: get("STELLAR_SENDER_IDENTITY", "stellar-sender"),
+            stellar_sender_address: get("STELLAR_SENDER_ADDRESS", ""),
+            stellar_receiver_identity: get("STELLAR_RECEIVER_IDENTITY", "stellar-receiver"),
+            stellar_receiver_address: get("STELLAR_RECEIVER_ADDRESS", ""),
+            cosmos_sender_key_name: get("COSMOS_SENDER_KEY_NAME", "cosmos-sender"),
+            cosmos_sender_address: get("COSMOS_SENDER_ADDRESS", ""),
+            cosmos_receiver_key_name: get("COSMOS_RECEIVER_KEY_NAME", "cosmos-receiver"),
+            cosmos_receiver_address: get("COSMOS_RECEIVER_ADDRESS", ""),
+        }
+    }
+}
+
 pub struct Config {
     pub cosmos: CosmosConfig,
     pub stellar: StellarConfig,
@@ -136,6 +162,7 @@ pub struct Config {
     pub api: ImageRef,
     pub gateway: GatewayConfig,
     pub deployment: DeploymentConfig,
+    pub accounts: AccountsConfig,
 }
 
 pub fn get(key: &str, default: &str) -> String {
@@ -167,6 +194,7 @@ impl Config {
                 cosmos_client_id: get("COSMOS_CLIENT_ID", ""),
                 stellar_client_id: get("STELLAR_CLIENT_ID", ""),
             },
+            accounts: AccountsConfig::from_env(),
         }
     }
 }

@@ -22,18 +22,29 @@ pub fn stellar_to_cosmos(cfg: &Config, root: &Path, args: &TransferArgs) -> Resu
 
     let transfer_app = cfg.deployment.transfer_app.as_str();
     let source_client = cfg.deployment.cosmos_client_id.as_str();
-    let sender = cfg.deployment.deployer_address.as_str();
+
+    let sender = if !cfg.accounts.stellar_sender_address.is_empty() {
+        cfg.accounts.stellar_sender_address.as_str()
+    } else {
+        cfg.deployment.deployer_address.as_str()
+    };
+
+    let sender_identity = if !cfg.accounts.stellar_sender_identity.is_empty() {
+        cfg.accounts.stellar_sender_identity.as_str()
+    } else {
+        cfg.stellar.cli_identity.as_str()
+    };
 
     if transfer_app.is_empty() {
-        bail!("TRANSFER_CONTRACT_ADDRESS is not set — run `stellaribc start` first");
+        bail!("TRANSFER_CONTRACT_ADDRESS is not set — run `eurekastellar start` first");
     }
 
     if source_client.is_empty() {
-        bail!("COSMOS_CLIENT_ID is not set — run `stellaribc clients cosmos` first");
+        bail!("COSMOS_CLIENT_ID is not set — run `eurekastellar clients cosmos` first");
     }
 
     if sender.is_empty() {
-        bail!("DEPLOYER_ADDRESS is not set");
+        bail!("no Stellar sender — run `eurekastellar start` to provision STELLAR_SENDER_ADDRESS (or set DEPLOYER_ADDRESS)");
     }
 
     let receiver = if !args.receiver.is_empty() {
@@ -75,7 +86,7 @@ pub fn stellar_to_cosmos(cfg: &Config, root: &Path, args: &TransferArgs) -> Resu
         args.amount, args.denom
     ));
 
-    contracts::invoke(
+    contracts::invoke_as(
         &cc,
         root,
         transfer_app,
@@ -96,6 +107,7 @@ pub fn stellar_to_cosmos(cfg: &Config, root: &Path, args: &TransferArgs) -> Resu
             "--memo",
             &memo_json,
         ],
+        sender_identity,
     )?;
 
     logger::ok("transfer initiated — hermes will relay recv → ack");

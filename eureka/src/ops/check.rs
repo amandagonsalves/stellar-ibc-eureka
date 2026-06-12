@@ -45,7 +45,7 @@ pub async fn run(root: &Path, cfg: &OpsConfig, http: &reqwest::Client) -> Result
     shared::flag(
         "ROUTER_CONTRACT_ADDRESS",
         !cfg.ibc_router.is_empty(),
-        "router address (set by `stellaribc contracts deploy-all`)",
+        "router address (set by `eurekastellar contracts deploy-all`)",
     );
     shared::flag(
         "TRANSFER_CONTRACT_ADDRESS",
@@ -55,7 +55,7 @@ pub async fn run(root: &Path, cfg: &OpsConfig, http: &reqwest::Client) -> Result
     shared::flag(
         "STELLAR_CLIENT_ID",
         !cfg.stellar_client_id.is_empty(),
-        "08-wasm client id (set by `stellaribc clients stellar`)",
+        "08-wasm client id (set by `eurekastellar clients stellar`)",
     );
 
     logger::step("Services");
@@ -70,7 +70,7 @@ pub async fn run(root: &Path, cfg: &OpsConfig, http: &reqwest::Client) -> Result
     logger::status_line("gateway-grpc", gateway, &cfg.gateway_url);
 
     if !cosmos || !api {
-        logger::hint("bring the stack up with: stellaribc up");
+        logger::hint("bring the stack up with: eurekastellar up");
     }
 
     Ok(())

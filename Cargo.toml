@@ -1,6 +1,6 @@
 [workspace]
 members = [
-    "cli",
+    "eureka",
     "crates/api",
     "crates/core",
     "crates/gateway",

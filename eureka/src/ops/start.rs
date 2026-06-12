@@ -17,6 +17,7 @@ pub async fn run(
     skip_contracts: bool,
     skip_wasm: bool,
     skip_keys: bool,
+    skip_accounts: bool,
     force_redeploy: bool,
 ) -> Result<()> {
     logger::banner("start");
@@ -72,7 +73,8 @@ pub async fn run(
         logger::detail("skip lc-wasm upload");
     } else {
         logger::step("Step 4: uploading light-client-wasm to Cosmos");
-        crate::contracts::wasm::upload(&ContractsConfig::from(cfg), root, http, false, None).await?;
+        crate::contracts::wasm::upload(&ContractsConfig::from(cfg), root, http, false, None)
+            .await?;
     }
 
     if skip_keys {
@@ -82,8 +84,15 @@ pub async fn run(
         hermes::keys::import(cfg, root)?;
     }
 
+    if skip_accounts {
+        logger::detail("skip sender + receiver account provisioning");
+    } else {
+        logger::step("Step 6: provisioning sender + receiver accounts");
+        crate::accounts::provision(cfg, root, false)?;
+    }
+
     logger::ok("start complete");
-    logger::hint("check: stellaribc status   then: stellaribc clients cosmos");
+    logger::hint("check: eurekastellar status   then: eurekastellar clients cosmos");
 
     Ok(())
 }

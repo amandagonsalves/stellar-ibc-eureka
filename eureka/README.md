@@ -1,12 +1,12 @@
-# `stellaribc` — Stellar↔Cosmos IBC orchestrator CLI
+# `eurekastellar` — Stellar↔Cosmos IBC orchestrator CLI
 
-`stellar-ibc-cli` (binary **`stellaribc`**) is the single entry point for the
+`stellar-ibc-cli` (binary **`eurekastellar`**) is the single entry point for the
 Stellar↔Cosmos IBC v2 bridge. It brings the stack up, builds/pushes images,
 deploys the Soroban contracts, uploads the light client, creates clients,
 registers counterparties, and reports status — driving **docker**, the
 **`stellar`** CLI, and **`stellar-api`** directly. There are no shell scripts.
 
-It lives at the repo root (`stellar-ibc/cli/`) as a workspace member.
+It lives at the repo root (`stellar-ibc/eureka/`) as a workspace member.
 
 ## How it works
 
@@ -27,20 +27,20 @@ It lives at the repo root (`stellar-ibc/cli/`) as a workspace member.
 # run in place (from the repo root)
 cargo run -p stellar-ibc-cli -- <command>
 
-# install the `stellaribc` binary (either of these)
+# install the `eurekastellar` binary (either of these)
 cargo run -p stellar-ibc-cli -- install   # self-install to the cargo bin dir
-cargo install --path cli
+cargo install --path eureka
 
 # then, from anywhere:
-stellaribc <command>
+eurekastellar <command>
 ```
 
 Get help for any command or group:
 
 ```sh
-stellaribc --help
-stellaribc <group> --help
-stellaribc <group> <command> --help
+eurekastellar --help
+eurekastellar <group> --help
+eurekastellar <group> <command> --help
 ```
 
 ---
@@ -63,21 +63,21 @@ stellaribc <group> <command> --help
 
 ## Top-level (ops) commands
 
-### `stellaribc install`
-Installs the `stellaribc` binary to the cargo bin dir (`cargo install --path cli
+### `eurekastellar install`
+Installs the `eurekastellar` binary to the cargo bin dir (`cargo install --path eureka
 --force`) and reports whether that dir is on your `PATH`.
 
-### `stellaribc check`
+### `eurekastellar check`
 Checks prerequisites and configuration, then probes service health. Reports:
 toolchain (`docker`, `stellar`, `cargo`), `.env` presence, key config vars
 (`STELLAR_SIGNING_KEY`, `ROUTER_CONTRACT_ADDRESS`, …), and the live state of
 the `cosmos` (`simd-1`) chain, `stellar-api`, and the gateway gRPC port. Always exits 0.
 
-### `stellaribc status`
+### `eurekastellar status`
 Probes chains/services, prints the configured endpoints, the deployed contract
 ids (from `.env`), and the clients created on the router (`GET /stellar/clients`).
 
-### `stellaribc up [--cosmos | --stellar]`
+### `eurekastellar up [--cosmos | --stellar]`
 Brings the stack up via `docker compose up -d`.
 
 | Flag | Effect |
@@ -86,14 +86,14 @@ Brings the stack up via `docker compose up -d`.
 | `--cosmos` | start only `cosmos` |
 | `--stellar` | start only `api` + `gateway` |
 
-### `stellaribc down [--volumes]`
+### `eurekastellar down [--volumes]`
 Stops the stack via `docker compose down`.
 
 | Flag | Effect |
 |---|---|
 | `--volumes` | also remove named volumes (wipes chain + hermes-key state) |
 
-### `stellaribc start`
+### `eurekastellar start`
 Full start: pull images → start `cosmos` → start `api` + `gateway` → deploy
 contracts → upload the light-client wasm → import relayer keys. Each step is
 skippable; the chain/service steps are idempotent (probe first, start if down).
@@ -139,25 +139,25 @@ fresh checkout.
 
 ## `clients` — client lifecycle
 
-### `stellaribc clients cosmos [--force]`
+### `eurekastellar clients cosmos [--force]`
 Create the Cosmos (Tendermint) client on Stellar. Probes the gateway + Cosmos
 RPC, runs `hermes create client --host-chain stellar-testnet --reference-chain
 simd-1`, extracts the `07-tendermint-N` id, and writes `COSMOS_CLIENT_ID`
 to `.env`. `--force` creates another even if already set.
 
-### `stellaribc clients stellar [--force]`
+### `eurekastellar clients stellar [--force]`
 Create the Stellar (08-wasm) client on Cosmos. Requires `wasm_checksum_hex` to
 be set in the hermes config (run `contracts upload-wasm` first). Runs `hermes
 create client --host-chain simd-1 --reference-chain stellar-testnet`,
 extracts the `08-wasm-N` id, and writes `STELLAR_CLIENT_ID`.
 
-### `stellaribc clients counterparty <stellar | cosmos>`
+### `eurekastellar clients counterparty <stellar | cosmos>`
 Register a counterparty on the given side (IBC v2 `registerCounterparty`, one
 call per side, no handshake). Runs `hermes create counterparty` for the chosen
 side; the Stellar side goes through the gateway prepare→sign→submit path, the
 Cosmos side through ibc-go.
 
-### `stellaribc clients list`
+### `eurekastellar clients list`
 Lists the clients created on the Stellar router (`GET /stellar/clients`),
 grouped by `client_type`.
 
@@ -166,7 +166,7 @@ grouped by `client_type`.
 ## `transfer` — originate an ICS-20 transfer
 
 ```sh
-stellaribc transfer [stellar|cosmos] [--denom --amount --receiver --memo --timeout-secs --no-mint]
+eurekastellar transfer [stellar|cosmos] [--denom --amount --receiver --memo --timeout-secs --no-mint]
 ```
 
 | Arg / flag | Default | What it does |
@@ -188,7 +188,7 @@ and emits an IBC v2 `SendPacket` through the router.
 > The CLI only **pulls and runs** images — it never builds or pushes them.
 > Building + pushing images is done via the Makefile
 > (`make build SERVICE=<gateway|hermes|api>` / `make push SERVICE=<…>`). Config
-> only needs each image's name/tag/registry, which `stellaribc status` shows
+> only needs each image's name/tag/registry, which `eurekastellar status` shows
 > under **Images**.
 
 ## `hermes` — relayer
@@ -230,28 +230,28 @@ The relayer's Stellar key must equal the router admin key (`STELLAR_SIGNING_KEY`
 Low-level primitives (`build` / `upload` / `deploy` / `invoke`) wrap the
 `stellar` CLI directly; `deploy-all` and `upload-wasm` are the full orchestrations.
 
-### `stellaribc contracts build`
+### `eurekastellar contracts build`
 `stellar contract build --profile contract` → `contracts/target/wasm32v1-none/contract/`.
 
-### `stellaribc contracts upload --wasm <path>`
+### `eurekastellar contracts upload --wasm <path>`
 `stellar contract upload` a wasm; prints the wasm hash.
 
-### `stellaribc contracts deploy --wasm <path> [-- <ctor args>]`
+### `eurekastellar contracts deploy --wasm <path> [-- <ctor args>]`
 `stellar contract deploy` a wasm; prints the contract id. Constructor args pass
 through verbatim after `--`.
 
 ```sh
-stellaribc contracts deploy --wasm contracts/target/wasm32v1-none/contract/stellar_ibc_router.wasm -- --admin GABC...
+eurekastellar contracts deploy --wasm contracts/target/wasm32v1-none/contract/stellar_ibc_router.wasm -- --admin GABC...
 ```
 
-### `stellaribc contracts invoke --id <contract> -- <fn> <args>`
+### `eurekastellar contracts invoke --id <contract> -- <fn> <args>`
 `stellar contract invoke` a function on a deployed contract.
 
 ```sh
-stellaribc contracts invoke --id CB2L... -- register_port --port_id transfer --app_address CASB...
+eurekastellar contracts invoke --id CB2L... -- register_port --port_id transfer --app_address CASB...
 ```
 
-### `stellaribc contracts deploy-all [--force] [--attestation] [--tendermint]`
+### `eurekastellar contracts deploy-all [--force] [--attestation] [--tendermint]`
 Full deploy orchestration: build → deploy mock + router (`--admin`) + transfer-app
 (`--router --admin`) → wire the router (`register_client_type`, `register_port`)
 → write all ids to `.env`. Idempotent (skips when `ROUTER_CONTRACT_ADDRESS` is set unless
@@ -263,7 +263,7 @@ Full deploy orchestration: build → deploy mock + router (`--admin`) + transfer
 | `--attestation` | also deploy + register the attestation light client |
 | `--tendermint` | also deploy + register the tendermint light client |
 
-### `stellaribc contracts upload-wasm`
+### `eurekastellar contracts upload-wasm`
 Build `light-client-wasm` (`wasm32-unknown-unknown`), `wasm-opt` bulk-memory
 lowering, then via the api: fund the proposer → submit the `08-wasm` store-code
 gov proposal → vote → verify the checksum on-chain → patch `wasm_checksum_hex`
@@ -292,24 +292,24 @@ txs and the packet worker.
 First run from a clean machine:
 
 ```sh
-cargo install --path cli        # install the stellaribc binary
-stellaribc check               # docker/stellar/cargo present? .env filled?
-stellaribc start                # images, chains, contracts, wasm, keys
-stellaribc status               # everything green?
+cargo install --path eureka        # install the eurekastellar binary
+eurekastellar check               # docker/stellar/cargo present? .env filled?
+eurekastellar start                # images, chains, contracts, wasm, keys
+eurekastellar status               # everything green?
 
-stellaribc clients cosmos       # Cosmos client on Stellar
-stellaribc clients stellar      # Stellar client on Cosmos
-stellaribc clients list
+eurekastellar clients cosmos       # Cosmos client on Stellar
+eurekastellar clients stellar      # Stellar client on Cosmos
+eurekastellar clients list
 ```
 
 Day-to-day:
 
 ```sh
-stellaribc up                          # bring the stack up
-stellaribc api restart --pull          # pull latest + recreate just the api
-stellaribc contracts deploy-all --force   # redeploy contracts, rewrite .env
-stellaribc gateway restart --pull      # pull latest + pick up the new ROUTER_CONTRACT_ADDRESS
-stellaribc down                        # stop the stack
+eurekastellar up                          # bring the stack up
+eurekastellar api restart --pull          # pull latest + recreate just the api
+eurekastellar contracts deploy-all --force   # redeploy contracts, rewrite .env
+eurekastellar gateway restart --pull      # pull latest + pick up the new ROUTER_CONTRACT_ADDRESS
+eurekastellar down                        # stop the stack
 ```
 
 ---
@@ -346,7 +346,7 @@ Read from `stellar-ibc/.env` (shell env overrides). Defaults shown.
 ## Source layout
 
 ```
-cli/src/
+eureka/src/
   main.rs            clap command tree + dispatch
   config.rs          base Config: cosmos · stellar · hermes · api · gateway · deployment
   repo.rs            repo-root discovery

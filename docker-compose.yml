@@ -23,8 +23,8 @@ services:
     user: "0:0"
     entrypoint: ["sh", "/setup.sh"]
     volumes:
-      - ./cli/src/cosmos/assets/setup.sh:/setup.sh:ro
-      - ./cli/src/cosmos/assets/default-config.json:/config/default-config.json:ro
+      - ./eureka/src/cosmos/assets/setup.sh:/setup.sh:ro
+      - ./eureka/src/cosmos/assets/default-config.json:/config/default-config.json:ro
       - cosmos-home:/root/.simapp
     environment:
       COSMOS_CHAIN_ID: "${COSMOS_CHAIN_ID:-simd-1}"

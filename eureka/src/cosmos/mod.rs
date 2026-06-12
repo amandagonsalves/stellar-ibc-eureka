@@ -46,7 +46,11 @@ pub fn stop(_cfg: &CosmosConfig, root: &Path) -> Result<()> {
 }
 
 pub async fn check(cfg: &CosmosConfig, http: &reqwest::Client) -> Result<()> {
-    logger::banner(&format!("cosmos {} (chain_id {})", cfg.name, cfg.chain_id.as_str()));
+    logger::banner(&format!(
+        "cosmos {} (chain_id {})",
+        cfg.name,
+        cfg.chain_id.as_str()
+    ));
 
     match probe::get_json(http, &cfg.status_url()).await {
         Some(status) => {
@@ -66,7 +70,11 @@ pub async fn check(cfg: &CosmosConfig, http: &reqwest::Client) -> Result<()> {
             logger::detail(&format!("height    {height}"));
             logger::detail(&format!(
                 "synced    {}",
-                if catching_up { "no (catching up)" } else { "yes" }
+                if catching_up {
+                    "no (catching up)"
+                } else {
+                    "yes"
+                }
             ));
             logger::detail(&format!("cometbft  {version}"));
 
@@ -84,8 +92,12 @@ pub async fn check(cfg: &CosmosConfig, http: &reqwest::Client) -> Result<()> {
     }
 
     if let Some(info) = probe::get_json(http, &cfg.node_info_url()).await {
-        let version = info["application_version"]["version"].as_str().unwrap_or("?");
-        let app = info["application_version"]["app_name"].as_str().unwrap_or("?");
+        let version = info["application_version"]["version"]
+            .as_str()
+            .unwrap_or("?");
+        let app = info["application_version"]["app_name"]
+            .as_str()
+            .unwrap_or("?");
         logger::detail(&format!("app       {app} {version}"));
     }
 

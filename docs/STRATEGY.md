@@ -228,8 +228,8 @@ non-Cosmos IBC integration in the industry** since 2023. They've shipped:
   light-client lifecycle, and packet flows are validated against
   known-good Cosmos infrastructure.
 - A **`caribic` CLI** orchestrating Docker-based devnets, contract
-  deploys, and bridge bootstrap flows. Our own `stellaribc` CLI (including the
-  `cli/src/cosmos` devnet module) is a direct descendant of patterns proven there.
+  deploys, and bridge bootstrap flows. Our own `eurekastellar` CLI (including the
+  `eureka/src/cosmos` devnet module) is a direct descendant of patterns proven there.
 - An **08-cardano-probabilistic light client** — a wasm light client for
   a non-Tendermint chain. The architectural template (probabilistic
   finality, snapshot verification, SCP-style consensus modeling) maps

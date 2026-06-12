@@ -22,7 +22,7 @@ pub fn up(root: &Path, cosmos_only: bool, stellar_only: bool) -> Result<()> {
     run::compose(root, &args)?;
 
     logger::ok("services started (detached)");
-    logger::hint("check readiness with: stellaribc status");
+    logger::hint("check readiness with: eurekastellar status");
 
     Ok(())
 }

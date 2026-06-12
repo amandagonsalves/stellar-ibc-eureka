@@ -12,6 +12,7 @@ pub struct OpsConfig {
     pub transfer_app: String,
     pub stellar_client_id: String,
     pub addresses: Vec<(StellarAddresses, String)>,
+    pub accounts: Vec<(&'static str, String)>,
     pub images: Vec<(&'static str, String)>,
 }
 
@@ -23,6 +24,22 @@ impl From<&Config> for OpsConfig {
             ("api", cfg.api.reference()),
             ("gateway", cfg.gateway.image.reference()),
             ("hermes", cfg.hermes.image.reference()),
+        ];
+
+        let accounts = vec![
+            (
+                "stellar sender",
+                cfg.accounts.stellar_sender_address.clone(),
+            ),
+            (
+                "stellar receiver",
+                cfg.accounts.stellar_receiver_address.clone(),
+            ),
+            ("cosmos sender", cfg.accounts.cosmos_sender_address.clone()),
+            (
+                "cosmos receiver",
+                cfg.accounts.cosmos_receiver_address.clone(),
+            ),
         ];
 
         Self {
@@ -37,6 +54,7 @@ impl From<&Config> for OpsConfig {
             transfer_app: cfg.deployment.transfer_app.clone(),
             stellar_client_id: cfg.deployment.stellar_client_id.clone(),
             addresses,
+            accounts,
             images,
         }
     }

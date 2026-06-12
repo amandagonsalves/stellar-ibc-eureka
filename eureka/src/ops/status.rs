@@ -29,5 +29,10 @@ pub async fn run(cfg: &OpsConfig) -> Result<()> {
         }
     }
 
+    logger::step("Accounts (sender + receiver, from .env)");
+    for (label, address) in &cfg.accounts {
+        shared::contract(label, address);
+    }
+
     Ok(())
 }

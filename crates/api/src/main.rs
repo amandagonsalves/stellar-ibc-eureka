@@ -13,7 +13,6 @@
 //! - `GET  /ledger/latest` — latest Stellar ledger ([`services::ledgers::get_latest_ledger`]).
 //! - `GET  /ledger/{sequence}` — fetch a specific ledger ([`services::ledgers::get_ledger`]).
 //! - `GET  /events` — Soroban events ([`services::events::get_events`]).
-//! - `GET  /account/{address}` — account info ([`services::account::account`]).
 //! - `GET  /balance/{address}` — account balances ([`services::balance::balance`]).
 //! - `POST /tx/prepare` — build an unsigned router-invoke tx for the relayer to sign ([`services::contract::prepare_invoke`]).
 //! - `POST /tx/submit` — submit a relayer-signed tx ([`services::tx::submit_signed_tx`]).

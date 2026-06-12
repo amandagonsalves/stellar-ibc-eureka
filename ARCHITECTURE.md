@@ -134,7 +134,7 @@ orchestration.
 | Component | Responsibility |
 |---|---|
 | **`light-client-wasm`** | The **Stellar** light client, compiled to wasm and deployed on the counterparty via `08-wasm`. Verifies SCP `EXTERNALIZE` envelopes (Ed25519 from a quorum of trusted validators) and ICS-23 proofs against the Stellar SMT root. `08-wasm` lets any ibc-go v10+ chain host it without forking its binary. |
-| **`stellaribc` CLI** | The orchestrator: deploys contracts, uploads the wasm light client, creates clients, registers counterparties, runs the services, and originates transfers. |
+| **`eurekastellar` CLI** | The orchestrator: deploys contracts, uploads the wasm light client, creates clients, registers counterparties, runs the services, and originates transfers. |
 
 #### Light clients verify in both directions
 
@@ -257,16 +257,16 @@ consistent.
 
 ## 4. Deployment and infrastructure
 
-Everything is driven by the `stellaribc` CLI. A full local bring-up:
+Everything is driven by the `eurekastellar` CLI. A full local bring-up:
 
 ```sh
-stellaribc cosmos start --fresh     # local Cosmos devnet (ibc-go v11 simd + 08-wasm)
-stellaribc start --force-redeploy   # deploy contracts, upload the wasm LC, import relayer keys
-stellaribc clients cosmos           # 07-tendermint client on Stellar
-stellaribc clients stellar          # 08-wasm Stellar client on Cosmos
-stellaribc clients counterparty stellar
-stellaribc clients counterparty cosmos
-stellaribc transfer                 # originate a Stellar → Cosmos ICS-20 transfer
+eurekastellar cosmos start --fresh     # local Cosmos devnet (ibc-go v11 simd + 08-wasm)
+eurekastellar start --force-redeploy   # deploy contracts, upload the wasm LC, import relayer keys
+eurekastellar clients cosmos           # 07-tendermint client on Stellar
+eurekastellar clients stellar          # 08-wasm Stellar client on Cosmos
+eurekastellar clients counterparty stellar
+eurekastellar clients counterparty cosmos
+eurekastellar transfer                 # originate a Stellar → Cosmos ICS-20 transfer
 ```
 
 The moving parts run as containers — the Cosmos chain, the gateway, the api, and
@@ -327,7 +327,7 @@ flowchart TB
 ```mermaid
 sequenceDiagram
     autonumber
-    actor Op as stellaribc CLI
+    actor Op as eurekastellar CLI
     participant RT as ibc-router (Stellar)
     participant CO as Cosmos (ibc-go)
 

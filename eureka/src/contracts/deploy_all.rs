@@ -142,7 +142,7 @@ pub fn run(cfg: &ContractsConfig, root: &Path, force: bool, attestation: bool) -
     )?;
 
     logger::ok("deploy-all complete");
-    logger::hint("recreate services to pick up ROUTER_CONTRACT_ADDRESS: stellaribc api restart --pull && stellaribc gateway restart --pull");
+    logger::hint("recreate services to pick up ROUTER_CONTRACT_ADDRESS: eurekastellar api restart --pull && eurekastellar gateway restart --pull");
 
     Ok(())
 }

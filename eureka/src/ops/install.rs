@@ -5,18 +5,18 @@ use anyhow::Result;
 use crate::{logger, run};
 
 pub fn run(root: &Path) -> Result<()> {
-    logger::banner("install — cargo install stellaribc");
+    logger::banner("install — cargo install eurekastellar");
 
-    let crate_dir = root.join("cli");
+    let crate_dir = root.join("eureka");
 
-    logger::step("cargo install --path cli --force");
+    logger::step("cargo install --path eureka --force");
     run::command(
         root,
         "cargo",
         &[
             "install",
             "--path",
-            crate_dir.to_str().unwrap_or("cli"),
+            crate_dir.to_str().unwrap_or("eureka"),
             "--force",
         ],
     )?;
@@ -24,12 +24,12 @@ pub fn run(root: &Path) -> Result<()> {
     let bin_dir = cargo_bin_dir();
     logger::ok(&format!(
         "installed: {}",
-        bin_dir.join("stellaribc").display()
+        bin_dir.join("eurekastellar").display()
     ));
 
     if on_path(bin_dir.as_path()) {
         logger::ok(&format!(
-            "{} is on PATH — run: stellaribc status",
+            "{} is on PATH — run: eurekastellar status",
             bin_dir.display()
         ));
     } else {

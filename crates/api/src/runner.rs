@@ -56,7 +56,6 @@ pub fn router(state: Arc<AppState>) -> Router {
         .route("/ledger/latest", get(services::ledgers::get_latest_ledger))
         .route("/ledger/{sequence}", get(services::ledgers::get_ledger))
         .route("/events", get(services::events::get_events))
-        .route("/account/{address}", get(services::account::account))
         .route("/balance/{address}", get(services::balance::balance))
         .route(
             "/stellar/transfer/balance/{denom}/{address}",

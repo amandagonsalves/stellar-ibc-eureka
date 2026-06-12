@@ -83,30 +83,30 @@ client_refresh_rate = '1/3'
 wasm_checksum_hex = '3d4fc74efc59d49106857a887c005062829d9cfd5ca560cd664e146460c9ecef'
 packet_filter = { policy = 'allow', list = [['transfer', '*']] }
 
-[[chains]]
-id = 'provider'
-type = 'CosmosSdk'
-compat_mode = '0.37'
-rpc_addr = 'https://rpc.provider-sentry-01.hub-testnet.polypore.xyz'
-grpc_addr = 'https://grpc.provider-sentry-01.hub-testnet.polypore.xyz'
-event_source = { mode = 'push', url = 'wss://rpc.provider-sentry-01.hub-testnet.polypore.xyz/websocket', batch_delay = '500ms' }
-rpc_timeout = '15s'
-account_prefix = 'cosmos'
-key_name = 'relayer'
-address_type = { derivation = 'cosmos' }
-store_prefix = 'ibc'
-default_gas = 5000000
-max_gas = 15000000
-gas_price = { price = 0.025, denom = 'uatom' }
-gas_multiplier = 2.0
-max_msg_num = 20
-max_tx_size = 209715
-clock_drift = '20s'
-max_block_time = '30s'
-trusting_period = '14days'
-memo_prefix = ''
-trust_threshold = { numerator = '1', denominator = '3' }
-packet_filter = { policy = 'allow', list = [['transfer', '*']] }
+# [[chains]]
+# id = 'provider'
+# type = 'CosmosSdk'
+# compat_mode = '0.37'
+# rpc_addr = 'https://rpc.provider-sentry-01.hub-testnet.polypore.xyz'
+# grpc_addr = 'https://grpc.provider-sentry-01.hub-testnet.polypore.xyz'
+# event_source = { mode = 'push', url = 'wss://rpc.provider-sentry-01.hub-testnet.polypore.xyz/websocket', batch_delay = '500ms' }
+# rpc_timeout = '15s'
+# account_prefix = 'cosmos'
+# key_name = 'relayer'
+# address_type = { derivation = 'cosmos' }
+# store_prefix = 'ibc'
+# default_gas = 5000000
+# max_gas = 15000000
+# gas_price = { price = 0.025, denom = 'uatom' }
+# gas_multiplier = 2.0
+# max_msg_num = 20
+# max_tx_size = 209715
+# clock_drift = '20s'
+# max_block_time = '30s'
+# trusting_period = '14days'
+# memo_prefix = ''
+# trust_threshold = { numerator = '1', denominator = '3' }
+# packet_filter = { policy = 'allow', list = [['transfer', '*']] }
 
 # [[chains]]
 # type = 'Cardano'

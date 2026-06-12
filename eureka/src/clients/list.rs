@@ -7,7 +7,7 @@ pub async fn run(cfg: &ClientsConfig, http: &reqwest::Client) -> Result<()> {
     logger::banner("clients list");
 
     if !probe::http_ok(http, &cfg.api_health_url()).await {
-        logger::warn("api unreachable — start it with `stellaribc up`");
+        logger::warn("api unreachable — start it with `eurekastellar up`");
 
         return Ok(());
     }

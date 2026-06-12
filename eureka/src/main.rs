@@ -1,3 +1,4 @@
+mod accounts;
 mod api;
 mod clients;
 mod config;
@@ -24,7 +25,7 @@ use config::Config;
 
 #[derive(Parser)]
 #[command(
-    name = "stellaribc",
+    name = "eurekastellar",
     version,
     about = "Orchestrator for the Stellar<->Cosmos IBC v2 bridge",
     long_about = "A caribic-style orchestrator for the Stellar<->Cosmos bridge, grouped by \
@@ -39,7 +40,7 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Command {
-    #[command(about = "Install the stellaribc binary to the cargo bin dir")]
+    #[command(about = "Install the eurekastellar binary to the cargo bin dir")]
     Install,
     #[command(about = "Check prerequisites, configuration, and service health")]
     Check,
@@ -145,6 +146,8 @@ struct StartArgs {
     skip_wasm: bool,
     #[arg(long, help = "Skip importing the hermes relayer keys")]
     skip_keys: bool,
+    #[arg(long, help = "Skip provisioning the sender + receiver accounts")]
+    skip_accounts: bool,
     #[arg(
         long,
         help = "Redeploy contracts even if ROUTER_CONTRACT_ADDRESS is already set"
@@ -175,7 +178,9 @@ enum CosmosCmd {
     Stop,
     #[command(about = "Show the Cosmos chain endpoints and health")]
     Status,
-    #[command(about = "Check the public cosmos-testnet (Cosmos Hub `provider`) — health + node/app version")]
+    #[command(
+        about = "Check the public cosmos-testnet (Cosmos Hub `provider`) — health + node/app version"
+    )]
     Testnet {
         #[arg(
             long,
@@ -388,6 +393,7 @@ async fn main() -> Result<()> {
                 args.skip_contracts,
                 args.skip_wasm,
                 args.skip_keys,
+                args.skip_accounts,
                 args.force_redeploy,
             )
             .await?
