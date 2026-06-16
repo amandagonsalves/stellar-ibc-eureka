@@ -3,52 +3,18 @@ use std::path::Path;
 use anyhow::Result;
 
 use crate::gateway::config::GatewayConfig;
-use crate::{logger, run};
+use crate::service::Service;
 
-const SERVICE: &str = "gateway";
+const SERVICE: Service = Service::new("gateway");
 
 pub fn start(cfg: &GatewayConfig, root: &Path, pull: bool) -> Result<()> {
-    logger::banner("gateway start");
-    logger::detail(&format!("image: {}", cfg.image.reference()));
-
-    if pull {
-        run::compose(root, &["pull", SERVICE])?;
-    }
-
-    logger::step("docker compose up -d gateway");
-    run::compose(root, &["up", "-d", SERVICE])?;
-
-    logger::ok("gateway started");
-
-    Ok(())
+    SERVICE.start(root, &cfg.image, pull)
 }
 
 pub fn stop(root: &Path) -> Result<()> {
-    logger::banner("gateway stop");
-
-    logger::step("docker compose stop gateway");
-    run::compose(root, &["stop", SERVICE])?;
-
-    logger::ok("gateway stopped");
-
-    Ok(())
+    SERVICE.stop(root)
 }
 
 pub fn restart(cfg: &GatewayConfig, root: &Path, pull: bool) -> Result<()> {
-    logger::banner("gateway restart");
-    logger::detail(&format!("image: {}", cfg.image.reference()));
-
-    if pull {
-        run::compose(root, &["pull", SERVICE])?;
-
-        logger::step("docker compose up -d --force-recreate gateway");
-        run::compose(root, &["up", "-d", "--force-recreate", SERVICE])?;
-    } else {
-        logger::step("docker compose restart gateway");
-        run::compose(root, &["restart", SERVICE])?;
-    }
-
-    logger::ok("gateway restarted");
-
-    Ok(())
+    SERVICE.restart(root, &cfg.image, pull)
 }

@@ -14,6 +14,7 @@ mod ops;
 mod probe;
 mod repo;
 mod run;
+mod service;
 mod shared;
 mod stellar;
 mod transfer;

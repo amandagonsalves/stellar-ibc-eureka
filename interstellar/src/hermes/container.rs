@@ -3,39 +3,25 @@ use std::path::Path;
 use anyhow::Result;
 
 use crate::hermes::config::HermesConfig;
-use crate::{logger, run};
+use crate::run;
+use crate::service::Service;
 
-const SERVICE: &str = "hermes";
+const SERVICE: Service = Service::new("hermes");
 
 pub fn start(cfg: &HermesConfig, root: &Path, pull: bool) -> Result<()> {
-    logger::banner("hermes start (relayer container)");
-    logger::detail(&format!("image: {}", cfg.image.reference()));
-
-    if pull {
-        run::compose(root, &["pull", SERVICE])?;
-    }
-
-    logger::step("docker compose up -d hermes");
-    run::compose(root, &["up", "-d", SERVICE])?;
-
-    logger::ok("hermes started");
-
-    Ok(())
+    SERVICE.start(root, &cfg.image, pull)
 }
 
 pub fn stop(root: &Path) -> Result<()> {
-    logger::banner("hermes stop");
+    SERVICE.stop(root)
+}
 
-    logger::step("docker compose stop hermes");
-    run::compose(root, &["stop", SERVICE])?;
-
-    logger::ok("hermes stopped");
-
-    Ok(())
+pub fn restart(cfg: &HermesConfig, root: &Path, pull: bool) -> Result<()> {
+    SERVICE.restart(root, &cfg.image, pull)
 }
 
 pub fn exec(root: &Path, config_path: &str, args: &[&str]) -> Result<String> {
-    run::compose(root, &["up", "-d", SERVICE])?;
+    run::compose(root, &["up", "-d", SERVICE.name()])?;
 
     let mut full: Vec<&str> = vec![
         "compose",
@@ -45,7 +31,7 @@ pub fn exec(root: &Path, config_path: &str, args: &[&str]) -> Result<String> {
         "hermes",
         "exec",
         "-T",
-        SERVICE,
+        SERVICE.name(),
         "hermes",
         "--config",
         config_path,
@@ -53,23 +39,4 @@ pub fn exec(root: &Path, config_path: &str, args: &[&str]) -> Result<String> {
     full.extend_from_slice(args);
 
     run::capture_all(root, "docker", &full)
-}
-
-pub fn restart(cfg: &HermesConfig, root: &Path, pull: bool) -> Result<()> {
-    logger::banner("hermes restart");
-    logger::detail(&format!("image: {}", cfg.image.reference()));
-
-    if pull {
-        run::compose(root, &["pull", SERVICE])?;
-
-        logger::step("docker compose up -d --force-recreate hermes");
-        run::compose(root, &["up", "-d", "--force-recreate", SERVICE])?;
-    } else {
-        logger::step("docker compose restart hermes");
-        run::compose(root, &["restart", SERVICE])?;
-    }
-
-    logger::ok("hermes restarted");
-
-    Ok(())
 }

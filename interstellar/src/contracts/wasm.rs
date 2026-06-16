@@ -285,7 +285,7 @@ fn resolve_testnet_key(
         bail!("gaiad not found in PATH — install Gaia v27 to use the env mnemonic");
     }
 
-    let key_name = crate::config::get("COSMOS_TESTNET_KEY_NAME", "stellaribc-cosmos");
+    let key_name = crate::config::get("COSMOS_TESTNET_KEY_NAME", "interstellar-cosmos");
     ensure_gaiad_key(root, &key_name, mnemonic.trim(), keyring)?;
 
     Ok(Some(key_name))
