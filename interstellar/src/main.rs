@@ -17,7 +17,6 @@ mod run;
 mod shared;
 mod stellar;
 mod transfer;
-mod tx;
 
 use std::time::Duration;
 
@@ -32,8 +31,7 @@ use config::Config;
     version,
     about = "Orchestrator for the Stellar<->Cosmos IBC v2 bridge",
     long_about = "A caribic-style orchestrator for the Stellar<->Cosmos bridge, grouped by \
-component: ops (install/check/status/up/down/start), clients, hermes, gateway, api, \
-contracts, and tx. Drives docker, the stellar CLI, and the api directly — no shell scripts.",
+component: ops (install/check/status/up/down/start), clients, hermes, gateway, api, and contracts. Drives docker, the stellar CLI, and the api directly — no shell scripts.",
     propagate_version = true
 )]
 struct Cli {
@@ -99,11 +97,6 @@ enum Command {
     Balances(BalancesArgs),
     #[command(about = "Show the staged round-trip relay lines from the gateway + hermes logs")]
     Logs(LogsArgs),
-    #[command(about = "Low-level tx surface: clients, msg, query")]
-    Tx {
-        #[command(subcommand)]
-        cmd: TxCmd,
-    },
 }
 
 #[derive(clap::Args)]
@@ -404,25 +397,6 @@ enum ContractsCmd {
 }
 
 #[derive(Subcommand)]
-enum TxCmd {
-    #[command(about = "Client txs (create / update)")]
-    Clients {
-        #[command(subcommand)]
-        cmd: TxClientsCmd,
-    },
-    #[command(about = "Packet / counterparty messages")]
-    Msg {
-        #[command(subcommand)]
-        cmd: TxMsgCmd,
-    },
-    #[command(about = "Provable-path queries")]
-    Query {
-        #[command(subcommand)]
-        cmd: TxQueryCmd,
-    },
-}
-
-#[derive(Subcommand)]
 enum TxClientsCmd {
     Create,
     Update,
@@ -599,28 +573,6 @@ async fn main() -> Result<()> {
         Command::Accounts => accounts::show(&cfg),
         Command::Balances(args) => balances::run(&cfg, root, &http, &args.denom).await?,
         Command::Logs(args) => logs::run(root, &args.since)?,
-
-        Command::Tx { cmd } => match cmd {
-            TxCmd::Clients { cmd } => match cmd {
-                TxClientsCmd::Create => tx::clients::create()?,
-                TxClientsCmd::Update => tx::clients::update()?,
-            },
-            TxCmd::Msg { cmd } => match cmd {
-                TxMsgCmd::RegisterCounterparty { chain } => {
-                    let cc = clients::config::ClientsConfig::from(&cfg);
-                    tx::msg::register_counterparty(&cc, root, chain.as_str())?
-                }
-                TxMsgCmd::Recv => tx::msg::recv()?,
-                TxMsgCmd::Ack => tx::msg::ack()?,
-                TxMsgCmd::Timeout => tx::msg::timeout()?,
-            },
-            TxCmd::Query { cmd } => match cmd {
-                TxQueryCmd::Commitment => tx::query::commitment()?,
-                TxQueryCmd::Receipt => tx::query::receipt()?,
-                TxQueryCmd::Ack => tx::query::ack()?,
-                TxQueryCmd::Header => tx::query::header()?,
-            },
-        },
     }
 
     Ok(())
