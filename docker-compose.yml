@@ -59,7 +59,6 @@ services:
       STELLAR_GATEWAY_GRPC_PORT: "${STELLAR_GATEWAY_GRPC_PORT}"
       STELLAR_API_URL: "http://api:${STELLAR_API_PORT}"
       ROUTER_CONTRACT_ADDRESS: "${ROUTER_CONTRACT_ADDRESS}"
-      STELLAR_SIGNING_KEY: "${STELLAR_SIGNING_KEY}"
     healthcheck:
       test: ["CMD-SHELL", "nc -z localhost ${STELLAR_GATEWAY_GRPC_PORT}"]
       interval: 10s

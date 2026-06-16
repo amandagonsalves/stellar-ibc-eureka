@@ -6,7 +6,6 @@ use crate::types::{LedgerData, SubmittedTx};
 pub struct ApiClient {
     base_url: String,
     http: reqwest::Client,
-    signer: String,
 }
 
 pub struct EventRecord {
@@ -31,11 +30,10 @@ pub enum EventCursor {
 }
 
 impl ApiClient {
-    pub fn new(base_url: &str, signer: String) -> Self {
+    pub fn new(base_url: &str) -> Self {
         Self {
             base_url: base_url.trim_end_matches('/').to_owned(),
             http: reqwest::Client::new(),
-            signer,
         }
     }
 
@@ -262,7 +260,6 @@ impl ApiClient {
         let body = serde_json::json!({
             "method": method,
             "args_xdr": args_xdr,
-            "signer": &self.signer
         });
         let resp = self.post_json("/tx/prepare", body).await?;
 

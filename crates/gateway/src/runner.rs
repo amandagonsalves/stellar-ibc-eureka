@@ -1,6 +1,5 @@
 use std::sync::Arc;
 
-use soroban_client::keypair::{Keypair, KeypairBehavior};
 use tokio::sync::Mutex;
 
 use crate::{
@@ -16,10 +15,7 @@ pub async fn run(cfg: GatewayConfig) {
         "[gateway] starting"
     );
 
-    let keypair =
-        Keypair::from_secret(&cfg.signing_key).expect("failed to get keypair from secret");
-
-    let api = ApiClient::new(&cfg.api_url, keypair.public_key());
+    let api = ApiClient::new(&cfg.api_url);
 
     let ibc_contract_id = if cfg.ibc_contract_id.is_empty() {
         tracing::warn!("ROUTER_CONTRACT_ADDRESS is empty — state tracker will accept any contract");

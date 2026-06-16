@@ -348,7 +348,7 @@ mod tests {
     use super::*;
 
     fn handler() -> MsgHandler {
-        MsgHandler::new(ApiClient::new("http://127.0.0.1:8101", String::from("GGG")))
+        MsgHandler::new(ApiClient::new("http://127.0.0.1:8101"))
     }
 
     #[tokio::test]

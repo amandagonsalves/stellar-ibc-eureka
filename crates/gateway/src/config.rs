@@ -5,7 +5,6 @@ pub struct GatewayConfig {
     pub grpc_port: u16,
     pub api_url: String,
     pub ibc_contract_id: String,
-    pub signing_key: String,
 }
 
 impl GatewayConfig {
@@ -19,7 +18,6 @@ impl GatewayConfig {
             api_url: std::env::var("STELLAR_API_URL")
                 .unwrap_or_else(|_| "http://127.0.0.1:8101".to_string()),
             ibc_contract_id: std::env::var("ROUTER_CONTRACT_ADDRESS").unwrap_or_default(),
-            signing_key: std::env::var("STELLAR_SIGNING_KEY").expect("invalid signing key"),
         }
     }
 
