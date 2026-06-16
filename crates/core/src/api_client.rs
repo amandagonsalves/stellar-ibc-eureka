@@ -1,4 +1,4 @@
-use soroban_client::xdr::{Limits, ReadXdr, ScVal, WriteXdr};
+use soroban_client::xdr::{Limits, ScVal, WriteXdr};
 
 use crate::types::{LedgerData, SubmittedTx};
 
@@ -285,10 +285,7 @@ impl ApiClient {
             Some(value_hex) => {
                 let bytes = hex::decode(value_hex)
                     .map_err(|e| anyhow::anyhow!("return_value_xdr hex decode: {e}"))?;
-                Some(
-                    ScVal::from_xdr(&bytes, Limits::none())
-                        .map_err(|e| anyhow::anyhow!("return_value ScVal decode: {e}"))?,
-                )
+                Some(crate::conversion::scval_from_xdr(&bytes)?)
             }
             None => None,
         };

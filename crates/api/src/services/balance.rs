@@ -8,10 +8,7 @@ use axum::{
 };
 use serde::Serialize;
 use serde_json::{json, Value};
-use soroban_client::xdr::{
-    ContractDataDurability, ContractId, Hash, LedgerEntryData, LedgerKey, LedgerKeyContractData,
-    Limits, ReadXdr, ScAddress, ScString, ScSymbol, ScVal, ScVec, StringM, VecM, WriteXdr,
-};
+use stellar_ibc_core::conversion as cv;
 
 use crate::state::AppState;
 
@@ -25,32 +22,18 @@ fn err<E: std::fmt::Display>(status: StatusCode, e: E) -> (StatusCode, Json<Valu
 }
 
 fn balance_ledger_key(contract: [u8; 32], address_hex: &str, denom: &str) -> anyhow::Result<Vec<u8>> {
-    let variant: StringM<32> = "Balance".try_into()?;
     let addr_xdr = hex::decode(address_hex)?;
-    let addr_val = ScVal::from_xdr(&addr_xdr, Limits::none())
-        .map_err(|e| anyhow::anyhow!("address ScVal decode: {e}"))?;
-    let denom_str: StringM = denom.try_into()?;
-    let key_val = ScVal::Vec(Some(ScVec(VecM::try_from(vec![
-        ScVal::Symbol(ScSymbol(variant)),
+    let addr_val = cv::scval_from_xdr(&addr_xdr)?;
+    let key_val = cv::scval_vec(vec![
+        cv::scval_symbol("Balance")?,
         addr_val,
-        ScVal::String(ScString(denom_str)),
-    ])?)));
-    let key = LedgerKey::ContractData(LedgerKeyContractData {
-        contract: ScAddress::Contract(ContractId(Hash(contract))),
-        key: key_val,
-        durability: ContractDataDurability::Persistent,
-    });
-    Ok(key.to_xdr(Limits::none())?)
+        cv::scval_string(denom)?,
+    ])?;
+    cv::persistent_contract_data_key(contract, key_val)
 }
 
 fn decode_i128(entry_xdr: &[u8]) -> Option<i128> {
-    match LedgerEntryData::from_xdr(entry_xdr, Limits::none()).ok()? {
-        LedgerEntryData::ContractData(d) => match d.val {
-            ScVal::I128(parts) => Some(((parts.hi as i128) << 64) | (parts.lo as i128)),
-            _ => None,
-        },
-        _ => None,
-    }
+    cv::ledger_entry_contract_val(entry_xdr).and_then(|v| cv::scval_as_i128(&v))
 }
 
 #[tracing::instrument(skip(_state))]

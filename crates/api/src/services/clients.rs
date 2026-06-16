@@ -5,10 +5,8 @@ use axum::http::StatusCode;
 use axum::Json;
 use serde::Deserialize;
 use serde_json::{json, Value};
-use soroban_client::xdr::{
-    ContractDataDurability, ContractId, Hash, LedgerEntryData, LedgerKey, LedgerKeyContractData,
-    Limits, ReadXdr, ScAddress, ScString, ScSymbol, ScVal, ScVec, StringM, VecM, WriteXdr,
-};
+use soroban_client::xdr::{ContractId, Hash, ScAddress, ScVal};
+use stellar_ibc_core::conversion as cv;
 
 use crate::AppState;
 
@@ -23,67 +21,22 @@ fn err<E: std::fmt::Display>(status: StatusCode, e: E) -> (StatusCode, Json<Valu
     (status, Json(json!({ "error": e.to_string() })))
 }
 
-fn next_client_id_ledger_key(router: [u8; 32], client_type: &str) -> anyhow::Result<Vec<u8>> {
-    let variant: StringM<32> = "NextClientId".try_into()?;
-    let type_str: StringM = client_type.try_into()?;
-    let key_val = ScVal::Vec(Some(ScVec(VecM::try_from(vec![
-        ScVal::Symbol(ScSymbol(variant)),
-        ScVal::String(ScString(type_str)),
-    ])?)));
-    let key = LedgerKey::ContractData(LedgerKeyContractData {
-        contract: ScAddress::Contract(ContractId(Hash(router))),
-        key: key_val,
-        durability: ContractDataDurability::Persistent,
-    });
-    Ok(key.to_xdr(Limits::none())?)
-}
-
 fn decode_counter(entry_xdr: &[u8]) -> Option<u32> {
-    match LedgerEntryData::from_xdr(entry_xdr, Limits::none()).ok()? {
-        LedgerEntryData::ContractData(d) => match d.val {
-            ScVal::U32(n) => Some(n),
-            _ => None,
-        },
-        _ => None,
-    }
+    cv::ledger_entry_contract_val(entry_xdr).and_then(|v| cv::scval_as_u32(&v))
 }
 
 fn contract_data_key(contract: [u8; 32], variant: &str, arg: &str) -> anyhow::Result<Vec<u8>> {
-    let variant_sym: StringM<32> = variant.try_into()?;
-    let arg_str: StringM = arg.try_into()?;
-    let key_val = ScVal::Vec(Some(ScVec(VecM::try_from(vec![
-        ScVal::Symbol(ScSymbol(variant_sym)),
-        ScVal::String(ScString(arg_str)),
-    ])?)));
-    let key = LedgerKey::ContractData(LedgerKeyContractData {
-        contract: ScAddress::Contract(ContractId(Hash(contract))),
-        key: key_val,
-        durability: ContractDataDurability::Persistent,
-    });
-    Ok(key.to_xdr(Limits::none())?)
+    let key_val = cv::scval_vec(vec![cv::scval_symbol(variant)?, cv::scval_string(arg)?])?;
+    cv::persistent_contract_data_key(contract, key_val)
 }
 
 fn consensus_data_key(contract: [u8; 32], client_id: &str, height: u64) -> anyhow::Result<Vec<u8>> {
-    let variant_sym: StringM<32> = "Consensus".try_into()?;
-    let client_str: StringM = client_id.try_into()?;
-    let key_val = ScVal::Vec(Some(ScVec(VecM::try_from(vec![
-        ScVal::Symbol(ScSymbol(variant_sym)),
-        ScVal::String(ScString(client_str)),
-        ScVal::U64(height),
-    ])?)));
-    let key = LedgerKey::ContractData(LedgerKeyContractData {
-        contract: ScAddress::Contract(ContractId(Hash(contract))),
-        key: key_val,
-        durability: ContractDataDurability::Persistent,
-    });
-    Ok(key.to_xdr(Limits::none())?)
-}
-
-fn decode_contract_val(entry_xdr: &[u8]) -> Option<ScVal> {
-    match LedgerEntryData::from_xdr(entry_xdr, Limits::none()).ok()? {
-        LedgerEntryData::ContractData(d) => Some(d.val),
-        _ => None,
-    }
+    let key_val = cv::scval_vec(vec![
+        cv::scval_symbol("Consensus")?,
+        cv::scval_string(client_id)?,
+        cv::scval_u64(height),
+    ])?;
+    cv::persistent_contract_data_key(contract, key_val)
 }
 
 fn client_type_of(client_id: &str) -> &str {
@@ -130,7 +83,7 @@ pub async fn client_state(
             )
         })?;
 
-    let lc_contract = match decode_contract_val(&lc_entry) {
+    let lc_contract = match cv::ledger_entry_contract_val(&lc_entry) {
         Some(ScVal::Address(ScAddress::Contract(ContractId(Hash(id))))) => id,
         _ => {
             return Err(err(
@@ -154,14 +107,13 @@ pub async fn client_state(
             )
         })?;
 
-    let cs_val = decode_contract_val(&cs_entry).ok_or_else(|| {
+    let cs_val = cv::ledger_entry_contract_val(&cs_entry).ok_or_else(|| {
         err(
             StatusCode::INTERNAL_SERVER_ERROR,
             "client state entry is not contract data",
         )
     })?;
-    let cs_xdr = cs_val
-        .to_xdr(Limits::none())
+    let cs_xdr = cv::scval_to_xdr(&cs_val)
         .map_err(|e| err(StatusCode::INTERNAL_SERVER_ERROR, format!("re-encode: {e}")))?;
 
     let hex: String = cs_xdr.iter().map(|b| format!("{b:02x}")).collect();
@@ -210,7 +162,7 @@ pub async fn consensus_state(
             )
         })?;
 
-    let lc_contract = match decode_contract_val(&lc_entry) {
+    let lc_contract = match cv::ledger_entry_contract_val(&lc_entry) {
         Some(ScVal::Address(ScAddress::Contract(ContractId(Hash(id))))) => id,
         _ => {
             return Err(err(
@@ -234,14 +186,13 @@ pub async fn consensus_state(
             )
         })?;
 
-    let cons_val = decode_contract_val(&cons_entry).ok_or_else(|| {
+    let cons_val = cv::ledger_entry_contract_val(&cons_entry).ok_or_else(|| {
         err(
             StatusCode::INTERNAL_SERVER_ERROR,
             "consensus state entry is not contract data",
         )
     })?;
-    let cons_xdr = cons_val
-        .to_xdr(Limits::none())
+    let cons_xdr = cv::scval_to_xdr(&cons_val)
         .map_err(|e| err(StatusCode::INTERNAL_SERVER_ERROR, format!("re-encode: {e}")))?;
 
     let hex: String = cons_xdr.iter().map(|b| format!("{b:02x}")).collect();
@@ -283,7 +234,7 @@ pub async fn list_clients(
 
     let mut clients = Vec::new();
     for client_type in &types {
-        let key = next_client_id_ledger_key(router, client_type)
+        let key = contract_data_key(router, "NextClientId", client_type)
             .map_err(|e| err(StatusCode::INTERNAL_SERVER_ERROR, e))?;
         let entry = state.rpc.get_ledger_entry(&key).await.map_err(|e| {
             err(

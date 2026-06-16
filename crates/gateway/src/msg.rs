@@ -6,10 +6,9 @@ use crate::proto::{
     MsgTimeoutPacketRequest, MsgTimeoutPacketResponse, MsgUpdateClientRequest,
     MsgUpdateClientResponse, SubmitSignedTxRequest, SubmitSignedTxResponse,
 };
-use soroban_client::xdr::{
-    Limits, ReadXdr, ScBytes, ScString, ScVal, ScVec, StringM, VecM, WriteXdr,
-};
+use soroban_client::xdr::ScVal;
 use stellar_ibc_core::api_client::ApiClient;
+use stellar_ibc_core::conversion::{self as cv, scval_u64};
 use stellar_ibc_core::ibc::client_state::AnyClientState;
 use stellar_ibc_core::ibc::consensus_state::AnyConsensusState;
 use tonic::{Request, Response, Status};
@@ -82,55 +81,30 @@ impl MsgHandler {
 }
 
 fn scval_string(s: &str) -> Result<ScVal, Status> {
-    let sm = StringM::<{ u32::MAX }>::try_from(s.as_bytes())
-        .map_err(|e| Status::invalid_argument(format!("invalid string for ScVal: {e}")))?;
-    Ok(ScVal::String(ScString(sm)))
+    cv::scval_string(s).map_err(|e| Status::invalid_argument(e.to_string()))
 }
 
 fn scval_bytes(b: &[u8]) -> Result<ScVal, Status> {
-    let bm = b
-        .to_vec()
-        .try_into()
-        .map_err(|e| Status::invalid_argument(format!("invalid bytes for ScVal: {e}")))?;
-    Ok(ScVal::Bytes(ScBytes(bm)))
-}
-
-fn scval_u64(v: u64) -> ScVal {
-    ScVal::U64(v)
+    cv::scval_bytes(b).map_err(|e| Status::invalid_argument(e.to_string()))
 }
 
 fn scval_vec_of_bytes(items: &[Vec<u8>]) -> Result<ScVal, Status> {
-    let inner: Result<Vec<ScVal>, Status> = items.iter().map(|b| scval_bytes(b)).collect();
-    let vecm = VecM::<ScVal>::try_from(inner?)
-        .map_err(|e| Status::invalid_argument(format!("invalid Vec<Bytes>: {e}")))?;
-    Ok(ScVal::Vec(Some(ScVec(vecm))))
+    cv::scval_vec_of_bytes(items).map_err(|e| Status::invalid_argument(e.to_string()))
 }
 
 fn decode_packet_scval(bytes: &[u8]) -> Result<ScVal, Status> {
-    ScVal::from_xdr(bytes, Limits::none())
+    cv::scval_from_xdr(bytes)
         .map_err(|e| Status::invalid_argument(format!("packet ScVal XDR decode: {e}")))
 }
 
-fn scval_map_get<'a>(val: &'a ScVal, key: &str) -> Option<&'a ScVal> {
-    if let ScVal::Map(Some(m)) = val {
-        return m.0.iter().find_map(|e| match &e.key {
-            ScVal::Symbol(s) if s.0.as_slice() == key.as_bytes() => Some(&e.val),
-            _ => None,
-        });
-    }
-    None
-}
-
 fn first_payload_value(packet: &ScVal) -> Option<Vec<u8>> {
-    let payloads = scval_map_get(packet, "payloads")?;
+    let payloads = cv::scval_field(cv::scval_as_map(packet)?, "payloads")?;
     let ScVal::Vec(Some(items)) = payloads else {
         return None;
     };
     let first = items.0.first()?;
-    match scval_map_get(first, "value")? {
-        ScVal::Bytes(b) => Some(b.0.to_vec()),
-        _ => None,
-    }
+    let value = cv::scval_field(cv::scval_as_map(first)?, "value")?;
+    cv::scval_as_bytes(value)
 }
 
 #[tonic::async_trait]
@@ -148,7 +122,7 @@ impl StellarGatewayMsg for MsgHandler {
         })?;
         let return_value = submitted
             .return_value
-            .and_then(|v| v.to_xdr(Limits::none()).ok())
+            .and_then(|v| cv::scval_to_xdr(&v).ok())
             .unwrap_or_default();
         tracing::info!(tx_hash = %submitted.hash, "[gateway] tx submitted");
         Ok(Response::new(SubmitSignedTxResponse {
@@ -351,6 +325,7 @@ impl StellarGatewayMsg for MsgHandler {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use soroban_client::xdr::ScVec;
 
     fn handler() -> MsgHandler {
         MsgHandler::new(ApiClient::new("http://127.0.0.1:8101"))

@@ -10,105 +10,21 @@ use ibc_proto::ibc::lightclients::tendermint::v1::{
     Header as RawTmHeader,
 };
 use prost::Message;
-use stellar_xdr::curr::{
-    Limits, ReadXdr, ScBytes, ScMap, ScMapEntry, ScString, ScSymbol, ScVal, StringM, VecM, WriteXdr,
-};
+use soroban_client::xdr::{ScMap, ScVal};
 
 use super::client_state::AnyClientState;
 use super::consensus_state::AnyConsensusState;
-
-fn sc_field<'a>(map: &'a ScMap, name: &str) -> Result<&'a ScVal> {
-    map.0
-        .iter()
-        .find(|e| matches!(&e.key, ScVal::Symbol(ScSymbol(s)) if s.to_string() == name))
-        .map(|e| &e.val)
-        .ok_or_else(|| anyhow!("missing client state field: {name}"))
-}
-
-fn sc_as_map<'a>(val: &'a ScVal, name: &str) -> Result<&'a ScMap> {
-    match val {
-        ScVal::Map(Some(m)) => Ok(m),
-        _ => Err(anyhow!("field {name} is not a map")),
-    }
-}
-
-fn sc_u64(map: &ScMap, name: &str) -> Result<u64> {
-    match sc_field(map, name)? {
-        ScVal::U64(n) => Ok(*n),
-        _ => Err(anyhow!("field {name} is not u64")),
-    }
-}
-
-fn sc_u32(map: &ScMap, name: &str) -> Result<u32> {
-    match sc_field(map, name)? {
-        ScVal::U32(n) => Ok(*n),
-        _ => Err(anyhow!("field {name} is not u32")),
-    }
-}
-
-fn sc_bytes_vec(map: &ScMap, name: &str) -> Result<Vec<u8>> {
-    match sc_field(map, name)? {
-        ScVal::Bytes(b) => Ok(b.to_vec()),
-        _ => Err(anyhow!("field {name} is not bytes")),
-    }
-}
-
-fn sc_str(map: &ScMap, name: &str) -> Result<String> {
-    match sc_field(map, name)? {
-        ScVal::String(ScString(s)) => Ok(s.to_string()),
-        _ => Err(anyhow!("field {name} is not a string")),
-    }
-}
+use crate::conversion::{
+    scval_as_map, scval_bytes, scval_from_xdr, scval_height, scval_map_as_map, scval_map_bytes,
+    scval_map_string, scval_map_u32, scval_map_u64, scval_string, scval_struct, scval_to_xdr,
+};
 
 fn sc_get_height(map: &ScMap, name: &str) -> Result<RawHeight> {
-    let h = sc_as_map(sc_field(map, name)?, name)?;
+    let h = scval_map_as_map(map, name)?;
     Ok(RawHeight {
-        revision_number: sc_u64(h, "revision_number")?,
-        revision_height: sc_u64(h, "revision_height")?,
+        revision_number: scval_map_u64(h, "revision_number")?,
+        revision_height: scval_map_u64(h, "revision_height")?,
     })
-}
-
-fn sc_symbol(s: &str) -> Result<ScVal> {
-    let m: StringM<32> = s
-        .try_into()
-        .map_err(|_| anyhow!("invalid struct field symbol: {s}"))?;
-    Ok(ScVal::Symbol(ScSymbol(m)))
-}
-
-fn sc_string(s: &str) -> Result<ScVal> {
-    let m: StringM = s
-        .try_into()
-        .map_err(|_| anyhow!("invalid string for ScVal"))?;
-    Ok(ScVal::String(ScString(m)))
-}
-
-fn sc_bytes(b: Vec<u8>) -> Result<ScVal> {
-    let bytes: ScBytes = b
-        .try_into()
-        .map_err(|_| anyhow!("invalid bytes for ScVal"))?;
-    Ok(ScVal::Bytes(bytes))
-}
-
-fn sc_struct(fields: Vec<(&str, ScVal)>) -> Result<ScVal> {
-    let mut entries = Vec::with_capacity(fields.len());
-    for (key, val) in fields {
-        entries.push(ScMapEntry {
-            key: sc_symbol(key)?,
-            val,
-        });
-    }
-    entries.sort_by(|a, b| a.key.cmp(&b.key));
-    let vm: VecM<ScMapEntry> = entries
-        .try_into()
-        .map_err(|_| anyhow!("struct map too large"))?;
-    Ok(ScVal::Map(Some(ScMap(vm))))
-}
-
-fn sc_height(revision_number: u64, revision_height: u64) -> Result<ScVal> {
-    sc_struct(vec![
-        ("revision_number", ScVal::U64(revision_number)),
-        ("revision_height", ScVal::U64(revision_height)),
-    ])
 }
 
 impl AnyClientState {
@@ -116,7 +32,7 @@ impl AnyClientState {
         let AnyClientState::Tendermint(cs) = self;
         let cs = cs.inner();
 
-        let trust_level = sc_struct(vec![
+        let trust_level = scval_struct(vec![
             ("numerator", ScVal::U32(cs.trust_level.numerator() as u32)),
             (
                 "denominator",
@@ -130,8 +46,8 @@ impl AnyClientState {
             .map(|h| (h.revision_number(), h.revision_height()))
             .unwrap_or((0, 0));
 
-        let state = sc_struct(vec![
-            ("chain_id", sc_string(cs.chain_id.as_str())?),
+        let state = scval_struct(vec![
+            ("chain_id", scval_string(cs.chain_id.as_str())?),
             ("trust_level", trust_level),
             (
                 "trusting_period_secs",
@@ -147,46 +63,43 @@ impl AnyClientState {
             ),
             (
                 "latest_height",
-                sc_height(
+                scval_height(
                     cs.latest_height.revision_number(),
                     cs.latest_height.revision_height(),
                 )?,
             ),
             ("is_frozen", ScVal::Bool(cs.frozen_height.is_some())),
-            ("frozen_height", sc_height(frozen_rn, frozen_rh)?),
-            ("proof_specs", sc_bytes(Vec::new())?),
+            ("frozen_height", scval_height(frozen_rn, frozen_rh)?),
+            ("proof_specs", scval_bytes(&[])?),
         ])?;
 
-        state
-            .to_xdr(Limits::none())
-            .map_err(|e| anyhow!("client_state to_xdr: {e}"))
+        scval_to_xdr(&state)
     }
 
     #[allow(deprecated)]
     pub fn from_soroban_xdr(bytes: &[u8]) -> Result<Self> {
-        let val = ScVal::from_xdr(bytes, Limits::none())
-            .map_err(|e| anyhow!("client_state from_xdr: {e}"))?;
-        let map = sc_as_map(&val, "client_state")?;
+        let val = scval_from_xdr(bytes)?;
+        let map = scval_as_map(&val).ok_or_else(|| anyhow!("client_state is not a map"))?;
 
-        let trust = sc_as_map(sc_field(map, "trust_level")?, "trust_level")?;
+        let trust = scval_map_as_map(map, "trust_level")?;
         let frozen_height = Some(sc_get_height(map, "frozen_height")?);
 
         let raw = RawTmClientState {
-            chain_id: sc_str(map, "chain_id")?,
+            chain_id: scval_map_string(map, "chain_id")?,
             trust_level: Some(Fraction {
-                numerator: sc_u32(trust, "numerator")? as u64,
-                denominator: sc_u32(trust, "denominator")? as u64,
+                numerator: scval_map_u32(trust, "numerator")? as u64,
+                denominator: scval_map_u32(trust, "denominator")? as u64,
             }),
             trusting_period: Some(Duration {
-                seconds: sc_u64(map, "trusting_period_secs")? as i64,
+                seconds: scval_map_u64(map, "trusting_period_secs")? as i64,
                 nanos: 0,
             }),
             unbonding_period: Some(Duration {
-                seconds: sc_u64(map, "unbonding_period_secs")? as i64,
+                seconds: scval_map_u64(map, "unbonding_period_secs")? as i64,
                 nanos: 0,
             }),
             max_clock_drift: Some(Duration {
-                seconds: sc_u64(map, "max_clock_drift_secs")? as i64,
+                seconds: scval_map_u64(map, "max_clock_drift_secs")? as i64,
                 nanos: 0,
             }),
             frozen_height,
@@ -246,28 +159,26 @@ pub fn tendermint_header_to_soroban_xdr(header_bytes: &[u8]) -> Result<Vec<u8>> 
         .unwrap_or_default();
     let signed_header_bytes = signed_header.encode_to_vec();
 
-    let state = sc_struct(vec![
+    let state = scval_struct(vec![
         (
             "trusted_height",
-            sc_height(
+            scval_height(
                 trusted_height.revision_number,
                 trusted_height.revision_height,
             )?,
         ),
         (
             "target_height",
-            sc_height(trusted_height.revision_number, target_revision_height)?,
+            scval_height(trusted_height.revision_number, target_revision_height)?,
         ),
         ("timestamp_secs", ScVal::U64(timestamp_secs)),
-        ("next_validators_hash", sc_bytes(next_validators_hash)?),
-        ("app_hash", sc_bytes(app_hash)?),
-        ("signed_header_bytes", sc_bytes(signed_header_bytes)?),
-        ("validator_set_bytes", sc_bytes(validator_set_bytes)?),
+        ("next_validators_hash", scval_bytes(&next_validators_hash)?),
+        ("app_hash", scval_bytes(&app_hash)?),
+        ("signed_header_bytes", scval_bytes(&signed_header_bytes)?),
+        ("validator_set_bytes", scval_bytes(&validator_set_bytes)?),
     ])?;
 
-    state
-        .to_xdr(Limits::none())
-        .map_err(|e| anyhow!("tendermint header to_xdr: {e}"))
+    scval_to_xdr(&state)
 }
 
 impl AnyConsensusState {
@@ -279,25 +190,22 @@ impl AnyConsensusState {
         let next_validators_hash = cons.next_validators_hash.as_bytes().to_vec();
         let root = cons.root.as_bytes().to_vec();
 
-        let state = sc_struct(vec![
+        let state = scval_struct(vec![
             ("timestamp_secs", ScVal::U64(timestamp_secs)),
-            ("next_validators_hash", sc_bytes(next_validators_hash)?),
-            ("root", sc_bytes(root)?),
+            ("next_validators_hash", scval_bytes(&next_validators_hash)?),
+            ("root", scval_bytes(&root)?),
         ])?;
 
-        state
-            .to_xdr(Limits::none())
-            .map_err(|e| anyhow!("consensus_state to_xdr: {e}"))
+        scval_to_xdr(&state)
     }
 
     pub fn from_soroban_xdr(bytes: &[u8]) -> Result<Self> {
-        let val = ScVal::from_xdr(bytes, Limits::none())
-            .map_err(|e| anyhow!("consensus_state from_xdr: {e}"))?;
-        let map = sc_as_map(&val, "consensus_state")?;
+        let val = scval_from_xdr(bytes)?;
+        let map = scval_as_map(&val).ok_or_else(|| anyhow!("consensus_state is not a map"))?;
 
-        let timestamp_secs = sc_u64(map, "timestamp_secs")?;
-        let next_validators_hash = sc_bytes_vec(map, "next_validators_hash")?;
-        let root = sc_bytes_vec(map, "root")?;
+        let timestamp_secs = scval_map_u64(map, "timestamp_secs")?;
+        let next_validators_hash = scval_map_bytes(map, "next_validators_hash")?;
+        let root = scval_map_bytes(map, "root")?;
 
         let raw = RawTmConsensusState {
             timestamp: Some(Timestamp {
