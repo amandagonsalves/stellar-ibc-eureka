@@ -64,10 +64,15 @@ impl MsgHandler {
         }
     }
 
-    async fn prepare_msg_tx(&self, method: &str, args: Vec<ScVal>) -> Result<Vec<u8>, Status> {
-        tracing::debug!(method, args = args.len(), "prepare_router via api");
+    async fn prepare_msg_tx(
+        &self,
+        signer: &str,
+        method: &str,
+        args: Vec<ScVal>,
+    ) -> Result<Vec<u8>, Status> {
+        tracing::debug!(method, signer, args = args.len(), "prepare_router via api");
         self.api
-            .build_unsigned_tx(method, args)
+            .build_unsigned_tx(signer, method, args)
             .await
             .map_err(|error| {
                 tracing::error!(%error, method, "invoke failed");
@@ -195,7 +200,7 @@ impl StellarGatewayMsg for MsgHandler {
             scval_bytes(&consensus_state_xdr)?,
             scval_u64(height),
         ];
-        let tx_xdr = self.prepare_msg_tx("create_client", args).await?;
+        let tx_xdr = self.prepare_msg_tx(&req.signer, "create_client", args).await?;
         tracing::debug!(tx_bytes = tx_xdr.len(), "create_client prepared (unsigned)");
         Ok(Response::new(MsgCreateClientResponse {
             client_id: String::new(),
@@ -228,7 +233,7 @@ impl StellarGatewayMsg for MsgHandler {
         };
 
         let args = vec![scval_string(&req.client_id)?, scval_bytes(&header_xdr)?];
-        let tx_xdr = self.prepare_msg_tx("update_client", args).await?;
+        let tx_xdr = self.prepare_msg_tx(&req.signer, "update_client", args).await?;
         Ok(Response::new(MsgUpdateClientResponse { tx_xdr }))
     }
 
@@ -253,7 +258,7 @@ impl StellarGatewayMsg for MsgHandler {
             scval_string(&req.counterparty_client_id)?,
             scval_vec_of_bytes(&req.counterparty_commitment_prefix)?,
         ];
-        let tx_xdr = self.prepare_msg_tx("register_counterparty", args).await?;
+        let tx_xdr = self.prepare_msg_tx("", "register_counterparty", args).await?;
         Ok(Response::new(MsgRegisterCounterpartyResponse { tx_xdr }))
     }
 
@@ -272,7 +277,7 @@ impl StellarGatewayMsg for MsgHandler {
             scval_bytes(&req.proof)?,
             scval_u64(req.proof_height),
         ];
-        let tx_xdr = self.prepare_msg_tx("recv_packet", args).await?;
+        let tx_xdr = self.prepare_msg_tx(&req.signer, "recv_packet", args).await?;
         Ok(Response::new(MsgRecvPacketResponse { tx_xdr }))
     }
 
@@ -296,7 +301,7 @@ impl StellarGatewayMsg for MsgHandler {
             scval_bytes(&req.proof)?,
             scval_u64(req.proof_height),
         ];
-        let tx_xdr = self.prepare_msg_tx("acknowledge_packet", args).await?;
+        let tx_xdr = self.prepare_msg_tx(&req.signer, "acknowledge_packet", args).await?;
         Ok(Response::new(MsgAckPacketResponse { tx_xdr }))
     }
 
@@ -315,7 +320,7 @@ impl StellarGatewayMsg for MsgHandler {
             scval_bytes(&req.proof)?,
             scval_u64(req.proof_height),
         ];
-        let tx_xdr = self.prepare_msg_tx("timeout_packet", args).await?;
+        let tx_xdr = self.prepare_msg_tx(&req.signer, "timeout_packet", args).await?;
         Ok(Response::new(MsgTimeoutPacketResponse { tx_xdr }))
     }
 
@@ -338,7 +343,7 @@ impl StellarGatewayMsg for MsgHandler {
             scval_string(&req.client_id)?,
             scval_bytes(&req.client_message)?,
         ];
-        let tx_xdr = self.prepare_msg_tx("update_client", args).await?;
+        let tx_xdr = self.prepare_msg_tx(&req.signer, "update_client", args).await?;
         Ok(Response::new(MsgSubmitMisbehaviourResponse { tx_xdr }))
     }
 }
