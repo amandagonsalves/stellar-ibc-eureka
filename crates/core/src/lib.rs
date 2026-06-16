@@ -3,4 +3,4 @@ pub mod conversion;
 pub mod ibc;
 pub mod types;
 
-pub use ibc::{commitment, proof, smt};
+pub use ibc::{commitment, proof, smt, state};

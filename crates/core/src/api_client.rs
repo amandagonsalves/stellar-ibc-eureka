@@ -1,32 +1,14 @@
 use soroban_client::xdr::{Limits, ScVal, WriteXdr};
 
-use crate::types::{LedgerData, SubmittedTx};
+use crate::{
+    conversion::string_field,
+    types::{EventCursor, EventRecord, EventsPage, LedgerData, SubmittedTx},
+};
 
 #[derive(Clone)]
 pub struct ApiClient {
     base_url: String,
     http: reqwest::Client,
-}
-
-pub struct EventRecord {
-    pub id: String,
-    pub ledger: u32,
-    pub ledger_closed_at: String,
-    pub contract_id: String,
-    pub tx_hash: String,
-    pub topics_xdr: Vec<Vec<u8>>,
-    pub value_xdr: Vec<u8>,
-}
-
-pub struct EventsPage {
-    pub latest_ledger: u32,
-    pub cursor: String,
-    pub events: Vec<EventRecord>,
-}
-
-pub enum EventCursor {
-    Cursor(String),
-    StartLedger(u32),
 }
 
 impl ApiClient {
@@ -94,14 +76,20 @@ impl ApiClient {
             .ok_or_else(|| anyhow::anyhow!("missing 'sequence' in /ledger/latest response"))
     }
 
-    pub async fn get_transfer_balance(&self, denom: &str, address_hex: &str) -> anyhow::Result<i128> {
+    pub async fn get_transfer_balance(
+        &self,
+        denom: &str,
+        address_hex: &str,
+    ) -> anyhow::Result<i128> {
         let body = self
             .get_json(&format!("/stellar/transfer/balance/{denom}/{address_hex}"))
             .await?;
         body.get("balance")
             .and_then(|v| v.as_str())
             .and_then(|s| s.parse::<i128>().ok())
-            .ok_or_else(|| anyhow::anyhow!("missing/invalid 'balance' in transfer balance response"))
+            .ok_or_else(|| {
+                anyhow::anyhow!("missing/invalid 'balance' in transfer balance response")
+            })
     }
 
     pub async fn list_client_ids(&self) -> anyhow::Result<Vec<String>> {
@@ -158,7 +146,7 @@ impl ApiClient {
                 hex::decode(meta_hex)
                     .map_err(|e| anyhow::anyhow!("metadata_xdr hex decode: {e}"))?,
             ),
-            None => None,
+            _ => None,
         };
 
         Ok(LedgerData {
@@ -287,17 +275,9 @@ impl ApiClient {
                     .map_err(|e| anyhow::anyhow!("return_value_xdr hex decode: {e}"))?;
                 Some(crate::conversion::scval_from_xdr(&bytes)?)
             }
-            None => None,
+            _ => None,
         };
 
         Ok(SubmittedTx { hash, return_value })
     }
-}
-
-fn string_field(value: &serde_json::Value, key: &str) -> String {
-    value
-        .get(key)
-        .and_then(|v| v.as_str())
-        .unwrap_or_default()
-        .to_owned()
 }

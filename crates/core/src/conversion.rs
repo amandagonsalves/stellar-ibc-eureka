@@ -80,7 +80,8 @@ pub fn scval_from_xdr(bytes: &[u8]) -> Result<ScVal> {
 }
 
 pub fn scval_to_xdr(val: &ScVal) -> Result<Vec<u8>> {
-    val.to_xdr(Limits::none()).map_err(|e| anyhow!("ScVal to_xdr: {e}"))
+    val.to_xdr(Limits::none())
+        .map_err(|e| anyhow!("ScVal to_xdr: {e}"))
 }
 
 pub fn persistent_contract_data_key(contract: [u8; 32], key_val: ScVal) -> Result<Vec<u8>> {
@@ -180,4 +181,36 @@ pub fn scval_map_string(map: &ScMap, name: &str) -> Result<String> {
 
 pub fn scval_map_bytes(map: &ScMap, name: &str) -> Result<Vec<u8>> {
     scval_as_bytes(scval_map_field(map, name)?).ok_or_else(|| anyhow!("field {name} is not bytes"))
+}
+
+pub fn scval_to_v2_path(key: &ScVal) -> Option<Vec<u8>> {
+    scval_as_bytes(key).filter(|bytes| is_v2_provable_path(bytes))
+}
+
+pub fn is_v2_provable_path(key: &[u8]) -> bool {
+    if key.len() < 10 {
+        return false;
+    }
+
+    let discriminator = key[key.len() - 9];
+
+    matches!(discriminator, 0x01..=0x03)
+}
+
+pub fn string_field(value: &serde_json::Value, key: &str) -> String {
+    value
+        .get(key)
+        .and_then(|v| v.as_str())
+        .unwrap_or_default()
+        .to_owned()
+}
+
+pub fn first_payload_value(packet: &ScVal) -> Option<Vec<u8>> {
+    let payloads = scval_field(scval_as_map(packet)?, "payloads")?;
+    let ScVal::Vec(Some(items)) = payloads else {
+        return None;
+    };
+    let first = items.0.first()?;
+    let value = scval_field(scval_as_map(first)?, "value")?;
+    scval_as_bytes(value)
 }
