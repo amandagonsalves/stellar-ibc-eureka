@@ -6,33 +6,42 @@ use axum::Json;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use soroban_client::xdr::{Limits, WriteXdr};
+use utoipa::ToSchema;
 
 use crate::AppState;
 
 const BASE_FEE: u32 = 1_000;
 
-#[derive(Deserialize)]
+#[derive(Deserialize, ToSchema)]
 pub struct PrepareRequest {
+    /// Stellar address (G…) used as the tx source account; falls back to the
+    /// api's configured account when empty.
     #[serde(default)]
     pub signer: String,
+    /// Router contract method to invoke.
     pub method: String,
+    /// Hex-encoded ScVal XDR arguments, in order.
     #[serde(default)]
     pub args_xdr: Vec<String>,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 pub struct PrepareResponse {
+    /// Hex-encoded unsigned transaction envelope XDR.
     pub tx_xdr: String,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, ToSchema)]
 pub struct SubmitSignedTxRequest {
+    /// Hex-encoded signed transaction envelope XDR.
     pub tx_xdr: String,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 pub struct SubmitSignedTxResponse {
+    /// Submitted transaction hash.
     pub hash: String,
+    /// Hex-encoded ScVal XDR return value (empty when none).
     pub return_value_xdr: String,
 }
 
@@ -40,6 +49,17 @@ fn err<E: std::fmt::Display>(status: StatusCode, e: E) -> (StatusCode, Json<Valu
     (status, Json(json!({ "error": e.to_string() })))
 }
 
+#[utoipa::path(
+    post,
+    path = "/tx/prepare",
+    tag = "Tx",
+    request_body = PrepareRequest,
+    responses(
+        (status = 200, description = "Unsigned tx built for the relayer to sign", body = PrepareResponse),
+        (status = 400, description = "Malformed args_xdr hex"),
+        (status = 502, description = "ROUTER_CONTRACT_ADDRESS unset or Soroban RPC unreachable"),
+    )
+)]
 #[tracing::instrument(skip(state, req), fields(method = %req.method))]
 pub async fn prepare_tx(
     State(state): State<Arc<AppState>>,
@@ -82,6 +102,17 @@ pub async fn prepare_tx(
     }))
 }
 
+#[utoipa::path(
+    post,
+    path = "/tx/submit",
+    tag = "Tx",
+    request_body = SubmitSignedTxRequest,
+    responses(
+        (status = 200, description = "Tx submitted; returns hash + return value", body = SubmitSignedTxResponse),
+        (status = 400, description = "Malformed tx_xdr hex"),
+        (status = 502, description = "Soroban RPC submission failed"),
+    )
+)]
 #[tracing::instrument(skip(state, req), fields(tx_bytes = req.tx_xdr.len()))]
 pub async fn submit_signed_tx(
     State(state): State<Arc<AppState>>,

@@ -3,49 +3,47 @@ use axum::{
     routing::{get, post},
     Router,
 };
-use soroban_client::keypair::{Keypair, KeypairBehavior};
 use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::net::TcpListener;
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
 
+use crate::rpc::RpcClient;
 use crate::{config::ApiConfig, services, AppState};
-use crate::{rpc::RpcClient, services::cosmos::client::CosmosClient};
 
-/// OpenAPI document for the cosmos + hermes endpoints. Served as JSON at
+/// OpenAPI document for the full api surface. Served as JSON at
 /// `/api-docs/openapi.json` and rendered as Swagger UI at `/docs`.
 #[derive(OpenApi)]
 #[openapi(
     info(
         title = "stellar-api",
-        description = "HTTP service that fronts the Stellar IBC stack, a configured Cosmos chain, and the hermes relayer config.",
+        description = "HTTP service that fronts the Stellar IBC stack.",
         version = "0.1.0",
     ),
     tags(
-        (name = "Cosmos read", description = "Read-only proxies to the configured Cosmos REST endpoint."),
-        (name = "Cosmos write", description = "Signed Cosmos SDK transactions broadcast via the api's proposer/funder keys."),
-        (name = "Hermes", description = "Mutations to the bound hermes config file."),
+        (name = "Stellar", description = "Health + Stellar IBC reads (ledgers, events, balances, clients)."),
+        (name = "Ledger", description = "Stellar ledger headers + metadata."),
+        (name = "Tx", description = "Build unsigned and submit relayer-signed Soroban transactions."),
     ),
     paths(
-        services::cosmos::node_info,
-        services::cosmos::proposals,
-        services::cosmos::proposal_by_id,
-        services::cosmos::gov_deposit_params,
-        services::cosmos::tx_by_hash,
-        services::cosmos::ibc_wasm_checksums,
-        services::cosmos::proposer_info,
-        services::cosmos::funder_info,
-        services::cosmos::submit_store_code,
-        services::cosmos::submit_vote,
-        services::cosmos::submit_bank_send,
-        services::hermes::patch_wasm_checksum,
+        health,
+        services::ledgers::get_latest_ledger,
+        services::ledgers::get_ledger,
+        services::events::get_events,
+        services::balance::transfer_balance,
+        services::clients::list_clients,
+        services::clients::client_state,
+        services::clients::consensus_state,
+        services::tx::prepare_tx,
+        services::tx::submit_signed_tx,
     ),
     components(schemas(
-        services::cosmos::StoreCodeRequest,
-        services::cosmos::VoteRequest,
-        services::cosmos::BankSendRequest,
-        services::hermes::PatchChecksumRequest,
+        services::balance::BalanceResponse,
+        services::tx::PrepareRequest,
+        services::tx::PrepareResponse,
+        services::tx::SubmitSignedTxRequest,
+        services::tx::SubmitSignedTxResponse,
     )),
 )]
 pub struct ApiDoc;
@@ -56,7 +54,6 @@ pub fn router(state: Arc<AppState>) -> Router {
         .route("/ledger/latest", get(services::ledgers::get_latest_ledger))
         .route("/ledger/{sequence}", get(services::ledgers::get_ledger))
         .route("/events", get(services::events::get_events))
-        .route("/balance/{address}", get(services::balance::balance))
         .route(
             "/stellar/transfer/balance/{denom}/{address}",
             get(services::balance::transfer_balance),
@@ -72,40 +69,18 @@ pub fn router(state: Arc<AppState>) -> Router {
         )
         .route("/tx/submit", post(services::tx::submit_signed_tx))
         .route("/tx/prepare", post(services::tx::prepare_tx))
-        .route("/cosmos/node-info", get(services::cosmos::node_info))
-        .route("/cosmos/proposer", get(services::cosmos::proposer_info))
-        .route("/cosmos/funder", get(services::cosmos::funder_info))
-        .route(
-            "/cosmos/bank/send",
-            post(services::cosmos::submit_bank_send),
-        )
-        .route("/cosmos/gov/proposals", get(services::cosmos::proposals))
-        .route(
-            "/cosmos/gov/proposals/{id}",
-            get(services::cosmos::proposal_by_id),
-        )
-        .route(
-            "/cosmos/gov/params/deposit",
-            get(services::cosmos::gov_deposit_params),
-        )
-        .route("/cosmos/tx/{hash}", get(services::cosmos::tx_by_hash))
-        .route(
-            "/cosmos/ibc-wasm/checksums",
-            get(services::cosmos::ibc_wasm_checksums),
-        )
-        .route(
-            "/cosmos/ibc-wasm/store-code",
-            post(services::cosmos::submit_store_code),
-        )
-        .route("/cosmos/gov/vote", post(services::cosmos::submit_vote))
-        .route(
-            "/hermes/wasm-checksum",
-            post(services::hermes::patch_wasm_checksum),
-        )
         .with_state(state)
         .merge(SwaggerUi::new("/docs").url("/api-docs/openapi.json", ApiDoc::openapi()))
 }
 
+#[utoipa::path(
+    get,
+    path = "/health",
+    tag = "Stellar",
+    responses(
+        (status = 200, description = "Liveness probe with the latest Stellar ledger (plain text)"),
+    )
+)]
 async fn health(State(state): State<Arc<AppState>>) -> String {
     tracing::debug!("GET /health");
 
@@ -134,30 +109,49 @@ pub async fn run(cfg: ApiConfig) -> anyhow::Result<()> {
     tracing::info!(
         port = cfg.port,
         rpc_url = %cfg.rpc_url,
-        signing_key_configured = !cfg.signing_key.is_empty(),
         "[api] starting"
     );
 
     let addr = cfg.addr();
-    let keypair = Keypair::from_secret(&cfg.signing_key).unwrap();
 
-    let rpc = RpcClient::new(cfg.rpc_url.as_str(), &keypair.public_key())
-        .expect("could not create a new rpc client");
-    let cosmos = CosmosClient::new(cfg.cosmos)?;
-    if let Some(p) = cosmos.proposer_address() {
-        tracing::debug!(cosmos_proposer = %p, "cosmos signer derived");
-    }
-    tracing::debug!(hermes_config_path = %cfg.hermes_config_path, "hermes config target");
+    let rpc =
+        RpcClient::new(cfg.rpc_url.as_str()).expect("could not create a new rpc client");
 
     let state = Arc::new(AppState::new(
         rpc,
-        cfg.signing_key,
-        cosmos,
-        cfg.hermes_config_path,
         cfg.ibc_contract_id,
         cfg.transfer_contract_id,
         cfg.network_passphrase,
     ));
 
     serve(addr, state).await
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn openapi_documents_every_routed_endpoint() {
+        let spec = serde_json::to_value(ApiDoc::openapi()).unwrap();
+        let paths = spec["paths"].as_object().expect("openapi has paths");
+
+        for path in [
+            "/health",
+            "/ledger/latest",
+            "/ledger/{sequence}",
+            "/events",
+            "/stellar/transfer/balance/{denom}/{address}",
+            "/stellar/clients",
+            "/stellar/clients/{client_id}/state",
+            "/stellar/clients/{client_id}/consensus/{height}",
+            "/tx/prepare",
+            "/tx/submit",
+        ] {
+            assert!(
+                paths.contains_key(path),
+                "endpoint missing from OpenAPI: {path}"
+            );
+        }
+    }
 }

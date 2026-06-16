@@ -9,17 +9,33 @@ use axum::{
 };
 use serde::Deserialize;
 use serde_json::{json, Value};
+use utoipa::IntoParams;
 
 use crate::state::AppState;
 
-#[derive(Deserialize, Debug, Default)]
+#[derive(Deserialize, Debug, Default, IntoParams)]
 pub struct EventsQuery {
+    /// Soroban contract id to read events from (required).
     pub contract_id: Option<String>,
+    /// Opaque pagination cursor from a previous page.
     pub cursor: Option<String>,
+    /// Start ledger to read from when no cursor is given (must be > 0).
     pub start_ledger: Option<u32>,
+    /// Max events to return.
     pub limit: Option<u32>,
 }
 
+#[utoipa::path(
+    get,
+    path = "/events",
+    tag = "Stellar",
+    params(EventsQuery),
+    responses(
+        (status = 200, description = "Event page: { latest_ledger, cursor, events }"),
+        (status = 400, description = "Missing contract_id, or neither cursor nor start_ledger"),
+        (status = 502, description = "Soroban RPC unreachable"),
+    )
+)]
 #[tracing::instrument(skip(state))]
 pub async fn get_events(
     State(state): State<Arc<AppState>>,

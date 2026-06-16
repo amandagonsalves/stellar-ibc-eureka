@@ -18,13 +18,10 @@ serde_json = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 anyhow = { workspace = true }
+dotenvy = { workspace = true }
 hex = { workspace = true }
 base64 = { workspace = true }
 reqwest = { workspace = true }
-cosmrs = { workspace = true }
-ibc-proto = { workspace = true }
-prost = "0.13"
-regex = { workspace = true }
 utoipa = { version = "5", features = ["axum_extras"] }
 utoipa-swagger-ui = { version = "9", features = ["axum", "vendored"] }
 

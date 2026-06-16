@@ -40,11 +40,10 @@ pub struct RpcClient {
     pub server: Arc<Server>,
     rpc_url: String,
     http: reqwest::Client,
-    signer: String,
 }
 
 impl RpcClient {
-    pub fn new(rpc_url: &str, signer: &str) -> anyhow::Result<Self> {
+    pub fn new(rpc_url: &str) -> anyhow::Result<Self> {
         let server = Server::new(
             rpc_url,
             Options {
@@ -56,7 +55,6 @@ impl RpcClient {
             server: Arc::new(server),
             rpc_url: rpc_url.to_owned(),
             http: reqwest::Client::new(),
-            signer: String::from(signer),
         })
     }
 
@@ -204,11 +202,10 @@ impl RpcClient {
             .map_err(|e| anyhow::anyhow!("invalid contract id {contract_id}: {e}"))?;
         let operation = contract.call(method, Some(args));
 
-        let address: &str = if signer.is_empty() {
-            &self.signer
-        } else {
-            signer
-        };
+        if signer.is_empty() {
+            anyhow::bail!("signer (tx source account) is required");
+        }
+        let address: &str = signer;
 
         let mut source = self
             .server

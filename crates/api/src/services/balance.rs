@@ -3,16 +3,16 @@ use std::sync::Arc;
 use axum::{
     extract::{Path, State},
     http::StatusCode,
-    response::IntoResponse,
     Json,
 };
 use serde::Serialize;
 use serde_json::{json, Value};
 use stellar_ibc_core::conversion as cv;
+use utoipa::ToSchema;
 
 use crate::state::AppState;
 
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 pub struct BalanceResponse {
     balance: String,
 }
@@ -40,20 +40,20 @@ fn decode_i128(entry_xdr: &[u8]) -> Option<i128> {
     cv::ledger_entry_contract_val(entry_xdr).and_then(|v| cv::scval_as_i128(&v))
 }
 
-#[tracing::instrument(skip(_state))]
-pub async fn balance(
-    State(_state): State<Arc<AppState>>,
-    Path(address): Path<String>,
-) -> impl IntoResponse {
-    tracing::debug!(%address, "GET /balance/{address}");
-    (
-        StatusCode::OK,
-        Json(BalanceResponse {
-            balance: "0".to_string(),
-        }),
+#[utoipa::path(
+    get,
+    path = "/stellar/transfer/balance/{denom}/{address}",
+    tag = "Stellar",
+    params(
+        ("denom" = String, Path, description = "Token denom"),
+        ("address" = String, Path, description = "Hex-encoded sender address ScVal"),
+    ),
+    responses(
+        (status = 200, description = "Escrowed transfer balance", body = BalanceResponse),
+        (status = 400, description = "Malformed address or denom"),
+        (status = 502, description = "TRANSFER_CONTRACT_ADDRESS unset or Soroban RPC unreachable"),
     )
-}
-
+)]
 #[tracing::instrument(skip(state))]
 pub async fn transfer_balance(
     State(state): State<Arc<AppState>>,

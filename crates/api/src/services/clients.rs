@@ -7,13 +7,15 @@ use serde::Deserialize;
 use serde_json::{json, Value};
 use soroban_client::xdr::{ContractId, Hash, ScAddress, ScVal};
 use stellar_ibc_core::conversion as cv;
+use utoipa::IntoParams;
 
 use crate::AppState;
 
 const DEFAULT_CLIENT_TYPES: &[&str] = &["07-tendermint", "mock", "attestation", "08-wasm"];
 
-#[derive(Deserialize)]
+#[derive(Deserialize, IntoParams)]
 pub struct ListClientsQuery {
+    /// Restrict the listing to a single client type (default: all known types).
     pub client_type: Option<String>,
 }
 
@@ -46,6 +48,19 @@ fn client_type_of(client_id: &str) -> &str {
     }
 }
 
+#[utoipa::path(
+    get,
+    path = "/stellar/clients/{client_id}/state",
+    tag = "Stellar",
+    params(
+        ("client_id" = String, Path, description = "IBC client id, e.g. 07-tendermint-0"),
+    ),
+    responses(
+        (status = 200, description = "Client state: { client_id, client_type, client_state_xdr }"),
+        (status = 404, description = "Client or its state not found"),
+        (status = 502, description = "ROUTER_CONTRACT_ADDRESS unset or Soroban RPC unreachable"),
+    )
+)]
 #[tracing::instrument(skip(state))]
 pub async fn client_state(
     State(state): State<Arc<AppState>>,
@@ -125,6 +140,20 @@ pub async fn client_state(
     })))
 }
 
+#[utoipa::path(
+    get,
+    path = "/stellar/clients/{client_id}/consensus/{height}",
+    tag = "Stellar",
+    params(
+        ("client_id" = String, Path, description = "IBC client id, e.g. 07-tendermint-0"),
+        ("height" = u64, Path, description = "Consensus height (revision_height)"),
+    ),
+    responses(
+        (status = 200, description = "Consensus state: { client_id, client_type, height, consensus_state_xdr }"),
+        (status = 404, description = "Consensus state not found at that height"),
+        (status = 502, description = "ROUTER_CONTRACT_ADDRESS unset or Soroban RPC unreachable"),
+    )
+)]
 #[tracing::instrument(skip(state))]
 pub async fn consensus_state(
     State(state): State<Arc<AppState>>,
@@ -205,6 +234,16 @@ pub async fn consensus_state(
     })))
 }
 
+#[utoipa::path(
+    get,
+    path = "/stellar/clients",
+    tag = "Stellar",
+    params(ListClientsQuery),
+    responses(
+        (status = 200, description = "Clients grouped by type: { clients: [{ client_type, count, client_ids }] }"),
+        (status = 502, description = "ROUTER_CONTRACT_ADDRESS unset or Soroban RPC unreachable"),
+    )
+)]
 #[tracing::instrument(skip(state, params))]
 pub async fn list_clients(
     State(state): State<Arc<AppState>>,

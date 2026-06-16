@@ -10,6 +10,15 @@ use serde_json::json;
 
 use crate::state::AppState;
 
+#[utoipa::path(
+    get,
+    path = "/ledger/latest",
+    tag = "Ledger",
+    responses(
+        (status = 200, description = "Latest ledger: { sequence, header_xdr, metadata_xdr }"),
+        (status = 502, description = "Soroban RPC unreachable"),
+    )
+)]
 #[tracing::instrument(skip(state))]
 pub async fn get_latest_ledger(State(state): State<Arc<AppState>>) -> impl IntoResponse {
     tracing::debug!("GET /ledger/latest");
@@ -35,6 +44,18 @@ pub async fn get_latest_ledger(State(state): State<Arc<AppState>>) -> impl IntoR
     }
 }
 
+#[utoipa::path(
+    get,
+    path = "/ledger/{sequence}",
+    tag = "Ledger",
+    params(
+        ("sequence" = u32, Path, description = "Ledger sequence number"),
+    ),
+    responses(
+        (status = 200, description = "Ledger: { sequence, header_xdr, metadata_xdr }"),
+        (status = 502, description = "Soroban RPC unreachable"),
+    )
+)]
 #[tracing::instrument(skip(state))]
 pub async fn get_ledger(
     State(state): State<Arc<AppState>>,
