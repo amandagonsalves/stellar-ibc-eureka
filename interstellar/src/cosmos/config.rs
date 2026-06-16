@@ -16,6 +16,9 @@ const DEFAULT_TESTNET_GRPC_URL: &str = "https://grpc.provider-sentry-01.hub-test
 const DEFAULT_TESTNET_FAUCET_URL: &str = "https://faucet.polypore.xyz";
 
 const DEFAULT_KEY_NAME: &str = "relayer";
+const DEFAULT_ACCOUNT_PREFIX: &str = "cosmos";
+const DEFAULT_GAS_DENOM: &str = "stake";
+const DEFAULT_TESTNET_GAS_DENOM: &str = "uatom";
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum CosmosNetwork {
@@ -40,6 +43,10 @@ pub struct CosmosConfig {
     pub key_name: String,
     pub relayer_mnemonic: String,
     pub receiver_address: String,
+    pub account_prefix: String,
+    pub gas_denom: String,
+    pub proposer_key_hex: String,
+    pub funder_key_hex: String,
 }
 
 impl CosmosConfig {
@@ -55,6 +62,10 @@ impl CosmosConfig {
             key_name: get("COSMOS_KEY_NAME", DEFAULT_KEY_NAME),
             relayer_mnemonic: get("COSMOS_RELAYER_MNEMONIC", ""),
             receiver_address: get("COSMOS_RECEIVER_ADDRESS", ""),
+            account_prefix: get("COSMOS_ACCOUNT_PREFIX", DEFAULT_ACCOUNT_PREFIX),
+            gas_denom: get("COSMOS_GAS_DENOM", DEFAULT_GAS_DENOM),
+            proposer_key_hex: get("COSMOS_PROPOSER_PRIVATE_KEY", ""),
+            funder_key_hex: get("COSMOS_FUNDER_PRIVATE_KEY", ""),
         }
     }
 
@@ -70,6 +81,10 @@ impl CosmosConfig {
             key_name: get("COSMOS_KEY_NAME", DEFAULT_KEY_NAME),
             relayer_mnemonic: get("COSMOS_RELAYER_MNEMONIC", ""),
             receiver_address: get("COSMOS_TESTNET_RECEIVER_ADDRESS", ""),
+            account_prefix: get("COSMOS_ACCOUNT_PREFIX", DEFAULT_ACCOUNT_PREFIX),
+            gas_denom: get("COSMOS_TESTNET_GAS_DENOM", DEFAULT_TESTNET_GAS_DENOM),
+            proposer_key_hex: get("COSMOS_PROPOSER_PRIVATE_KEY", ""),
+            funder_key_hex: get("COSMOS_FUNDER_PRIVATE_KEY", ""),
         }
     }
 
