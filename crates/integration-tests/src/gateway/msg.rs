@@ -197,7 +197,10 @@ async fn submit_signed_tx_returns_hash_from_api() {
     assert_eq!(resp.tx_hash, "abc123");
 
     t.with_data(|d| {
-        assert_eq!(d.submit_calls.last().unwrap(), &hex::encode(b"signed-bytes"));
+        assert_eq!(
+            d.submit_calls.last().unwrap(),
+            &hex::encode(b"signed-bytes")
+        );
     });
 }
 

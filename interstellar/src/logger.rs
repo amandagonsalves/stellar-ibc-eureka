@@ -48,7 +48,10 @@ pub fn fmt_elapsed(elapsed: Duration) -> String {
 
 /// The spinner currently running, if any (a cheap `Arc` clone).
 pub fn current_bar() -> Option<ProgressBar> {
-    current().lock().ok().and_then(|guard| guard.as_ref().cloned())
+    current()
+        .lock()
+        .ok()
+        .and_then(|guard| guard.as_ref().cloned())
 }
 
 /// Print a finished line — above the active spinner if one is running so the

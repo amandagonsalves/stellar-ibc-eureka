@@ -80,6 +80,7 @@ jobs:
           -D warnings
           -A clippy::manual_is_multiple_of
           -A clippy::too_many_arguments
+          -A clippy::result_large_err
 
       - name: test
         run: cargo test --locked

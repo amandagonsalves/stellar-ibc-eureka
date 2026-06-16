@@ -38,7 +38,7 @@ cargo-build:
 	cargo build
 
 lint:
-	cargo clippy --locked --all-targets -- -D warnings -A clippy::manual_is_multiple_of -A clippy::too_many_arguments
+	cargo clippy --locked --all-targets -- -D warnings -A clippy::manual_is_multiple_of -A clippy::too_many_arguments -A clippy::result_large_err
 
 install:
 	cargo run -p stellar-ibc-cli -- install

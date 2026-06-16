@@ -158,7 +158,11 @@ struct DemoArgs {
         help = "Run the ICS-20 transfer round-trip demo (the default and only scenario today)"
     )]
     transfer: bool,
-    #[arg(value_enum, default_value = "stellar", help = "Source chain to transfer from")]
+    #[arg(
+        value_enum,
+        default_value = "stellar",
+        help = "Source chain to transfer from"
+    )]
     from: Chain,
     #[arg(long, default_value = "stake", help = "Token denom to transfer")]
     denom: String,
@@ -172,13 +176,23 @@ struct DemoArgs {
     receiver: String,
     #[arg(long, default_value = "", help = "Optional transfer memo")]
     memo: String,
-    #[arg(long, default_value_t = 600, help = "Transfer timeout in seconds from now")]
+    #[arg(
+        long,
+        default_value_t = 600,
+        help = "Transfer timeout in seconds from now"
+    )]
     timeout_secs: u64,
     #[arg(long, help = "Skip minting the amount to the sender first")]
     no_mint: bool,
-    #[arg(long, help = "Skip the full `start` step (assume the stack is already up)")]
+    #[arg(
+        long,
+        help = "Skip the full `start` step (assume the stack is already up)"
+    )]
     skip_start: bool,
-    #[arg(long, help = "Force-redeploy contracts and re-bootstrap clients during start")]
+    #[arg(
+        long,
+        help = "Force-redeploy contracts and re-bootstrap clients during start"
+    )]
     force_redeploy: bool,
     #[arg(
         long,

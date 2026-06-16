@@ -30,7 +30,15 @@ pub async fn run(root: &Path, http: &reqwest::Client, args: DemoArgs) -> Result<
         {
             let _tick = logger::ticker("start: bringing up the stack");
             ops::start::run(
-                &cfg, root, http, false, false, false, false, false, args.force_redeploy,
+                &cfg,
+                root,
+                http,
+                false,
+                false,
+                false,
+                false,
+                false,
+                args.force_redeploy,
             )
             .await?;
         }

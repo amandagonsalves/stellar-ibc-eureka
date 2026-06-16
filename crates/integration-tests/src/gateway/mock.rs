@@ -125,7 +125,10 @@ async fn start_mock_api() -> (String, Arc<Mutex<MockData>>) {
         .route("/events", get(events))
         .route("/stellar/clients", get(list_clients))
         .route("/stellar/clients/{id}/state", get(client_state))
-        .route("/stellar/clients/{id}/consensus/{height}", get(consensus_state))
+        .route(
+            "/stellar/clients/{id}/consensus/{height}",
+            get(consensus_state),
+        )
         .route(
             "/stellar/transfer/balance/{denom}/{address}",
             get(transfer_balance),
@@ -281,8 +284,11 @@ pub fn ledger_meta_with_write(contract: [u8; 32], key: Vec<u8>, val: Vec<u8>) ->
         data: LedgerEntryData::ContractData(entry),
         ext: LedgerEntryExt::V0,
     };
-    let changes =
-        LedgerEntryChanges(vec![LedgerEntryChange::Created(ledger_entry)].try_into().unwrap());
+    let changes = LedgerEntryChanges(
+        vec![LedgerEntryChange::Created(ledger_entry)]
+            .try_into()
+            .unwrap(),
+    );
     let tx_meta = TransactionMeta::V1(TransactionMetaV1 {
         tx_changes: LedgerEntryChanges(VecM::default()),
         operations: vec![OperationMeta { changes }].try_into().unwrap(),

@@ -21,7 +21,11 @@ fn err<E: std::fmt::Display>(status: StatusCode, e: E) -> (StatusCode, Json<Valu
     (status, Json(json!({ "error": e.to_string() })))
 }
 
-fn balance_ledger_key(contract: [u8; 32], address_hex: &str, denom: &str) -> anyhow::Result<Vec<u8>> {
+fn balance_ledger_key(
+    contract: [u8; 32],
+    address_hex: &str,
+    denom: &str,
+) -> anyhow::Result<Vec<u8>> {
     let addr_xdr = hex::decode(address_hex)?;
     let addr_val = cv::scval_from_xdr(&addr_xdr)?;
     let key_val = cv::scval_vec(vec![
@@ -65,7 +69,12 @@ pub async fn transfer_balance(
     }
 
     let contract = stellar_strkey::Contract::from_string(state.transfer_contract_id.as_str())
-        .map_err(|e| err(StatusCode::BAD_GATEWAY, format!("transfer contract addr: {e}")))?
+        .map_err(|e| {
+            err(
+                StatusCode::BAD_GATEWAY,
+                format!("transfer contract addr: {e}"),
+            )
+        })?
         .0;
 
     let key = balance_ledger_key(contract, &address, &denom)

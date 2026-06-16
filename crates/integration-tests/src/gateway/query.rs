@@ -19,8 +19,11 @@ use stellar_ibc_core::ibc::client_state::AnyClientState;
 use super::mock::{ledger_meta_with_write, GatewayTest};
 
 fn sample_client_state_xdr() -> Vec<u8> {
-    let trust_level =
-        scval_struct(vec![("numerator", ScVal::U32(1)), ("denominator", ScVal::U32(3))]).unwrap();
+    let trust_level = scval_struct(vec![
+        ("numerator", ScVal::U32(1)),
+        ("denominator", ScVal::U32(3)),
+    ])
+    .unwrap();
     let client_state = scval_struct(vec![
         ("chain_id", scval_string("testchain-1").unwrap()),
         ("trust_level", trust_level),
@@ -70,8 +73,14 @@ async fn events_are_decoded_into_attributes() {
 
     let topic = hex::encode(scval_to_xdr(&scval_symbol("create_client").unwrap()).unwrap());
     let value = hex::encode(
-        scval_to_xdr(&scval_struct(vec![("client_id", scval_string("07-tendermint-0").unwrap())]).unwrap())
+        scval_to_xdr(
+            &scval_struct(vec![(
+                "client_id",
+                scval_string("07-tendermint-0").unwrap(),
+            )])
             .unwrap(),
+        )
+        .unwrap(),
     );
 
     t.with_data(|d| {
@@ -100,7 +109,10 @@ async fn events_are_decoded_into_attributes() {
 
     assert_eq!(resp.events.len(), 1);
     let attributes = &resp.events[0].attributes;
-    assert!(attributes.contains("type=create_client"), "got: {attributes}");
+    assert!(
+        attributes.contains("type=create_client"),
+        "got: {attributes}"
+    );
     assert!(
         attributes.contains("client_id=07-tendermint-0"),
         "got: {attributes}"
@@ -165,9 +177,8 @@ async fn events_decode_packet_attributes() {
         ("payloads", scval_vec(vec![payload]).unwrap()),
     ])
     .unwrap();
-    let value = hex::encode(
-        scval_to_xdr(&scval_struct(vec![("packet", packet)]).unwrap()).unwrap(),
-    );
+    let value =
+        hex::encode(scval_to_xdr(&scval_struct(vec![("packet", packet)]).unwrap()).unwrap());
     let topic = hex::encode(scval_to_xdr(&scval_symbol("send_packet").unwrap()).unwrap());
 
     t.with_data(|d| {
@@ -196,7 +207,10 @@ async fn events_decode_packet_attributes() {
 
     let attributes = &resp.events[0].attributes;
     assert!(attributes.contains("type=send_packet"), "got: {attributes}");
-    assert!(attributes.contains("packet_sequence=7"), "got: {attributes}");
+    assert!(
+        attributes.contains("packet_sequence=7"),
+        "got: {attributes}"
+    );
     assert!(
         attributes.contains("packet_src_channel=07-tendermint-0"),
         "got: {attributes}"

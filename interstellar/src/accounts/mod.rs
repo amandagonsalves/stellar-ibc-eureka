@@ -28,7 +28,9 @@ pub fn show(cfg: &Config) {
     account_line("receiver", &cfg.accounts.cosmos_receiver_address);
     logger::detail(&format!("relayer signer key: {}", cfg.cosmos.key_name));
 
-    logger::hint("sender & receiver are dedicated accounts, distinct from the deployer/relayer keys");
+    logger::hint(
+        "sender & receiver are dedicated accounts, distinct from the deployer/relayer keys",
+    );
 }
 
 fn account_line(label: &str, address: &str) {
@@ -142,7 +144,9 @@ fn fund_stellar_identity(cfg: &Config, root: &Path, name: &str) {
     );
 
     if funded.is_err() {
-        logger::detail(&format!("{name} already funded (or friendbot declined) — continuing"));
+        logger::detail(&format!(
+            "{name} already funded (or friendbot declined) — continuing"
+        ));
     }
 }
 
@@ -234,7 +238,9 @@ fn fund_cosmos(cfg: &Config, root: &Path, address: &str) -> Result<()> {
     let chain_id = cfg.cosmos.chain_id.as_str();
     let from = cfg.cosmos.key_name.as_str();
 
-    logger::step(&format!("funding {address} with {COSMOS_FUND_AMOUNT} from {from}"));
+    logger::step(&format!(
+        "funding {address} with {COSMOS_FUND_AMOUNT} from {from}"
+    ));
 
     simd(
         root,

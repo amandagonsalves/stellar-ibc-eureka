@@ -91,7 +91,9 @@ pub async fn watch(root: &Path, since: &str, timeout_secs: u64) -> Result<bool> 
     }
 
     if closed {
-        logger::ok("round trip closed ✓ — recv verified on-chain by the 08-wasm LC, ack relayed back");
+        logger::ok(
+            "round trip closed ✓ — recv verified on-chain by the 08-wasm LC, ack relayed back",
+        );
     } else {
         logger::warn(&format!(
             "no round-trip marker within {timeout_secs}s — relay may still be in flight (interstellar logs)"
