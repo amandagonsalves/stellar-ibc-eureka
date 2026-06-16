@@ -13,6 +13,8 @@ const BASE_FEE: u32 = 1_000;
 
 #[derive(Deserialize)]
 pub struct PrepareRequest {
+    #[serde(default)]
+    pub signer: String,
     pub method: String,
     #[serde(default)]
     pub args_xdr: Vec<String>,
@@ -62,6 +64,7 @@ pub async fn prepare_tx(
     let tx_xdr = state
         .rpc
         .build_unsigned_tx(
+            &req.signer,
             &state.ibc_contract_id,
             &req.method,
             &args_xdr,

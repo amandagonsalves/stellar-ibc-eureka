@@ -245,6 +245,7 @@ impl ApiClient {
 
     pub async fn build_unsigned_tx(
         &self,
+        signer: &str,
         method: &str,
         args: Vec<ScVal>,
     ) -> anyhow::Result<Vec<u8>> {
@@ -258,6 +259,7 @@ impl ApiClient {
             .collect::<Result<Vec<_>, _>>()?;
 
         let body = serde_json::json!({
+            "signer": signer,
             "method": method,
             "args_xdr": args_xdr,
         });

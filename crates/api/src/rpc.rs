@@ -186,6 +186,7 @@ impl RpcClient {
 
     pub async fn build_unsigned_tx(
         &self,
+        signer: &str,
         contract_id: &str,
         method: &str,
         args_xdr: &[Vec<u8>],
@@ -203,7 +204,11 @@ impl RpcClient {
             .map_err(|e| anyhow::anyhow!("invalid contract id {contract_id}: {e}"))?;
         let operation = contract.call(method, Some(args));
 
-        let address: &str = &self.signer;
+        let address: &str = if signer.is_empty() {
+            &self.signer
+        } else {
+            signer
+        };
 
         let mut source = self
             .server
