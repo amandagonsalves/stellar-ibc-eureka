@@ -57,10 +57,10 @@ Already built and demonstrably working, tracked against the Interchain Standards
 **From the demo video**
 
 Transactions:
-[create_client](https://stellar.expert/explorer/testnet/tx/13070912626638848) | 
-[register_counterparty](https://stellar.expert/explorer/testnet/tx/13070925511528448) | 
-[update_client](https://stellar.expert/explorer/testnet/tx/13070964166250496) | 
-[acknowledge_packet](https://stellar.expert/explorer/testnet/tx/13070968461209600)
+[create_client](https://stellar.expert/explorer/testnet/tx/13191485243568128) | 
+[register_counterparty](https://stellar.expert/explorer/testnet/tx/13191511013359616) | 
+[update_client](https://stellar.expert/explorer/testnet/tx/13191536783155200) | 
+[acknowledge_packet](https://stellar.expert/explorer/testnet/tx/13191541078126592)
 
 Contracts:
 [IBC Router](https://stellar.expert/explorer/testnet/contract/CCI4Q3XPN33J7NGFRZASFXB4H6LWVKOMOJUFYQZE6O2MOBZOYXFILZUH) | 
@@ -75,7 +75,11 @@ Contracts:
 
 ### Demand signals
 
-> [TODO: add support note from cardano foundation tech head]
+
+> There are several strong reasons for Cardano to exchange messages and tokens with Stellar. The obvious ones are Stellar’s fast finality, low transaction costs, and DeFi focus. Cardano, on the other hand, is highly decentralized, has a large active developer community, no major outages, and more than 3,000 active block producers worldwide.
+> Access to both ecosystems would open the door to new incentive mechanisms, restaking, dApps that need fast processing, and use cases that occasionally require attestation from another blockchain, such as DPP use cases. Compared to other solutions, IBC is public, permissionless, and trustless.
+> There is no central entity that can block someone from using it, unlike many enterprise bridges. It is a messaging protocol, which makes it a strong fit for public permissionless blockchains. Working on Caribic together with another ecosystem would position it as a strong go-to solution for non-Cosmos blockchains. My hope would be shared maintainership. We can also find it a new home; it does not need to stay under the Cardano Foundation.
+> Cardano Foundation would, of course, support the project and provide guidance at the beginning and beyond." - Fabian Bormann, Head of Ecosystem Engineering at Cardano Foundation
 
 ## Tranche 1 (Deliverable Roadmap) — MVP
 
