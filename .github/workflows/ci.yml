@@ -36,15 +36,7 @@ jobs:
           components: rustfmt, clippy
 
       - name: cache cargo
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: ${{ runner.os }}-cargo-crates-${{ hashFiles('Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-crates-
+        uses: Swatinem/rust-cache@v2
 
       - name: install protoc
         run: |
