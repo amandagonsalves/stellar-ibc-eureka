@@ -237,7 +237,7 @@ impl StellarGatewayMsg for MsgHandler {
             scval_vec_of_bytes(&req.counterparty_commitment_prefix)?,
         ];
         let tx_xdr = self
-            .prepare_msg_tx("", "register_counterparty", args)
+            .prepare_msg_tx(&req.signer, "register_counterparty", args)
             .await?;
         Ok(Response::new(MsgRegisterCounterpartyResponse { tx_xdr }))
     }

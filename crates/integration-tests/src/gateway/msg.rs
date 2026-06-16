@@ -62,6 +62,7 @@ async fn register_counterparty_rejects_empty_ids() {
             client_id: String::new(),
             counterparty_client_id: String::new(),
             counterparty_commitment_prefix: vec![],
+            signer: "GSIGNER".into(),
         })
         .await
         .unwrap_err();
@@ -292,6 +293,7 @@ async fn register_counterparty_forwards_ids_and_prefix() {
             client_id: "07-tendermint-0".into(),
             counterparty_client_id: "08-wasm-0".into(),
             counterparty_commitment_prefix: vec![b"ibc".to_vec()],
+            signer: "GSIGNER".into(),
         })
         .await
         .unwrap()
@@ -302,6 +304,7 @@ async fn register_counterparty_forwards_ids_and_prefix() {
     t.with_data(|d| {
         let call = d.prepare_calls.last().expect("prepare called");
         assert_eq!(call.method, "register_counterparty");
+        assert_eq!(call.signer, "GSIGNER");
         assert_eq!(call.args.len(), 3);
         assert_eq!(
             scval_from_xdr(&call.args[0]).unwrap(),
