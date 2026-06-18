@@ -20,3 +20,4 @@ thiserror       = { workspace = true }
 
 [dev-dependencies]
 ed25519-dalek   = { version = "2", default-features = false, features = ["std"] }
+cw-multi-test   = { version = "2", features = ["cosmwasm_2_1"] }
