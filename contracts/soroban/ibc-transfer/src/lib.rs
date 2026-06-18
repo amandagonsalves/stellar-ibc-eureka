@@ -279,7 +279,7 @@ fn decode_packet(env: &Env, value: &Bytes) -> FungibleTokenPacketData {
         .unwrap_or_else(|_| panic_with_error!(env, Error::InvalidPacketData))
 }
 
-fn encode_ics20_json(env: &Env, packet: &FungibleTokenPacketData) -> Bytes {
+pub fn encode_ics20_json(env: &Env, packet: &FungibleTokenPacketData) -> Bytes {
     let mut buf = Bytes::from_slice(env, b"{\"denom\":\"");
     append_string(env, &mut buf, &packet.token.denom);
     buf.append(&Bytes::from_slice(env, b"\",\"amount\":\""));
@@ -346,7 +346,7 @@ fn is_success_ack(ack: &Bytes) -> bool {
     true
 }
 
-fn address_to_string(env: &Env, addr: &Address) -> String {
+pub fn address_to_string(env: &Env, addr: &Address) -> String {
     let xdr = addr.clone().to_xdr(env);
 
     let len = xdr.len() as usize;
