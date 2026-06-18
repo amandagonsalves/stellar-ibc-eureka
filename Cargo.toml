@@ -4,7 +4,7 @@ members = [
     "crates/api",
     "crates/core",
     "crates/gateway",
-    "crates/integration-tests",
+    "integration-tests/crates",
     "contracts/cosmwasm/light-client",
 ]
 resolver = "2"
