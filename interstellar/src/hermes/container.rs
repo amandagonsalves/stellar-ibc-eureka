@@ -3,8 +3,8 @@ use std::path::Path;
 use anyhow::Result;
 
 use crate::hermes::config::HermesConfig;
-use crate::run;
 use crate::service::Service;
+use crate::tools;
 
 const SERVICE: Service = Service::new("hermes");
 
@@ -21,7 +21,7 @@ pub fn restart(cfg: &HermesConfig, root: &Path, pull: bool) -> Result<()> {
 }
 
 pub fn exec(root: &Path, config_path: &str, args: &[&str]) -> Result<String> {
-    run::compose(root, &["up", "-d", SERVICE.name()])?;
+    tools::docker::compose(root, &["up", "-d", SERVICE.name()])?;
 
     let mut full: Vec<&str> = vec![
         "compose",
@@ -38,5 +38,5 @@ pub fn exec(root: &Path, config_path: &str, args: &[&str]) -> Result<String> {
     ];
     full.extend_from_slice(args);
 
-    run::capture_all(root, "docker", &full)
+    tools::docker::capture_all(root, &full)
 }

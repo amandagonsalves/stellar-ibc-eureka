@@ -3,7 +3,7 @@ use std::path::Path;
 use anyhow::Result;
 
 use crate::config::ImageRef;
-use crate::{logger, run};
+use crate::{logger, tools};
 
 /// Generic docker-compose service wrapper shared by the api / gateway / hermes
 /// modules. Each per-service module supplies its compose service name and image;
@@ -26,11 +26,11 @@ impl Service {
         logger::detail(&format!("image: {}", image.reference()));
 
         if pull {
-            run::compose(root, &["pull", self.name])?;
+            tools::docker::compose(root, &["pull", self.name])?;
         }
 
         logger::step(&format!("docker compose up -d {}", self.name));
-        run::compose(root, &["up", "-d", self.name])?;
+        tools::docker::compose(root, &["up", "-d", self.name])?;
 
         logger::ok(&format!("{} started", self.name));
 
@@ -41,7 +41,7 @@ impl Service {
         logger::banner(&format!("{} stop", self.name));
 
         logger::step(&format!("docker compose stop {}", self.name));
-        run::compose(root, &["stop", self.name])?;
+        tools::docker::compose(root, &["stop", self.name])?;
 
         logger::ok(&format!("{} stopped", self.name));
 
@@ -53,16 +53,16 @@ impl Service {
         logger::detail(&format!("image: {}", image.reference()));
 
         if pull {
-            run::compose(root, &["pull", self.name])?;
+            tools::docker::compose(root, &["pull", self.name])?;
 
             logger::step(&format!(
                 "docker compose up -d --force-recreate {}",
                 self.name
             ));
-            run::compose(root, &["up", "-d", "--force-recreate", self.name])?;
+            tools::docker::compose(root, &["up", "-d", "--force-recreate", self.name])?;
         } else {
             logger::step(&format!("docker compose restart {}", self.name));
-            run::compose(root, &["restart", self.name])?;
+            tools::docker::compose(root, &["restart", self.name])?;
         }
 
         logger::ok(&format!("{} restarted", self.name));

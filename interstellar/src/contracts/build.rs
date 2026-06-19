@@ -2,7 +2,7 @@ use std::path::Path;
 
 use anyhow::Result;
 
-use crate::{logger, run};
+use crate::{logger, tools};
 
 pub fn run(root: &Path) -> Result<()> {
     logger::banner("contracts build");
@@ -10,9 +10,8 @@ pub fn run(root: &Path) -> Result<()> {
     let contracts_dir = root.join("contracts/soroban");
 
     logger::step("stellar contract build --profile contract");
-    run::command(
+    tools::stellar::command(
         contracts_dir.as_path(),
-        "stellar",
         &["contract", "build", "--profile", "contract"],
     )?;
 

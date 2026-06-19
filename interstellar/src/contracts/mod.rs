@@ -11,7 +11,7 @@ use std::path::Path;
 use anyhow::Result;
 
 use crate::contracts::config::ContractsConfig;
-use crate::run;
+use crate::tools;
 
 #[derive(clap::Subcommand)]
 pub enum ContractsCmd {
@@ -101,7 +101,7 @@ pub(crate) fn deploy(
 
     let refs: Vec<&str> = args.iter().map(String::as_str).collect();
 
-    Ok(last_line(&run::capture(root, "stellar", &refs)?))
+    Ok(last_line(&tools::stellar::capture(root, &refs)?))
 }
 
 pub(crate) fn invoke(cfg: &ContractsConfig, root: &Path, id: &str, call: &[&str]) -> Result<()> {
@@ -123,5 +123,5 @@ pub(crate) fn invoke_as(
 
     let refs: Vec<&str> = args.iter().map(String::as_str).collect();
 
-    run::command(root, "stellar", &refs)
+    tools::stellar::command(root, &refs)
 }

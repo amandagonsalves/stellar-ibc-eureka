@@ -4,7 +4,7 @@ use anyhow::Result;
 
 use super::last_line;
 use crate::contracts::config::ContractsConfig;
-use crate::{logger, run};
+use crate::{logger, tools};
 
 pub fn run(cfg: &ContractsConfig, root: &Path, wasm: &str) -> Result<()> {
     logger::banner("contracts upload");
@@ -22,7 +22,7 @@ pub fn run(cfg: &ContractsConfig, root: &Path, wasm: &str) -> Result<()> {
     logger::step(&format!("stellar contract upload --wasm {wasm}"));
 
     let refs: Vec<&str> = args.iter().map(String::as_str).collect();
-    let hash = last_line(&run::capture(root, "stellar", &refs)?);
+    let hash = last_line(&tools::stellar::capture(root, &refs)?);
 
     logger::ok(&format!("wasm hash: {hash}"));
     println!("{hash}");

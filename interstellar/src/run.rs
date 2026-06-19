@@ -8,6 +8,10 @@ use anyhow::{bail, Context, Result};
 
 use crate::logger;
 
+fn log_cmd(program: &str, args: &[&str]) {
+    crate::logger::detail(&format!("$ {program} {}", args.join(" ")));
+}
+
 pub fn command(root: &Path, program: &str, args: &[&str]) -> Result<()> {
     // When a spinner is running, stream the child's output into it (caribic
     // style) so its latest line shows as the spinner message instead of
@@ -19,6 +23,8 @@ pub fn command(root: &Path, program: &str, args: &[&str]) -> Result<()> {
 }
 
 fn command_inherit(root: &Path, program: &str, args: &[&str]) -> Result<()> {
+    log_cmd(program, args);
+
     let status = Command::new(program)
         .args(args)
         .current_dir(root)
@@ -36,6 +42,8 @@ fn command_streaming(
     args: &[&str],
     bar: &indicatif::ProgressBar,
 ) -> Result<()> {
+    log_cmd(program, args);
+
     let mut child = Command::new(program)
         .args(args)
         .current_dir(root)
@@ -80,6 +88,8 @@ fn command_streaming(
 }
 
 pub fn piped(root: &Path, program: &str, args: &[&str], input: &str) -> Result<()> {
+    log_cmd(program, args);
+
     let mut child = Command::new(program)
         .args(args)
         .current_dir(root)
@@ -97,13 +107,15 @@ pub fn piped(root: &Path, program: &str, args: &[&str], input: &str) -> Result<(
     let status = child.wait().with_context(|| format!("{program} failed"))?;
 
     if !status.success() {
-        bail!("{program} exited with {status}");
+        bail!("{program} {} exited with {status}", args.join(" "));
     }
 
     Ok(())
 }
 
 pub fn capture(root: &Path, program: &str, args: &[&str]) -> Result<String> {
+    log_cmd(program, args);
+
     let output = Command::new(program)
         .args(args)
         .current_dir(root)
@@ -112,28 +124,37 @@ pub fn capture(root: &Path, program: &str, args: &[&str]) -> Result<String> {
         .with_context(|| format!("failed to spawn {program}"))?;
 
     if !output.status.success() {
-        bail!("{program} exited with {}", output.status);
+        bail!("{program} {} exited with {}", args.join(" "), output.status);
     }
 
     Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
 }
 
 pub fn capture_quiet(root: &Path, program: &str, args: &[&str]) -> Result<String> {
+    log_cmd(program, args);
+
     let output = Command::new(program)
         .args(args)
         .current_dir(root)
-        .stderr(Stdio::null())
         .output()
         .with_context(|| format!("failed to spawn {program}"))?;
 
     if !output.status.success() {
-        bail!("{program} exited with {}", output.status);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+
+        bail!(
+            "{program} {} exited with {}:\n{stderr}",
+            args.join(" "),
+            output.status
+        );
     }
 
     Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
 }
 
 pub fn capture_all(root: &Path, program: &str, args: &[&str]) -> Result<String> {
+    log_cmd(program, args);
+
     let output = Command::new(program)
         .args(args)
         .current_dir(root)
@@ -144,17 +165,14 @@ pub fn capture_all(root: &Path, program: &str, args: &[&str]) -> Result<String> 
     combined.push_str(&String::from_utf8_lossy(&output.stderr));
 
     if !output.status.success() {
-        bail!("{program} exited with {}:\n{combined}", output.status);
+        bail!(
+            "{program} {} exited with {}:\n{combined}",
+            args.join(" "),
+            output.status
+        );
     }
 
     Ok(combined)
-}
-
-pub fn compose(root: &Path, extra: &[&str]) -> Result<()> {
-    let mut args = vec!["compose", "--profile", "local", "--profile", "hermes"];
-    args.extend_from_slice(extra);
-
-    command(root, "docker", &args)
 }
 
 pub fn has(program: &str) -> bool {

@@ -5,7 +5,7 @@ use anyhow::{bail, Result};
 use crate::config::Config;
 use crate::contracts::config::ContractsConfig;
 use crate::ops::config::OpsConfig;
-use crate::{cosmos, hermes, logger, probe, run};
+use crate::{cosmos, hermes, logger, probe, run, tools};
 
 const WAIT_TIMEOUT_SECS: u64 = 300;
 
@@ -32,7 +32,7 @@ pub async fn run(
         logger::detail("skip image pull");
     } else {
         logger::step("Step 0: pulling images (cosmos, api, gateway, hermes)");
-        run::compose(root, &["pull", "cosmos", "api", "gateway", "hermes"])?;
+        tools::docker::compose(root, &["pull", "cosmos", "api", "gateway", "hermes"])?;
     }
 
     logger::step("Step 1: ensuring cosmos is up");
@@ -42,7 +42,7 @@ pub async fn run(
     if probe::http_ok(http, &ops.api_health_url()).await {
         logger::ok("api already reachable");
     } else {
-        run::compose(root, &["up", "-d", "api", "gateway"])?;
+        tools::docker::compose(root, &["up", "-d", "api", "gateway"])?;
 
         if !probe::wait_http(http, &ops.api_health_url(), WAIT_TIMEOUT_SECS).await {
             bail!(
@@ -66,7 +66,7 @@ pub async fn run(
 
         if deployed {
             logger::step("recreating api + gateway to pick up ROUTER_CONTRACT_ADDRESS");
-            run::compose(root, &["up", "-d", "--force-recreate", "api", "gateway"])?;
+            tools::docker::compose(root, &["up", "-d", "--force-recreate", "api", "gateway"])?;
             let _ = probe::wait_http(http, &ops.api_health_url(), WAIT_TIMEOUT_SECS).await;
         } else {
             logger::detail("contracts already deployed — skipping api + gateway recreate");

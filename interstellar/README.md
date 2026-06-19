@@ -1,6 +1,6 @@
 # `interstellar` — Stellar↔Cosmos IBC orchestrator CLI
 
-`stellar-ibc-cli` (binary **`interstellar`**) is the single entry point for the
+`interstellar` (binary **`interstellar`**) is the single entry point for the
 Stellar↔Cosmos IBC v2 bridge. It brings the stack up, builds/pushes images,
 deploys the Soroban contracts, uploads the light client, creates clients,
 registers counterparties, and reports status — driving **docker**, the
@@ -25,10 +25,10 @@ It lives at the repo root (`stellar-ibc/eureka/`) as a workspace member.
 
 ```sh
 # run in place (from the repo root)
-cargo run -p stellar-ibc-cli -- <command>
+cargo run -p interstellar -- <command>
 
 # install the `interstellar` binary (either of these)
-cargo run -p stellar-ibc-cli -- install   # self-install to the cargo bin dir
+cargo run -p interstellar -- install   # self-install to the cargo bin dir
 cargo install --path eureka
 
 # then, from anywhere:

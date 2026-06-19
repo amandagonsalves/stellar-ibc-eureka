@@ -17,6 +17,7 @@ mod run;
 mod service;
 mod shared;
 mod stellar;
+mod tools;
 mod transfer;
 
 use std::time::Duration;

@@ -41,7 +41,7 @@ lint:
 	cargo clippy --locked --all-targets -- -D warnings -A clippy::manual_is_multiple_of -A clippy::too_many_arguments -A clippy::result_large_err
 
 install:
-	cargo run -p stellar-ibc-cli -- install
+	cargo run -p interstellar -- install
 
 push-all:
 	make push SERVICE=hermes && make push SERVICE=gateway && make push SERVICE=api
