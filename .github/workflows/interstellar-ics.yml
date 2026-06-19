@@ -17,8 +17,9 @@ env:
 
 jobs:
   test:
-    name: ics ${{ inputs.ics }}
+    name: test ${{ inputs.ics }}
     runs-on: ubuntu-latest
+    environment: staging
     timeout-minutes: 45
 
     steps:
