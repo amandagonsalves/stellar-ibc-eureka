@@ -4,18 +4,69 @@ use anyhow::Result;
 
 use crate::clients::{self, config::ClientsConfig};
 use crate::config::Config;
-use crate::transfer::{self, TransferArgs};
+use crate::transfer::{self, TransferParams};
 use crate::{balances, hermes, logger, logs, ops};
 
+#[derive(clap::Args)]
 pub struct DemoArgs {
+    #[arg(
+        long,
+        help = "Run the ICS-20 transfer round-trip demo (the default and only scenario today)"
+    )]
+    pub transfer: bool,
+    #[arg(
+        value_enum,
+        default_value = "stellar",
+        help = "Source chain to transfer from"
+    )]
+    pub from: crate::shared::Chain,
+    #[arg(long, default_value = "stake", help = "Token denom to transfer")]
+    pub denom: String,
+    #[arg(long, default_value_t = 1000, help = "Amount to transfer")]
+    pub amount: i128,
+    #[arg(
+        long,
+        default_value = "",
+        help = "Receiver address on the destination chain (default: the relayer key on the destination)"
+    )]
+    pub receiver: String,
+    #[arg(long, default_value = "", help = "Optional transfer memo")]
+    pub memo: String,
+    #[arg(
+        long,
+        default_value_t = 600,
+        help = "Transfer timeout in seconds from now"
+    )]
+    pub timeout_secs: u64,
+    #[arg(long, help = "Skip minting the amount to the sender first")]
+    pub no_mint: bool,
+    #[arg(
+        long,
+        help = "Skip the full `start` step (assume the stack is already up)"
+    )]
+    pub skip_start: bool,
+    #[arg(
+        long,
+        help = "Force-redeploy contracts and re-bootstrap clients during start"
+    )]
+    pub force_redeploy: bool,
+    #[arg(
+        long,
+        default_value_t = 120,
+        help = "Max seconds to watch the relay round trip (exits early when it closes) before reading balances-after"
+    )]
+    pub wait_secs: u64,
+}
+
+pub struct DemoParams {
     pub from_cosmos: bool,
     pub skip_start: bool,
     pub force_redeploy: bool,
     pub wait_secs: u64,
-    pub transfer: TransferArgs,
+    pub transfer: TransferParams,
 }
 
-pub async fn run(root: &Path, http: &reqwest::Client, args: DemoArgs) -> Result<()> {
+pub async fn run(root: &Path, http: &reqwest::Client, args: DemoParams) -> Result<()> {
     logger::banner("demo — ICS-20 transfer round trip");
     logger::detail(
         "steps: start → client bootstrap → balances (before) → transfer → balances (after)",

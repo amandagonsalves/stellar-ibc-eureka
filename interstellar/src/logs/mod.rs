@@ -6,6 +6,16 @@ use anyhow::Result;
 
 use crate::{logger, run};
 
+#[derive(clap::Args)]
+pub struct LogsArgs {
+    #[arg(
+        long,
+        default_value = "120s",
+        help = "How far back to pull container logs"
+    )]
+    pub since: String,
+}
+
 const MARKERS: [&str; 6] = [
     "[stellar→cosmos]",
     "[cosmos→stellar]",

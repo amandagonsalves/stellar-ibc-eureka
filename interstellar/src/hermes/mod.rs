@@ -6,6 +6,24 @@ use std::path::Path;
 
 use anyhow::{bail, Context, Result};
 
+#[derive(clap::Subcommand)]
+pub enum HermesCmd {
+    #[command(about = "Start the hermes relayer container")]
+    Start {
+        #[arg(long, help = "Pull the latest image before starting")]
+        pull: bool,
+    },
+    #[command(about = "Stop the hermes relayer container")]
+    Stop,
+    #[command(about = "Restart the hermes relayer container")]
+    Restart {
+        #[arg(long, help = "Pull the latest image and recreate the container")]
+        pull: bool,
+    },
+    #[command(about = "Import the relayer keys (must equal the router admin key)")]
+    KeysImport,
+}
+
 pub fn patch_wasm_checksum(config_path: &Path, checksum: &str) -> Result<bool> {
     let text = std::fs::read_to_string(config_path)
         .with_context(|| format!("reading {}", config_path.display()))?;

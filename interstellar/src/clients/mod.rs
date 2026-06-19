@@ -11,6 +11,40 @@ use anyhow::{anyhow, bail, Result};
 use crate::clients::config::ClientsConfig;
 use crate::{logger, probe, run, shared};
 
+#[derive(clap::Subcommand)]
+pub enum ClientsCmd {
+    #[command(about = "Create the Cosmos (Tendermint) client on Stellar")]
+    Cosmos {
+        #[arg(
+            long,
+            help = "Create a new client even if COSMOS_CLIENT_ID is already set"
+        )]
+        force: bool,
+    },
+    #[command(about = "Create the Stellar (08-wasm) client on Cosmos")]
+    Stellar {
+        #[arg(
+            long,
+            help = "Create a new client even if STELLAR_CLIENT_ID is already set"
+        )]
+        force: bool,
+    },
+    #[command(about = "Register a counterparty on the given side (stellar or cosmos)")]
+    Counterparty {
+        #[arg(value_enum, help = "Which side to register the counterparty on")]
+        chain: shared::Chain,
+    },
+    #[command(
+        about = "Create both clients and register both counterparties atomically (ids can't drift)"
+    )]
+    Bootstrap {
+        #[arg(long, help = "Force-create fresh clients even if ids are already set")]
+        force: bool,
+    },
+    #[command(about = "List clients created on the Stellar router")]
+    List,
+}
+
 pub(crate) struct CreateSpec<'a> {
     pub host_chain: &'a str,
     pub reference_chain: &'a str,

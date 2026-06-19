@@ -13,6 +13,52 @@ use anyhow::Result;
 use crate::contracts::config::ContractsConfig;
 use crate::run;
 
+#[derive(clap::Subcommand)]
+pub enum ContractsCmd {
+    #[command(about = "Build all Soroban contracts to wasm")]
+    Build,
+    #[command(about = "Upload a contract wasm, print the wasm hash")]
+    Upload {
+        #[arg(long, help = "Path to the .wasm artifact")]
+        wasm: String,
+    },
+    #[command(about = "Deploy a contract wasm (constructor args after `--`), print the id")]
+    Deploy {
+        #[arg(long, help = "Path to the .wasm artifact")]
+        wasm: String,
+        #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
+        ctor: Vec<String>,
+    },
+    #[command(about = "Invoke a function on a deployed contract (fn + args after `--`)")]
+    Invoke {
+        #[arg(long, help = "Deployed contract id")]
+        id: String,
+        #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
+        call: Vec<String>,
+    },
+    #[command(about = "Full orchestration: build + deploy + wire router + write .env")]
+    DeployAll {
+        #[arg(long, help = "Redeploy even if ROUTER_CONTRACT_ADDRESS is already set")]
+        force: bool,
+        #[arg(long, help = "Also deploy + register the attestation light client")]
+        attestation: bool,
+    },
+    #[command(about = "Build + gov-upload the light-client-wasm to Cosmos, patch hermes config")]
+    UploadWasm {
+        #[arg(
+            long,
+            help = "Prepare the 08-wasm store-code gov proposal for cosmos-testnet (provider) instead of auto-uploading to the local devnet"
+        )]
+        testnet: bool,
+        #[arg(
+            long,
+            value_name = "KEY",
+            help = "With --testnet: gaiad keyring key to submit the proposal from (else the command is printed)"
+        )]
+        from: Option<String>,
+    },
+}
+
 pub(crate) fn last_line(out: &str) -> String {
     out.lines()
         .rev()

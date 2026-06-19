@@ -5,6 +5,12 @@ use anyhow::Result;
 use crate::config::Config;
 use crate::{logger, probe, run};
 
+#[derive(clap::Args)]
+pub struct BalancesArgs {
+    #[arg(long, default_value = "stake", help = "Token denom to read")]
+    pub denom: String,
+}
+
 pub async fn run(cfg: &Config, root: &Path, http: &reqwest::Client, denom: &str) -> Result<()> {
     logger::banner(&format!("balances ({denom})"));
 

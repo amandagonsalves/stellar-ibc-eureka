@@ -8,7 +8,36 @@ use crate::contracts::{self, config::ContractsConfig};
 use crate::cosmos::config::COMPOSE_SERVICE;
 use crate::{logger, run, shared};
 
+#[derive(clap::Args)]
 pub struct TransferArgs {
+    #[arg(
+        value_enum,
+        default_value = "stellar",
+        help = "Source chain to send from"
+    )]
+    pub from: shared::Chain,
+    #[arg(long, default_value = "stake", help = "Token denom to transfer")]
+    pub denom: String,
+    #[arg(long, default_value_t = 1000, help = "Amount to transfer")]
+    pub amount: i128,
+    #[arg(
+        long,
+        default_value = "",
+        help = "Receiver address on the destination chain (default: the relayer key on the destination)"
+    )]
+    pub receiver: String,
+    #[arg(long, default_value = "", help = "Optional transfer memo")]
+    pub memo: String,
+    #[arg(long, default_value_t = 600, help = "Timeout in seconds from now")]
+    pub timeout_secs: u64,
+    #[arg(
+        long,
+        help = "Skip minting the amount to the sender first (devnet mints by default)"
+    )]
+    pub no_mint: bool,
+}
+
+pub struct TransferParams {
     pub denom: String,
     pub amount: i128,
     pub receiver: String,
@@ -17,7 +46,7 @@ pub struct TransferArgs {
     pub mint: bool,
 }
 
-pub fn stellar_to_cosmos(cfg: &Config, root: &Path, args: &TransferArgs) -> Result<()> {
+pub fn stellar_to_cosmos(cfg: &Config, root: &Path, args: &TransferParams) -> Result<()> {
     logger::banner("transfer stellar (Stellar → Cosmos ICS-20)");
 
     let transfer_app = cfg.deployment.transfer_app.as_str();
@@ -116,7 +145,7 @@ pub fn stellar_to_cosmos(cfg: &Config, root: &Path, args: &TransferArgs) -> Resu
     Ok(())
 }
 
-pub fn cosmos_to_stellar(_cfg: &Config, _root: &Path, _args: &TransferArgs) -> Result<()> {
+pub fn cosmos_to_stellar(_cfg: &Config, _root: &Path, _args: &TransferParams) -> Result<()> {
     shared::pending(
         "transfer cosmos (Cosmos → Stellar ICS-20)",
         "M4: needs a MsgTransfer over the v2 client on simd-1 plus the Cosmos→Stellar recv path (CT3); implement after the Stellar→Cosmos relay (M3) lands.",

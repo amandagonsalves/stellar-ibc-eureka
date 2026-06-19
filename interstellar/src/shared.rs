@@ -4,6 +4,21 @@ use anyhow::{Context, Result};
 
 use crate::logger;
 
+#[derive(Clone, Copy, clap::ValueEnum)]
+pub enum Chain {
+    Stellar,
+    Cosmos,
+}
+
+impl Chain {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Stellar => "stellar",
+            Self::Cosmos => "cosmos",
+        }
+    }
+}
+
 pub fn env_upsert(path: &Path, updates: &[(&str, &str)]) -> Result<()> {
     let mut text = std::fs::read_to_string(path).unwrap_or_default();
 

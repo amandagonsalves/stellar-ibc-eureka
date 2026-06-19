@@ -10,6 +10,27 @@ use crate::{logger, probe, run};
 
 const WAIT_TIMEOUT_SECS: u64 = 300;
 
+#[derive(clap::Subcommand)]
+pub enum CosmosCmd {
+    #[command(about = "Start the local Cosmos chain (cardano-entrypoint, ibc-go v10 + 08-wasm)")]
+    Start,
+    #[command(about = "Stop the local Cosmos chain")]
+    Stop,
+    #[command(about = "Show the Cosmos chain endpoints and health")]
+    Status,
+    #[command(
+        about = "Check the public cosmos-testnet (Cosmos Hub `provider`) — health + node/app version"
+    )]
+    Testnet {
+        #[arg(
+            long,
+            value_name = "ADDRESS",
+            help = "Query this cosmos address's balances on cosmos-testnet (and show the faucet) instead of the health check"
+        )]
+        balance: Option<String>,
+    },
+}
+
 pub async fn start(cfg: &CosmosConfig, root: &Path, http: &reqwest::Client) -> Result<()> {
     logger::banner(&format!("cosmos start ({})", cfg.name));
 
