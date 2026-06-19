@@ -17,6 +17,7 @@ mod run;
 mod service;
 mod shared;
 mod stellar;
+mod test;
 mod tools;
 mod transfer;
 
@@ -37,6 +38,7 @@ use hermes::HermesCmd;
 use logs::LogsArgs;
 use ops::{DownArgs, StartArgs, UpArgs};
 use shared::Chain;
+use test::TestArgs;
 use transfer::TransferArgs;
 
 #[derive(Parser)]
@@ -105,6 +107,10 @@ enum Command {
         about = "End-to-end demo: start, client bootstrap, balances before, transfer, balances after"
     )]
     Demo(DemoArgs),
+    #[command(
+        about = "Run the ICS integration flows (clients, counterparty, transfer, query) against a running stack"
+    )]
+    Test(TestArgs),
     #[command(about = "Show the dedicated sender + receiver accounts on each chain")]
     Accounts,
     #[command(about = "Show the Cosmos receiver voucher and the Stellar sender + escrow balances")]
@@ -261,6 +267,7 @@ async fn main() -> Result<()> {
             .await?
         }
 
+        Command::Test(args) => test::run(root, &http, args).await?,
         Command::Accounts => accounts::show(&cfg),
         Command::Balances(args) => balances::run(&cfg, root, &http, &args.denom).await?,
         Command::Logs(args) => logs::run(root, &args.since)?,
