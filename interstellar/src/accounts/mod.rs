@@ -4,7 +4,7 @@ use anyhow::{bail, Result};
 
 use crate::config::Config;
 use crate::cosmos::config::COMPOSE_SERVICE;
-use crate::{logger, run, shared};
+use crate::{logger, run, shared, tools};
 
 const COSMOS_HOME: &str = "/root/.simapp";
 const COSMOS_FUND_AMOUNT: &str = "1000000000stake";
@@ -119,7 +119,7 @@ fn ensure_stellar_identity(
         args.push("--overwrite");
     }
 
-    run::command(root, "stellar", &args)?;
+    tools::stellar::command(root, &args)?;
 
     let addr = stellar_address(root, name)
         .ok_or_else(|| anyhow::anyhow!("could not resolve address for stellar identity {name}"))?;
@@ -129,9 +129,8 @@ fn ensure_stellar_identity(
 }
 
 fn fund_stellar_identity(cfg: &Config, root: &Path, name: &str) {
-    let funded = run::capture_all(
+    let funded = tools::stellar::capture_all(
         root,
-        "stellar",
         &[
             "keys",
             "fund",
@@ -151,14 +150,14 @@ fn fund_stellar_identity(cfg: &Config, root: &Path, name: &str) {
 }
 
 fn stellar_address(root: &Path, name: &str) -> Option<String> {
-    run::capture_quiet(root, "stellar", &["keys", "public-key", name])
+    tools::stellar::capture_quiet(root, &["keys", "public-key", name])
         .ok()
         .map(|s| s.trim().to_string())
         .filter(|s| !s.is_empty())
 }
 
 fn stellar_secret(root: &Path, name: &str) -> Option<String> {
-    run::capture_quiet(root, "stellar", &["keys", "secret", name])
+    tools::stellar::capture_quiet(root, &["keys", "secret", name])
         .ok()
         .map(|s| s.trim().to_string())
         .filter(|s| !s.is_empty())
@@ -273,5 +272,5 @@ fn simd(root: &Path, args: &[&str]) -> Result<String> {
     full.extend_from_slice(args);
     full.extend_from_slice(&KEYRING_FLAGS);
 
-    run::capture_all(root, "docker", &full)
+    tools::docker::capture_all(root, &full)
 }

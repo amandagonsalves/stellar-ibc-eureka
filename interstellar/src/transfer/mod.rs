@@ -6,7 +6,7 @@ use anyhow::{bail, Result};
 use crate::config::Config;
 use crate::contracts::{self, config::ContractsConfig};
 use crate::cosmos::config::COMPOSE_SERVICE;
-use crate::{logger, run, shared};
+use crate::{logger, shared, tools};
 
 #[derive(clap::Args)]
 pub struct TransferArgs {
@@ -167,9 +167,8 @@ fn cosmos_relayer_address(cfg: &Config, root: &Path) -> Result<String> {
         "no --receiver given, deriving the cosmos `{key_name}` address"
     ));
 
-    let out = run::capture_all(
+    let out = tools::docker::capture_all(
         root,
-        "docker",
         &[
             "compose",
             "exec",

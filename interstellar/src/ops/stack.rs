@@ -2,7 +2,7 @@ use std::path::Path;
 
 use anyhow::Result;
 
-use crate::{logger, run};
+use crate::{logger, tools};
 
 pub fn up(root: &Path, cosmos_only: bool, stellar_only: bool) -> Result<()> {
     logger::banner("up — docker compose");
@@ -19,7 +19,7 @@ pub fn up(root: &Path, cosmos_only: bool, stellar_only: bool) -> Result<()> {
 
     let mut args = vec!["up", "-d"];
     args.extend_from_slice(&services);
-    run::compose(root, &args)?;
+    tools::docker::compose(root, &args)?;
 
     logger::ok("services started (detached)");
     logger::hint("check readiness with: interstellar status");
@@ -36,7 +36,7 @@ pub fn down(root: &Path, volumes: bool) -> Result<()> {
         args.push("--volumes");
     }
 
-    run::compose(root, &args)?;
+    tools::docker::compose(root, &args)?;
     logger::ok("stack stopped");
 
     Ok(())

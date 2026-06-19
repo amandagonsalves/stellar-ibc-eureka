@@ -3,7 +3,7 @@ use std::path::Path;
 use anyhow::{bail, Result};
 
 use crate::config::Config;
-use crate::{logger, run};
+use crate::{logger, tools};
 
 pub fn import(cfg: &Config, root: &Path) -> Result<()> {
     logger::banner("hermes keys-import (relayer key = router admin key)");
@@ -17,7 +17,7 @@ pub fn import(cfg: &Config, root: &Path) -> Result<()> {
     }
 
     logger::step("stopping hermes for a one-shot key import");
-    let _ = run::compose(root, &["stop", "hermes"]);
+    let _ = tools::docker::compose(root, &["stop", "hermes"]);
 
     logger::step(&format!(
         "importing {} for {} (cosmos mnemonic)",
@@ -75,7 +75,7 @@ pub fn import(cfg: &Config, root: &Path) -> Result<()> {
     )?;
 
     logger::step("starting hermes with keys in place");
-    run::compose(root, &["up", "-d", "hermes"])?;
+    tools::docker::compose(root, &["up", "-d", "hermes"])?;
 
     logger::ok("keys imported into the hermes-keys volume (persists across restarts)");
 
@@ -94,12 +94,7 @@ fn import_mnemonic(
         cfg_path = cfg.hermes.config_path,
     );
 
-    run::piped(
-        root,
-        "docker",
-        &compose_run_args(&script),
-        &format!("{mnemonic}\n"),
-    )
+    tools::docker::piped(root, &compose_run_args(&script), &format!("{mnemonic}\n"))
 }
 
 fn import_secret(
@@ -114,9 +109,8 @@ fn import_secret(
         cfg_path = cfg.hermes.config_path,
     );
 
-    run::piped(
+    tools::docker::piped(
         root,
-        "docker",
         &compose_run_args(&script),
         &format!("{{\"secret_key\":\"{secret}\"}}\n"),
     )

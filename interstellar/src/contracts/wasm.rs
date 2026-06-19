@@ -7,7 +7,7 @@ use sha2::{Digest, Sha256};
 
 use crate::contracts::config::ContractsConfig;
 use crate::cosmos::tx::CosmosSigner;
-use crate::{logger, run};
+use crate::{logger, run, tools};
 
 const CRATE: &str = "light-client-wasm";
 const DEPOSIT_AMOUNT: u64 = 10_000_000;
@@ -203,9 +203,8 @@ fn prepare_testnet_proposal(root: &Path, from: Option<&str>) -> Result<()> {
             logger::step(&format!(
                 "gaiad tx gov submit-proposal (from={key}, node={rpc}, chain-id={chain_id})"
             ));
-            run::command(
+            tools::gaiad::command(
                 root,
-                "gaiad",
                 &[
                     "tx",
                     "gov",
@@ -292,9 +291,8 @@ fn resolve_testnet_key(
 }
 
 fn ensure_gaiad_key(root: &Path, name: &str, mnemonic: &str, keyring: &str) -> Result<()> {
-    if run::capture_quiet(
+    if tools::gaiad::capture_quiet(
         root,
-        "gaiad",
         &["keys", "show", name, "-a", "--keyring-backend", keyring],
     )
     .is_ok()
@@ -307,9 +305,8 @@ fn ensure_gaiad_key(root: &Path, name: &str, mnemonic: &str, keyring: &str) -> R
     logger::step(&format!(
         "importing mnemonic into the gaiad keyring as '{name}' (keyring-backend {keyring})"
     ));
-    run::piped(
+    tools::gaiad::piped(
         root,
-        "gaiad",
         &[
             "keys",
             "add",

@@ -6,7 +6,7 @@ use std::path::Path;
 use anyhow::{bail, Result};
 
 use crate::cosmos::config::{CosmosConfig, COMPOSE_SERVICE};
-use crate::{logger, probe, run};
+use crate::{logger, probe, tools};
 
 const WAIT_TIMEOUT_SECS: u64 = 300;
 
@@ -45,7 +45,7 @@ pub async fn start(cfg: &CosmosConfig, root: &Path, http: &reqwest::Client) -> R
     }
 
     logger::step("docker compose up -d cosmos");
-    run::compose(root, &["up", "-d", COMPOSE_SERVICE])?;
+    tools::docker::compose(root, &["up", "-d", COMPOSE_SERVICE])?;
 
     if !probe::wait_http(http, &cfg.status_url(), WAIT_TIMEOUT_SECS).await {
         bail!("cosmos not healthy within {WAIT_TIMEOUT_SECS}s (docker compose logs cosmos cosmos-init)");
@@ -60,7 +60,7 @@ pub fn stop(_cfg: &CosmosConfig, root: &Path) -> Result<()> {
     logger::banner("cosmos stop");
 
     logger::step("docker compose stop cosmos");
-    run::compose(root, &["stop", COMPOSE_SERVICE, "cosmos-init"])?;
+    tools::docker::compose(root, &["stop", COMPOSE_SERVICE, "cosmos-init"])?;
 
     logger::ok("cosmos stopped");
 

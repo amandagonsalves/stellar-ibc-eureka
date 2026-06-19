@@ -4,7 +4,7 @@ use std::time::Duration;
 
 use anyhow::Result;
 
-use crate::{logger, run};
+use crate::{logger, tools};
 
 #[derive(clap::Args)]
 pub struct LogsArgs {
@@ -33,7 +33,7 @@ pub fn run(root: &Path, since: &str) -> Result<()> {
     for svc in SERVICES {
         logger::step(svc);
 
-        let out = run::capture_all(root, "docker", &["compose", "logs", "--since", since, svc])
+        let out = tools::docker::capture_all(root, &["compose", "logs", "--since", since, svc])
             .unwrap_or_default();
 
         let hero: Vec<String> = out
@@ -77,7 +77,7 @@ pub async fn watch(root: &Path, since: &str, timeout_secs: u64) -> Result<bool> 
 
     for _ in 0..polls {
         for svc in SERVICES {
-            let out = run::capture_all(root, "docker", &["compose", "logs", "--since", since, svc])
+            let out = tools::docker::capture_all(root, &["compose", "logs", "--since", since, svc])
                 .unwrap_or_default();
 
             for line in out.lines().filter(|line| is_hero(line)) {

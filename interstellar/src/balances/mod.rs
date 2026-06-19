@@ -3,7 +3,7 @@ use std::path::Path;
 use anyhow::Result;
 
 use crate::config::Config;
-use crate::{logger, probe, run};
+use crate::{logger, probe, tools};
 
 #[derive(clap::Args)]
 pub struct BalancesArgs {
@@ -88,9 +88,8 @@ fn balance_of(cfg: &Config, root: &Path, who: &str, denom: &str) -> String {
         cfg.stellar.cli_identity.as_str()
     };
 
-    let result = run::capture_quiet(
+    let result = tools::stellar::capture_quiet(
         root,
-        "stellar",
         &[
             "contract",
             "invoke",

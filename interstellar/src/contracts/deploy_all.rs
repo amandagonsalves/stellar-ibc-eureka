@@ -4,7 +4,7 @@ use anyhow::{bail, Result};
 
 use crate::config::ClientTypes;
 use crate::contracts::config::ContractsConfig;
-use crate::{logger, run, shared};
+use crate::{logger, shared, tools};
 
 /// Returns `true` if contracts were (re)deployed, `false` if the existing
 /// deployment was kept — so callers know whether dependent services need to be
@@ -155,11 +155,7 @@ fn deployer_address(cfg: &ContractsConfig, root: &Path) -> Result<String> {
         return Ok(cfg.deployer_address.clone());
     }
 
-    let out = run::capture(
-        root,
-        "stellar",
-        &["keys", "public-key", cfg.cli_identity.as_str()],
-    )?;
+    let out = tools::stellar::capture(root, &["keys", "public-key", cfg.cli_identity.as_str()])?;
     let addr = super::last_line(&out);
 
     if addr.is_empty() {
