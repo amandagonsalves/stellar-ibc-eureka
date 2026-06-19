@@ -2,6 +2,13 @@ name: api cd
 
 on:
   workflow_dispatch:
+  workflow_call:
+    inputs:
+      version:
+        description: "extra image tag to push (e.g. a release version)"
+        type: string
+        required: false
+        default: ""
 
 permissions:
   contents: read
@@ -95,9 +102,11 @@ jobs:
       - name: create manifest list & push
         working-directory: ${{ runner.temp }}/digests
         run: |
-          docker buildx imagetools create \
-            -t ${{ vars.API_IMAGE }}:latest \
-            -t ${{ vars.API_IMAGE }}:${{ github.sha }} \
+          tags="-t ${{ vars.API_IMAGE }}:latest -t ${{ vars.API_IMAGE }}:${{ github.sha }}"
+          if [ -n "${{ inputs.version }}" ]; then
+            tags="$tags -t ${{ vars.API_IMAGE }}:${{ inputs.version }}"
+          fi
+          docker buildx imagetools create $tags \
             $(printf '${{ vars.API_IMAGE }}@sha256:%s ' *)
 
       - name: inspect
