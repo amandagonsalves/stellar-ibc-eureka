@@ -1,0 +1,72 @@
+name: contracts cd
+
+on:
+  workflow_dispatch:
+    inputs:
+      force:
+        description: "redeploy even if the addresses are already set"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: contracts-cd-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: deploy soroban contracts + log addresses
+    runs-on: ubuntu-latest
+    environment: staging
+    timeout-minutes: 30
+    env:
+      STELLAR_SIGNING_KEY: ${{ secrets.STELLAR_SIGNING_KEY }}
+
+    steps:
+      - name: checkout
+        uses: actions/checkout@v5
+
+      - name: setup rust
+        uses: dtolnay/rust-toolchain@1.91.1
+
+      - name: cache cargo
+        uses: Swatinem/rust-cache@v2
+
+      - name: install protoc
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y protobuf-compiler
+
+      - name: install stellar cli
+        uses: stellar/stellar-cli@v27.0.0
+
+      - name: load repo variables into env
+        env:
+          VARS_JSON: ${{ toJSON(vars) }}
+        run: echo "$VARS_JSON" | jq -r 'to_entries[] | "\(.key)=\(.value)"' >> "$GITHUB_ENV"
+
+      - name: deploy contracts
+        run: cargo run --locked -p interstellar -- tx contracts deploy --stellar ${{ inputs.force && '--force' || '' }}
+
+      - name: log deployed addresses
+        run: |
+          set -a; . ./.env; set +a
+          {
+            echo "### Deployed contract addresses"
+            echo ""
+            echo "Set these as repo Actions variables (Settings → Secrets and variables → Actions → Variables):"
+            echo ""
+            echo '```'
+            for name in \
+              ROUTER_CONTRACT_ADDRESS \
+              TRANSFER_CONTRACT_ADDRESS \
+              DEPLOYER_ADDRESS \
+              MOCK_LC_CONTRACT_ID \
+              ATTESTATION_LC_CONTRACT_ID \
+              TENDERMINT_LC_CONTRACT_ID; do
+              printf '%s=%s\n' "$name" "${!name}"
+            done
+            echo '```'
+          } | tee -a "$GITHUB_STEP_SUMMARY"

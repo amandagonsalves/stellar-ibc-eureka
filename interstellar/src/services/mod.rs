@@ -79,8 +79,6 @@ const ALL: [Service; 4] = [
     Service::Hermes,
     Service::Cosmos,
 ];
-const BUILDX_BUILDER: &str = "interstellar-multiarch";
-const PLATFORMS: &str = "linux/amd64,linux/arm64";
 
 fn selected(args: &ServiceArgs) -> Vec<Service> {
     let mut picked = Vec::new();
@@ -182,12 +180,18 @@ fn build_one(cfg: &Config, root: &Path, service: Service, push: bool) -> Result<
     logger::banner(&format!("services {verb} {}", service.compose()));
     logger::detail(&format!("image: {}", service.image(cfg)));
 
-    match service {
-        Service::Hermes => build_hermes(cfg, root),
-        Service::Api => build_image(cfg, root, service, "crates/api/Dockerfile", push),
-        Service::Gateway => build_image(cfg, root, service, "crates/gateway/Dockerfile", push),
-        Service::Cosmos => Ok(()),
-    }
+    let (dockerfile, context) = match service {
+        Service::Api => ("crates/api/Dockerfile".to_string(), ".".to_string()),
+        Service::Gateway => ("crates/gateway/Dockerfile".to_string(), ".".to_string()),
+        Service::Hermes => {
+            let repo = hermes_repo(cfg, root)?;
+
+            (format!("{repo}/ci/release/hermes.Dockerfile"), repo)
+        }
+        Service::Cosmos => return Ok(()),
+    };
+
+    build_image(cfg, root, service, &dockerfile, &context, push)
 }
 
 fn build_image(
@@ -195,85 +199,52 @@ fn build_image(
     root: &Path,
     service: Service,
     dockerfile: &str,
+    context: &str,
     push: bool,
 ) -> Result<()> {
     let image = service.image(cfg);
 
+    logger::step("docker build (host arch)");
+    tools::docker::command(root, &["build", "-t", &image, "-f", dockerfile, context])?;
+
     if !push {
-        return tools::docker::command(root, &["build", "-t", &image, "-f", dockerfile, "."]);
+        return Ok(());
     }
 
     docker_login(root)?;
-    ensure_builder(root);
 
-    tools::docker::command(
-        root,
-        &[
-            "buildx",
-            "build",
-            "--builder",
-            BUILDX_BUILDER,
-            "--platform",
-            PLATFORMS,
-            "-t",
-            &image,
-            "--push",
-            "-f",
-            dockerfile,
-            ".",
-        ],
-    )
+    logger::step("docker push");
+    tools::docker::command(root, &["push", &image])
 }
 
-fn build_hermes(cfg: &Config, root: &Path) -> Result<()> {
-    let image = cfg.hermes.image.reference();
-    let repo = ensure_hermes_repo(cfg, root)?;
-    let dockerfile = format!("{repo}/ci/release/hermes.Dockerfile");
-
-    docker_login(root)?;
-    ensure_builder(root);
-
-    logger::step("buildx build --push (multi-arch)");
-
-    tools::docker::command(
-        root,
-        &[
-            "buildx",
-            "build",
-            "--builder",
-            BUILDX_BUILDER,
-            "--platform",
-            PLATFORMS,
-            "-t",
-            &image,
-            "--push",
-            "-f",
-            &dockerfile,
-            &repo,
-        ],
-    )
-}
-
-fn ensure_hermes_repo(cfg: &Config, root: &Path) -> Result<String> {
+fn hermes_repo(cfg: &Config, root: &Path) -> Result<String> {
     let hermes = &cfg.hermes;
-    let repo_path = root.join(&hermes.repo);
-    let repo = repo_path.display().to_string();
 
-    if !repo_path.exists() {
-        if hermes.repo_url.is_empty() {
-            bail!(
-                "hermes repo {repo} is missing and HERMES_REPO_URL is unset — set it to clone the relayer"
-            );
-        }
+    if hermes.repo_url.trim().is_empty() {
+        bail!("HERMES_REPO_URL is unset — set it to the hermes relayer repository to build hermes");
+    }
 
+    let checkout = root.join("target/hermes-relayer");
+    let repo = checkout.display().to_string();
+
+    if checkout.join(".git").is_dir() {
+        logger::step(&format!("updating hermes relayer in {repo}"));
+        tools::git::command(
+            &checkout,
+            &["remote", "set-url", "origin", &hermes.repo_url],
+        )?;
+    } else {
         logger::step(&format!("cloning hermes relayer from {}", hermes.repo_url));
         tools::git::command(root, &["clone", &hermes.repo_url, &repo])?;
     }
 
-    logger::step(&format!("checking out {} in {repo}", hermes.branch));
-    tools::git::command(&repo_path, &["fetch", "origin", &hermes.branch])?;
-    tools::git::command(&repo_path, &["checkout", &hermes.branch])?;
-    tools::git::command(&repo_path, &["pull", "--ff-only", "origin", &hermes.branch])?;
+    logger::step(&format!("checking out {}", hermes.branch));
+    tools::git::command(&checkout, &["fetch", "origin", &hermes.branch])?;
+    tools::git::command(&checkout, &["checkout", &hermes.branch])?;
+    tools::git::command(
+        &checkout,
+        &["reset", "--hard", &format!("origin/{}", hermes.branch)],
+    )?;
 
     Ok(repo)
 }
@@ -291,8 +262,4 @@ fn docker_login(root: &Path) -> Result<()> {
     logger::step("docker login");
 
     tools::docker::piped(root, &["login", "-u", &user, "--password-stdin"], &token)
-}
-
-fn ensure_builder(root: &Path) {
-    let _ = tools::docker::command(root, &["buildx", "create", "--name", BUILDX_BUILDER]);
 }

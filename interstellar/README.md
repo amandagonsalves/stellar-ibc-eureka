@@ -242,15 +242,19 @@ One namespace for the `api`, `gateway`, `hermes`, and `cosmos` services. A
 | `up` | pull then `docker compose up -d` |
 | `restart` | remove the existing container(s) (`rm -s -f`) then `up` |
 | `down` | stop + remove the container(s) (`rm -s -f`) |
-| `build` | build the image(s) locally (`docker build`); hermes builds multi-arch (see below) |
-| `push` | build + push the image(s) multi-arch (`buildx --push`) |
+| `build` | `docker build` the image(s) for the host arch |
+| `push` | `docker build` + `docker push` for the host arch |
 
 `build` / `push` cover the three custom images only — `--cosmos` is an upstream
-image and is rejected for build/push. **hermes** is built from a separate repo
-checkout: the CLI clones `HERMES_REPO_URL` into `HERMES_REPO` if missing,
-`git fetch` + `git checkout HERMES_BRANCH`, then `buildx --push` a multi-arch
-image (multi-arch can't be loaded locally, so hermes `build` and `push` both
-publish).
+image and is rejected for build/push. **hermes** is built from a separate repo:
+the CLI clones `HERMES_REPO_URL` into `target/hermes-relayer` (or updates it),
+checks out `HERMES_BRANCH`, then builds from there.
+
+Both build for the **host architecture only** — multi-arch (amd64 + arm64)
+manifests are published by the CD workflows (`api-cd` / `gateway-cd` /
+`hermes-cd`), which build each arch on a native runner. Building amd64 locally on
+an arm64 host would cross-compile under QEMU (slow, and the hermes relayer's
+proving-key download times out), so it is intentionally left to CI.
 
 ---
 
@@ -325,9 +329,9 @@ Read from `stellar-ibc/.env` (shell env overrides). Defaults shown.
 | `GATEWAY_IMAGE` / `GATEWAY_TAG` / `GATEWAY_REGISTRY` | `amandagonsalvesx/stellar-eureka-gateway` / `latest` / _(none)_ | gateway image to pull/run |
 | `HERMES_IMAGE` / `HERMES_TAG` / `HERMES_REGISTRY` | `amandagonsalvesx/stellar-hermes-cardano` / `latest` / _(none)_ | hermes image to pull/run |
 
-> `HERMES_REPO` / `HERMES_REPO_URL` / `HERMES_BRANCH` locate the relayer source
-> for `services build/push --hermes` (clone + checkout); `DOCKER_USERNAME` /
-> `DOCKER_TOKEN` authenticate the push.
+> `HERMES_REPO_URL` / `HERMES_BRANCH` locate the relayer source for
+> `services build/push --hermes` (cloned into `target/hermes-relayer`);
+> `DOCKER_USERNAME` / `DOCKER_TOKEN` authenticate the push.
 
 ---
 
@@ -367,11 +371,12 @@ The root `Makefile` is only for **image build + push** (everything else runs
 through the CLI directly). Both targets take a `SERVICE=<gateway|hermes|api>`:
 
 ```sh
-make build SERVICE=gateway   # docker build the image for that service
-make push  SERVICE=gateway   # build + docker push (login via DOCKER_USERNAME/DOCKER_TOKEN)
+make build SERVICE=gateway   # -> interstellar services build --gateway
+make push  SERVICE=gateway   # -> interstellar services push  --gateway
 ```
 
-Image refs come from `.env` (`<SERVICE>_IMAGE`/`_TAG`); hermes builds from
-`HERMES_REPO/ci/release/hermes.Dockerfile`. The Makefile also keeps `make fmt`
+`build` / `push` (and `push-all`) delegate to `interstellar services`, which
+resolves image refs from `.env` and clones the hermes source per
+`HERMES_REPO_URL` / `HERMES_BRANCH`. The Makefile also keeps `make fmt`
 (`cargo fmt --all`), `make test` (`cargo test --locked`), and `make cargo-build`
 (`cargo build`).
