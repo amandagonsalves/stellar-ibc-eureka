@@ -17,10 +17,12 @@ concurrency:
 
 jobs:
   deploy:
-    name: deploy soroban contracts + publish repo variables
+    name: deploy soroban contracts + log addresses
     runs-on: ubuntu-latest
     environment: staging
     timeout-minutes: 30
+    env:
+      STELLAR_SIGNING_KEY: ${{ secrets.STELLAR_SIGNING_KEY }}
 
     steps:
       - name: checkout
@@ -40,10 +42,10 @@ jobs:
       - name: install stellar cli
         uses: stellar/stellar-cli@v27.0.0
 
-      - name: write .env
-        run: |
-          cp .env.example .env
-          echo "STELLAR_SIGNING_KEY=${{ secrets.STELLAR_SIGNING_KEY }}" >> .env
+      - name: load repo variables into env
+        env:
+          VARS_JSON: ${{ toJSON(vars) }}
+        run: echo "$VARS_JSON" | jq -r 'to_entries[] | "\(.key)=\(.value)"' >> "$GITHUB_ENV"
 
       - name: deploy contracts
         run: cargo run --locked -p interstellar -- tx contracts deploy --stellar ${{ inputs.force && '--force' || '' }}

@@ -21,6 +21,8 @@ jobs:
     runs-on: ubuntu-24.04-arm
     environment: staging
     timeout-minutes: 45
+    env:
+      STELLAR_SIGNING_KEY: ${{ secrets.STELLAR_SIGNING_KEY }}
 
     steps:
       - name: checkout
@@ -46,24 +48,10 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_TOKEN }}
 
-      - name: write .env
-        run: |
-          cp .env.example .env
-          {
-            echo "STELLAR_SIGNING_KEY=${{ secrets.STELLAR_SIGNING_KEY }}"
-            echo "GATEWAY_IMAGE=${{ vars.GATEWAY_IMAGE }}"
-            echo "GATEWAY_TAG=${{ vars.GATEWAY_TAG || 'latest' }}"
-            echo "API_IMAGE=${{ vars.API_IMAGE }}"
-            echo "API_TAG=${{ vars.API_TAG || 'latest' }}"
-            echo "HERMES_IMAGE=${{ vars.HERMES_IMAGE }}"
-            echo "HERMES_TAG=${{ vars.HERMES_TAG || 'latest' }}"
-            echo "ROUTER_CONTRACT_ADDRESS=${{ vars.ROUTER_CONTRACT_ADDRESS }}"
-            echo "TRANSFER_CONTRACT_ADDRESS=${{ vars.TRANSFER_CONTRACT_ADDRESS }}"
-            echo "DEPLOYER_ADDRESS=${{ vars.DEPLOYER_ADDRESS }}"
-            echo "MOCK_LC_CONTRACT_ID=${{ vars.MOCK_LC_CONTRACT_ID }}"
-            echo "ATTESTATION_LC_CONTRACT_ID=${{ vars.ATTESTATION_LC_CONTRACT_ID }}"
-            echo "TENDERMINT_LC_CONTRACT_ID=${{ vars.TENDERMINT_LC_CONTRACT_ID }}"
-          } >> .env
+      - name: load repo variables into env
+        env:
+          VARS_JSON: ${{ toJSON(vars) }}
+        run: echo "$VARS_JSON" | jq -r 'to_entries[] | "\(.key)=\(.value)"' >> "$GITHUB_ENV"
 
       - name: bring up the stack
         run: cargo run --locked -p interstellar -- start
