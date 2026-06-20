@@ -2,9 +2,9 @@ use std::path::Path;
 
 use anyhow::Result;
 
-use crate::clients::{self, config::ClientsConfig};
 use crate::config::Config;
-use crate::transfer::{self, TransferParams};
+use crate::tx::clients::{self, config::ClientsConfig};
+use crate::tx::transfer::{self, TransferParams};
 use crate::{balances, hermes, logger, logs, ops};
 
 #[derive(clap::Args)]
@@ -66,6 +66,26 @@ pub struct DemoParams {
     pub transfer: TransferParams,
 }
 
+async fn show_balances(
+    cfg: &Config,
+    root: &Path,
+    http: &reqwest::Client,
+    denom: &str,
+) -> Result<()> {
+    let sender = cfg.accounts.stellar_sender_address.clone();
+    let receiver = cfg.accounts.cosmos_receiver_address.clone();
+
+    if !sender.is_empty() {
+        balances::run(cfg, root, http, &sender, denom).await?;
+    }
+
+    if !receiver.is_empty() {
+        balances::run(cfg, root, http, &receiver, denom).await?;
+    }
+
+    Ok(())
+}
+
 pub async fn run(root: &Path, http: &reqwest::Client, args: DemoParams) -> Result<()> {
     logger::banner("demo — ICS-20 transfer round trip");
     logger::detail(
@@ -112,7 +132,7 @@ pub async fn run(root: &Path, http: &reqwest::Client, args: DemoParams) -> Resul
     logger::step("3/5 balances — before the transfer");
     {
         let _tick = logger::ticker("reading balances");
-        balances::run(&cfg, root, http, &args.transfer.denom).await?;
+        show_balances(&cfg, root, http, &args.transfer.denom).await?;
     }
 
     logger::step("4/5 transfer — originate the ICS-20 packet");
@@ -134,7 +154,7 @@ pub async fn run(root: &Path, http: &reqwest::Client, args: DemoParams) -> Resul
     logger::step("5/5 balances — after the transfer");
     {
         let _tick = logger::ticker("reading balances");
-        balances::run(&cfg, root, http, &args.transfer.denom).await?;
+        show_balances(&cfg, root, http, &args.transfer.denom).await?;
     }
 
     logger::ok("demo complete");

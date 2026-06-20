@@ -2,17 +2,22 @@ use std::path::Path;
 
 use anyhow::{bail, Result};
 
-use crate::clients::config::ClientsConfig;
 use crate::config::Config;
-use crate::transfer::TransferParams;
-use crate::{clients, logger, logs, probe, transfer};
+use crate::tx::clients::config::ClientsConfig;
+use crate::tx::{self, TransferTx, TxCmd};
+use crate::{logger, logs, probe};
 
 pub async fn run(cfg: &Config, root: &Path, http: &reqwest::Client) -> Result<()> {
     let cc = ClientsConfig::from(cfg);
 
-    clients::bootstrap(&cc, root, http, false).await?;
+    tx::clients::bootstrap(&cc, root, http, false).await?;
 
     let fresh = Config::load(root);
+
+    let sender = fresh.accounts.stellar_sender_address.clone();
+    if sender.is_empty() {
+        bail!("STELLAR_SENDER_ADDRESS is unset — run `interstellar start` first");
+    }
 
     let receiver = fresh.accounts.cosmos_receiver_address.clone();
     if receiver.is_empty() {
@@ -21,16 +26,20 @@ pub async fn run(cfg: &Config, root: &Path, http: &reqwest::Client) -> Result<()
 
     let before = voucher_total(&fresh, http, &receiver).await;
 
-    let params = TransferParams {
-        denom: "stake".to_string(),
-        amount: 1000,
-        receiver: receiver.clone(),
-        memo: String::new(),
-        timeout_secs: 600,
-        mint: true,
-    };
-
-    transfer::stellar_to_cosmos(&fresh, root, &params)?;
+    tx::run(
+        &fresh,
+        root,
+        http,
+        TxCmd::Transfer(TransferTx {
+            from: sender,
+            to: receiver.clone(),
+            amount: 1000,
+            denom: "stake".to_string(),
+            timeout_secs: 600,
+            no_mint: false,
+        }),
+    )
+    .await?;
 
     let closed = logs::watch(root, "180s", 120).await?;
     if !closed {

@@ -3,7 +3,7 @@ use std::path::Path;
 use anyhow::{bail, Result};
 
 use crate::config::ClientTypes;
-use crate::contracts::config::ContractsConfig;
+use crate::tx::contracts::config::ContractsConfig;
 use crate::{logger, shared, tools};
 
 /// Returns `true` if contracts were (re)deployed, `false` if the existing
@@ -150,7 +150,7 @@ pub fn run(cfg: &ContractsConfig, root: &Path, force: bool, attestation: bool) -
     Ok(true)
 }
 
-fn deployer_address(cfg: &ContractsConfig, root: &Path) -> Result<String> {
+pub(crate) fn deployer_address(cfg: &ContractsConfig, root: &Path) -> Result<String> {
     if !cfg.deployer_address.is_empty() {
         return Ok(cfg.deployer_address.clone());
     }

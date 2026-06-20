@@ -2,9 +2,9 @@ use std::path::Path;
 
 use anyhow::{bail, Result};
 
-use crate::clients::config::ClientsConfig;
-use crate::clients::CreateSpec;
 use crate::logger;
+use crate::tx::clients::config::ClientsConfig;
+use crate::tx::clients::CreateSpec;
 
 pub async fn run(
     cfg: &ClientsConfig,

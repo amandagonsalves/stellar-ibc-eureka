@@ -4,43 +4,15 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use anyhow::{bail, Result};
 
 use crate::config::Config;
-use crate::contracts::{self, config::ContractsConfig};
 use crate::cosmos::config::COMPOSE_SERVICE;
+use crate::tx::contracts::{self, config::ContractsConfig};
 use crate::{logger, shared, tools};
-
-#[derive(clap::Args)]
-pub struct TransferArgs {
-    #[arg(
-        value_enum,
-        default_value = "stellar",
-        help = "Source chain to send from"
-    )]
-    pub from: shared::Chain,
-    #[arg(long, default_value = "stake", help = "Token denom to transfer")]
-    pub denom: String,
-    #[arg(long, default_value_t = 1000, help = "Amount to transfer")]
-    pub amount: i128,
-    #[arg(
-        long,
-        default_value = "",
-        help = "Receiver address on the destination chain (default: the relayer key on the destination)"
-    )]
-    pub receiver: String,
-    #[arg(long, default_value = "", help = "Optional transfer memo")]
-    pub memo: String,
-    #[arg(long, default_value_t = 600, help = "Timeout in seconds from now")]
-    pub timeout_secs: u64,
-    #[arg(
-        long,
-        help = "Skip minting the amount to the sender first (devnet mints by default)"
-    )]
-    pub no_mint: bool,
-}
 
 pub struct TransferParams {
     pub denom: String,
     pub amount: i128,
     pub receiver: String,
+    pub sender: String,
     pub memo: String,
     pub timeout_secs: u64,
     pub mint: bool,
@@ -52,7 +24,9 @@ pub fn stellar_to_cosmos(cfg: &Config, root: &Path, args: &TransferParams) -> Re
     let transfer_app = cfg.deployment.transfer_app.as_str();
     let source_client = cfg.deployment.cosmos_client_id.as_str();
 
-    let sender = if !cfg.accounts.stellar_sender_address.is_empty() {
+    let sender = if !args.sender.is_empty() {
+        args.sender.as_str()
+    } else if !cfg.accounts.stellar_sender_address.is_empty() {
         cfg.accounts.stellar_sender_address.as_str()
     } else {
         cfg.deployment.deployer_address.as_str()

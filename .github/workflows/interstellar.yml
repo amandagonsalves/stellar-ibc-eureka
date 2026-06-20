@@ -2,17 +2,6 @@ name: interstellar
 
 on:
   workflow_dispatch:
-    inputs:
-      ics:
-        description: "ICS flow to test (all = every flow)"
-        type: choice
-        default: all
-        options:
-          - all
-          - clients
-          - counterparty
-          - transfer
-          - query
 
 permissions:
   contents: read
@@ -21,63 +10,27 @@ concurrency:
   group: interstellar-${{ github.ref }}
   cancel-in-progress: true
 
-env:
-  CI: true
-  CARGO_TERM_COLOR: always
-
 jobs:
-  ics:
-    name: ics ${{ matrix.ics }}
-    if: ${{ inputs.ics == 'all' || inputs.ics == matrix.ics }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 45
+  ics02-clients:
+    uses: ./.github/workflows/interstellar-ics.yml
+    secrets: inherit
+    with:
+      ics: ics02-clients
 
-    strategy:
-      fail-fast: false
-      matrix:
-        ics: [clients, counterparty, transfer, query]
+  ics02-counterparty:
+    uses: ./.github/workflows/interstellar-ics.yml
+    secrets: inherit
+    with:
+      ics: ics02-counterparty
 
-    steps:
-      - name: checkout
-        uses: actions/checkout@v4
+  ics20-transfer:
+    uses: ./.github/workflows/interstellar-ics.yml
+    secrets: inherit
+    with:
+      ics: ics20-transfer
 
-      - name: setup rust
-        uses: dtolnay/rust-toolchain@1.91.1
-
-      - name: cache cargo
-        uses: Swatinem/rust-cache@v2
-
-      - name: install protoc
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y protobuf-compiler
-
-      - name: install stellar cli
-        run: cargo install --locked stellar-cli
-
-      - name: write .env
-        run: |
-          cp .env.example .env
-          {
-            echo "STELLAR_SIGNING_KEY=${{ secrets.STELLAR_SIGNING_KEY }}"
-            echo "GATEWAY_IMAGE=${{ vars.GATEWAY_IMAGE }}"
-            echo "GATEWAY_TAG=${{ vars.GATEWAY_TAG || 'latest' }}"
-            echo "API_IMAGE=${{ vars.API_IMAGE }}"
-            echo "API_TAG=${{ vars.API_TAG || 'latest' }}"
-            echo "HERMES_IMAGE=${{ vars.HERMES_IMAGE }}"
-            echo "HERMES_TAG=${{ vars.HERMES_TAG || 'latest' }}"
-          } >> .env
-
-      - name: bring up the stack
-        run: cargo run --locked -p interstellar -- start
-
-      - name: test ics ${{ matrix.ics }}
-        run: cargo run --locked -p interstellar -- test --ics ${{ matrix.ics }}
-
-      - name: relay logs on failure
-        if: failure()
-        run: cargo run --locked -p interstellar -- logs --since 900s || true
-
-      - name: tear down
-        if: always()
-        run: cargo run --locked -p interstellar -- down --volumes || true
+  ics02-query:
+    uses: ./.github/workflows/interstellar-ics.yml
+    secrets: inherit
+    with:
+      ics: ics02-query

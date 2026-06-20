@@ -5,8 +5,8 @@ use anyhow::{bail, Context, Result};
 use base64::Engine;
 use sha2::{Digest, Sha256};
 
-use crate::contracts::config::ContractsConfig;
 use crate::cosmos::tx::CosmosSigner;
+use crate::tx::contracts::config::ContractsConfig;
 use crate::{logger, run, tools};
 
 const CRATE: &str = "light-client-wasm";

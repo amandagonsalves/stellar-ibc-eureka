@@ -2,9 +2,9 @@ use std::path::Path;
 
 use anyhow::{anyhow, bail, Result};
 
-use crate::clients::config::ClientsConfig;
 use crate::config::Config;
-use crate::{clients, logger, probe};
+use crate::tx::clients::{self, config::ClientsConfig};
+use crate::{logger, probe};
 
 pub async fn run(cfg: &Config, root: &Path, http: &reqwest::Client) -> Result<()> {
     let cc = ClientsConfig::from(cfg);

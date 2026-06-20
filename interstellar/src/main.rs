@@ -1,9 +1,7 @@
 mod accounts;
 mod api;
 mod balances;
-mod clients;
 mod config;
-mod contracts;
 mod cosmos;
 mod demo;
 mod gateway;
@@ -12,6 +10,7 @@ mod logger;
 mod logs;
 mod ops;
 mod probe;
+mod query;
 mod repo;
 mod run;
 mod service;
@@ -19,7 +18,7 @@ mod shared;
 mod stellar;
 mod test;
 mod tools;
-mod transfer;
+mod tx;
 
 use std::time::Duration;
 
@@ -28,26 +27,25 @@ use clap::{Parser, Subcommand};
 
 use api::ApiCmd;
 use balances::BalancesArgs;
-use clients::ClientsCmd;
 use config::Config;
-use contracts::ContractsCmd;
 use cosmos::CosmosCmd;
 use demo::DemoArgs;
 use gateway::GatewayCmd;
 use hermes::HermesCmd;
 use logs::LogsArgs;
 use ops::{DownArgs, StartArgs, UpArgs};
+use query::QueryArgs;
 use shared::Chain;
 use test::TestArgs;
-use transfer::TransferArgs;
+use tx::TxCmd;
 
 #[derive(Parser)]
 #[command(
     name = "interstellar",
     version,
     about = "Orchestrator for the Stellar<->Cosmos IBC v2 bridge",
-    long_about = "A caribic-style orchestrator for the Stellar<->Cosmos bridge, grouped by \
-component: ops (install/check/status/up/down/start), clients, hermes, gateway, api, and contracts. Drives docker, the stellar CLI, and the api directly — no shell scripts.",
+    long_about = "A caribic-style orchestrator for the Stellar<->Cosmos bridge: ops \
+(install/check/status/up/down/start), tx (clients/contracts/transfer writes), query + balances (reads), and the cosmos/hermes/gateway/api service groups. Drives docker, the stellar CLI, and the api directly — no shell scripts.",
     propagate_version = true
 )]
 struct Cli {
@@ -76,10 +74,10 @@ enum Command {
         #[command(subcommand)]
         cmd: CosmosCmd,
     },
-    #[command(about = "Client lifecycle: create on each chain, register counterparties, list")]
-    Clients {
+    #[command(about = "Write operations: clients (create, counterparty), contracts, transfer")]
+    Tx {
         #[command(subcommand)]
-        cmd: ClientsCmd,
+        cmd: TxCmd,
     },
     #[command(about = "Relayer (hermes): build image, import keys, start packet relay")]
     Hermes {
@@ -96,13 +94,8 @@ enum Command {
         #[command(subcommand)]
         cmd: ApiCmd,
     },
-    #[command(about = "Soroban contracts + light-client wasm: deploy, upload")]
-    Contracts {
-        #[command(subcommand)]
-        cmd: ContractsCmd,
-    },
-    #[command(about = "Originate an ICS-20 transfer from the given source chain")]
-    Transfer(TransferArgs),
+    #[command(about = "Read client states on either or both networks")]
+    Query(QueryArgs),
     #[command(
         about = "End-to-end demo: start, client bootstrap, balances before, transfer, balances after"
     )]
@@ -113,7 +106,7 @@ enum Command {
     Test(TestArgs),
     #[command(about = "Show the dedicated sender + receiver accounts on each chain")]
     Accounts,
-    #[command(about = "Show the Cosmos receiver voucher and the Stellar sender + escrow balances")]
+    #[command(about = "Read balances for an address (cosmos or stellar — chain inferred)")]
     Balances(BalancesArgs),
     #[command(about = "Show the staged round-trip relay lines from the gateway + hermes logs")]
     Logs(LogsArgs),
@@ -164,25 +157,7 @@ async fn main() -> Result<()> {
             }
         },
 
-        Command::Clients { cmd } => {
-            let cc = clients::config::ClientsConfig::from(&cfg);
-
-            match cmd {
-                ClientsCmd::Cosmos { force } => {
-                    clients::cosmos::run(&cc, root, &http, force).await?;
-                }
-                ClientsCmd::Stellar { force } => {
-                    clients::stellar::run(&cc, root, &http, force).await?;
-                }
-                ClientsCmd::Counterparty { chain } => {
-                    clients::counterparty::run(&cc, root, chain.as_str())?
-                }
-                ClientsCmd::Bootstrap { force } => {
-                    clients::bootstrap(&cc, root, &http, force).await?
-                }
-                ClientsCmd::List => clients::list::run(&cc, &http).await?,
-            }
-        }
+        Command::Tx { cmd } => tx::run(&cfg, root, &http, cmd).await?,
 
         Command::Hermes { cmd } => match cmd {
             HermesCmd::Start { pull } => hermes::container::start(&cfg.hermes, root, pull)?,
@@ -204,50 +179,18 @@ async fn main() -> Result<()> {
             ApiCmd::Restart { pull } => api::container::restart(&cfg.api, root, pull)?,
         },
 
-        Command::Contracts { cmd } => {
-            let cc = contracts::config::ContractsConfig::from(&cfg);
-
-            match cmd {
-                ContractsCmd::Build => contracts::build::run(root)?,
-                ContractsCmd::Upload { wasm } => contracts::upload::run(&cc, root, &wasm)?,
-                ContractsCmd::Deploy { wasm, ctor } => {
-                    contracts::deploy::run(&cc, root, &wasm, &ctor)?
-                }
-                ContractsCmd::Invoke { id, call } => contracts::invoke::run(&cc, root, &id, &call)?,
-                ContractsCmd::DeployAll { force, attestation } => {
-                    contracts::deploy_all::run(&cc, root, force, attestation)?;
-                }
-                ContractsCmd::UploadWasm { testnet, from } => {
-                    contracts::wasm::upload(&cc, root, &http, testnet, from.as_deref()).await?
-                }
-            }
-        }
-
-        Command::Transfer(args) => {
-            let ta = transfer::TransferParams {
-                denom: args.denom,
-                amount: args.amount,
-                receiver: args.receiver,
-                memo: args.memo,
-                timeout_secs: args.timeout_secs,
-                mint: !args.no_mint,
-            };
-
-            match args.from {
-                Chain::Stellar => transfer::stellar_to_cosmos(&cfg, root, &ta)?,
-                Chain::Cosmos => transfer::cosmos_to_stellar(&cfg, root, &ta)?,
-            }
-        }
+        Command::Query(args) => query::run(&cfg, &http, args).await?,
 
         Command::Demo(args) => {
             if !args.transfer {
                 logger::warn("no scenario flag given — running the default --transfer scenario");
             }
 
-            let ta = transfer::TransferParams {
+            let ta = tx::transfer::TransferParams {
                 denom: args.denom,
                 amount: args.amount,
                 receiver: args.receiver,
+                sender: String::new(),
                 memo: args.memo,
                 timeout_secs: args.timeout_secs,
                 mint: !args.no_mint,
@@ -269,7 +212,9 @@ async fn main() -> Result<()> {
 
         Command::Test(args) => test::run(root, &http, args).await?,
         Command::Accounts => accounts::show(&cfg),
-        Command::Balances(args) => balances::run(&cfg, root, &http, &args.denom).await?,
+        Command::Balances(args) => {
+            balances::run(&cfg, root, &http, &args.address, &args.denom).await?
+        }
         Command::Logs(args) => logs::run(root, &args.since)?,
     }
 

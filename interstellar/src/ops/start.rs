@@ -3,8 +3,8 @@ use std::path::Path;
 use anyhow::{bail, Result};
 
 use crate::config::Config;
-use crate::contracts::config::ContractsConfig;
 use crate::ops::config::OpsConfig;
+use crate::tx::contracts::config::ContractsConfig;
 use crate::{cosmos, hermes, logger, probe, run, tools};
 
 const WAIT_TIMEOUT_SECS: u64 = 300;
@@ -57,7 +57,7 @@ pub async fn run(
         logger::detail("skip contract deploy");
     } else {
         logger::step("Step 3: deploying Soroban contracts");
-        let deployed = crate::contracts::deploy_all::run(
+        let deployed = crate::tx::contracts::deploy_all::run(
             &ContractsConfig::from(cfg),
             root,
             force_redeploy,
@@ -77,7 +77,7 @@ pub async fn run(
         logger::detail("skip lc-wasm upload");
     } else {
         logger::step("Step 4: uploading light-client-wasm to Cosmos");
-        crate::contracts::wasm::upload(&ContractsConfig::from(cfg), root, http, false, None)
+        crate::tx::contracts::wasm::upload(&ContractsConfig::from(cfg), root, http, false, None)
             .await?;
     }
 

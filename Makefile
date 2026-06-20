@@ -13,7 +13,9 @@ build:
 	  hermes) \
 	    REPO="$${HERMES_REPO:-../hermes-relayer}"; \
 	    IMG="$${HERMES_IMAGE:-amandagonsalvesx/stellar-hermes-cardano}:$${HERMES_TAG:-latest}"; \
-	    docker build -t "$$IMG" -f "$$REPO/ci/release/hermes.Dockerfile" "$$REPO" ;; \
+	    if [ -n "$$DOCKER_USERNAME" ] && [ -n "$$DOCKER_TOKEN" ]; then echo "$$DOCKER_TOKEN" | docker login -u "$$DOCKER_USERNAME" --password-stdin; fi; \
+	    docker buildx inspect multiarch >/dev/null 2>&1 || docker buildx create --name multiarch >/dev/null; \
+	    docker buildx build --builder multiarch --platform linux/amd64,linux/arm64 -t "$$IMG" --push -f "$$REPO/ci/release/hermes.Dockerfile" "$$REPO" ;; \
 	  *) echo "unknown SERVICE '$(SERVICE)' (gateway|hermes|api)"; exit 1 ;; \
 	esac
 
@@ -22,7 +24,7 @@ push: build
 	case "$(SERVICE)" in \
 	  api) IMG="$${API_IMAGE:-amandagonsalvesx/stellar-eureka-api}:$${API_TAG:-latest}" ;; \
 	  gateway) IMG="$${GATEWAY_IMAGE:-amandagonsalvesx/stellar-eureka-gateway}:$${GATEWAY_TAG:-latest}" ;; \
-	  hermes) IMG="$${HERMES_IMAGE:-amandagonsalvesx/stellar-hermes-cardano}:$${HERMES_TAG:-latest}" ;; \
+	  hermes) echo "hermes is built + pushed multi-arch by 'make build SERVICE=hermes'"; exit 0 ;; \
 	  *) echo "unknown SERVICE '$(SERVICE)' (gateway|hermes|api)"; exit 1 ;; \
 	esac; \
 	if [ -n "$$DOCKER_USERNAME" ] && [ -n "$$DOCKER_TOKEN" ]; then echo "$$DOCKER_TOKEN" | docker login -u "$$DOCKER_USERNAME" --password-stdin; fi; \

@@ -3,7 +3,7 @@ use std::path::Path;
 use anyhow::Result;
 
 use super::last_line;
-use crate::contracts::config::ContractsConfig;
+use crate::tx::contracts::config::ContractsConfig;
 use crate::{logger, tools};
 
 pub fn run(cfg: &ContractsConfig, root: &Path, wasm: &str) -> Result<()> {

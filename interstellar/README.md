@@ -51,13 +51,14 @@ interstellar <group> <command> --help
 |---|---|
 | ops | `install` · `check` · `status` · `up` · `down` · `start` |
 | `cosmos` | `keygen [--force]` · `start [--fresh]` · `stop` · `status` |
-| `clients` | `cosmos` · `stellar` · `counterparty` · `list` |
-| `transfer` | `<stellar \| cosmos>` — originate an ICS-20 transfer |
+| `tx clients` | `create [--cosmos\|--stellar]` · `counterparty [--cosmos\|--stellar]` |
+| `tx contracts` | `upload` · `deploy [--stellar\|--cosmos]` · `invoke` |
+| `tx transfer` | `--from --to --amount` (chain inferred from the addresses) |
+| `query` | `--clients [--stellar\|--cosmos] [--client-id]` |
+| `balances` | `--address [--denom]` (chain inferred from the address) |
 | `hermes` | `start` · `stop` · `restart` · `keys-import` |
 | `gateway` | `start` · `stop` · `restart` · `query` |
 | `api` | `start` · `stop` · `restart` |
-| `contracts` | `build` · `upload` · `deploy` · `invoke` · `deploy-all` · `upload-wasm` |
-| `tx` | `clients` · `msg` · `query` |
 
 ---
 
@@ -137,71 +138,81 @@ fresh checkout.
 
 ---
 
-## `clients` — client lifecycle
+## `tx` — write operations
 
-### `interstellar clients cosmos [--force]`
-Create the Cosmos (Tendermint) client on Stellar. Probes the gateway + Cosmos
-RPC, runs `hermes create client --host-chain stellar-testnet --reference-chain
-simd-1`, extracts the `07-tendermint-N` id, and writes `COSMOS_CLIENT_ID`
-to `.env`. `--force` creates another even if already set.
+Mutating commands live under `tx`. For `clients` and `contracts`, a `--cosmos` /
+`--stellar` flag selects the side; **omit it to act on both**.
 
-### `interstellar clients stellar [--force]`
-Create the Stellar (08-wasm) client on Cosmos. Requires `wasm_checksum_hex` to
-be set in the hermes config (run `contracts upload-wasm` first). Runs `hermes
-create client --host-chain simd-1 --reference-chain stellar-testnet`,
-extracts the `08-wasm-N` id, and writes `STELLAR_CLIENT_ID`.
+### `interstellar tx clients create [--cosmos | --stellar] [--force]`
+Create the Cosmos (`07-tendermint`, on Stellar) and/or Stellar (`08-wasm`, on
+Cosmos) client; with neither flag, creates both. `--force` recreates even if the
+id is already set. The Stellar client needs `wasm_checksum_hex` in the hermes
+config first (`tx contracts deploy --cosmos`).
 
-### `interstellar clients counterparty <stellar | cosmos>`
-Register a counterparty on the given side (IBC v2 `registerCounterparty`, one
-call per side, no handshake). Runs `hermes create counterparty` for the chosen
-side; the Stellar side goes through the gateway prepare→sign→submit path, the
-Cosmos side through ibc-go.
+### `interstellar tx clients counterparty [--cosmos | --stellar]`
+Register the counterparty on the chosen side (IBC v2 `registerCounterparty`, no
+handshake); with neither flag, registers on both. The Stellar side goes through
+the gateway prepare→sign→submit path, the Cosmos side through ibc-go.
 
-### `interstellar clients list`
-Lists the clients created on the Stellar router (`GET /stellar/clients`),
-grouped by `client_type`.
+### `interstellar tx contracts upload`
+Build and upload (install) every Soroban contract wasm to the network, printing
+each wasm hash.
+
+### `interstellar tx contracts deploy [--stellar | --cosmos] [--contract <name>] [--force] [--attestation]`
+- `--stellar` (default): deploy the Soroban contracts. With `--contract <name>`
+  (the wasm file name without `.wasm`, e.g. `stellar_ibc_router`) deploy just
+  that one; omit it for the full build + deploy + wire-router + write-`.env`
+  orchestration (`--force` redeploys, `--attestation` also deploys the
+  attestation LC).
+- `--cosmos`: store the light-client code on Cosmos (08-wasm gov store-code).
+
+### `interstellar tx contracts invoke --id <contract> -- <fn> <args>`
+Invoke a function on a deployed Soroban contract; the function name and its args
+pass through verbatim after `--`.
+
+```sh
+interstellar tx contracts invoke --id CB2L... -- register_port --port_id transfer --app_address CASB...
+```
+
+### `interstellar tx transfer --from <addr> --to <addr> --amount <n> [--denom --timeout-secs --no-mint]`
+Originate an ICS-20 transfer. The source/destination chain is inferred from each
+address (`cosmos1…` → Cosmos, `G…`/`C…` → Stellar) and routed accordingly —
+Stellar→Cosmos is wired, Cosmos→Stellar is pending (M4). `--denom` defaults to
+`stake`.
 
 ---
 
-## `transfer` — originate an ICS-20 transfer
+## `query` — read client states
 
 ```sh
-interstellar transfer [stellar|cosmos] [--denom --amount --receiver --memo --timeout-secs --no-mint]
+interstellar query --clients [--stellar | --cosmos] [--client-id <id>]
 ```
 
-| Arg / flag | Default | What it does |
-|---|---|---|
-| `<from>` | `stellar` | source chain; `stellar` → Cosmos (wired), `cosmos` → Stellar (pending, M4) |
-| `--denom` | `stake` | token denom to transfer |
-| `--amount` | `1000` | amount |
-| `--receiver` | _(derived)_ | destination address; when omitted, derived from the simd `relayer` key |
-| `--memo` | _(empty)_ | optional transfer memo (JSON-quoted for soroban) |
-| `--timeout-secs` | `600` | packet timeout, seconds from now |
-| `--no-mint` | _(off)_ | skip minting the amount to the sender first (devnet mints by default) |
-
-For `stellar`, invokes the transfer-app `initiate_transfer` (sender =
-`DEPLOYER_ADDRESS`, source client = `COSMOS_CLIENT_ID`) which escrows the asset
-and emits an IBC v2 `SendPacket` through the router.
+Reads client states. With `--stellar` / `--cosmos` it scopes to one network
+(Stellar via the api `/stellar/clients`, Cosmos via the IBC REST `client_states`);
+with neither it reads both. `--client-id` restricts to a single client.
 
 ---
 
 ## `test` — ICS integration flows
 
 ```sh
-interstellar test [--ics clients|counterparty|transfer|query]
+interstellar test [--ics ics02-clients|ics02-counterparty|ics20-transfer|ics02-query]
 ```
 
 Runs the happy-path integration flow for each ICS milestone against a **running
 stack** (bring it up first with `interstellar start`). With no `--ics`, every
 flow runs in dependency order and a summary is printed; the command exits
-non-zero if any flow fails.
+non-zero if any flow fails. Flows are labelled by IBC standard — client
+lifecycle, counterparty registration, and client-state queries are all ICS-02
+under Eureka; token transfer is ICS-20.
 
 | ICS | What it asserts |
 |---|---|
-| `clients` | creates the Cosmos (`07-tendermint`) and Stellar (`08-wasm`) clients and checks the returned ids |
-| `counterparty` | bootstraps clients + counterparties and checks the Stellar router lists the paired clients |
-| `transfer` | originates a Stellar→Cosmos ICS-20 transfer, waits for the relay round trip to close, and checks the Cosmos voucher increased |
-| `query` | checks the api `/health` + `/stellar/clients` reads and the Cosmos `/status` read |
+| `ics02-clients` | creates the Cosmos (`07-tendermint`) and Stellar (`08-wasm`) clients and checks the returned ids |
+| `ics02-counterparty` | bootstraps clients + counterparties and checks the Stellar router lists the paired clients |
+| `ics20-transfer` | originates a Stellar→Cosmos ICS-20 transfer, waits for the relay round trip to close, and checks the Cosmos voucher increased |
+| `ics02-query` | checks the api `/health` + `/stellar/clients` reads and the Cosmos `client_states` read |
 
 The flow bodies live in `integration-tests/interstellar/` (one file per ICS).
 CI runs them per-milestone via the `interstellar.yml` workflow — each ICS is a
@@ -249,68 +260,6 @@ The relayer's Stellar key must equal the router admin key (`STELLAR_SIGNING_KEY`
 
 ---
 
-## `contracts` — Soroban contracts + light-client wasm
-
-Low-level primitives (`build` / `upload` / `deploy` / `invoke`) wrap the
-`stellar` CLI directly; `deploy-all` and `upload-wasm` are the full orchestrations.
-
-### `interstellar contracts build`
-`stellar contract build --profile contract` → `contracts/target/wasm32v1-none/contract/`.
-
-### `interstellar contracts upload --wasm <path>`
-`stellar contract upload` a wasm; prints the wasm hash.
-
-### `interstellar contracts deploy --wasm <path> [-- <ctor args>]`
-`stellar contract deploy` a wasm; prints the contract id. Constructor args pass
-through verbatim after `--`.
-
-```sh
-interstellar contracts deploy --wasm contracts/target/wasm32v1-none/contract/stellar_ibc_router.wasm -- --admin GABC...
-```
-
-### `interstellar contracts invoke --id <contract> -- <fn> <args>`
-`stellar contract invoke` a function on a deployed contract.
-
-```sh
-interstellar contracts invoke --id CB2L... -- register_port --port_id transfer --app_address CASB...
-```
-
-### `interstellar contracts deploy-all [--force] [--attestation] [--tendermint]`
-Full deploy orchestration: build → deploy mock + router (`--admin`) + transfer-app
-(`--router --admin`) → wire the router (`register_client_type`, `register_port`)
-→ write all ids to `.env`. Idempotent (skips when `ROUTER_CONTRACT_ADDRESS` is set unless
-`--force`).
-
-| Flag | Effect |
-|---|---|
-| `--force` | redeploy even if `ROUTER_CONTRACT_ADDRESS` is set |
-| `--attestation` | also deploy + register the attestation light client |
-| `--tendermint` | also deploy + register the tendermint light client |
-
-### `interstellar contracts upload-wasm`
-Build `light-client-wasm` (`wasm32-unknown-unknown`), `wasm-opt` bulk-memory
-lowering, then via the api: fund the proposer → submit the `08-wasm` store-code
-gov proposal → vote → verify the checksum on-chain → patch `wasm_checksum_hex`
-in the hermes config.
-
----
-
-## `tx` — low-level tx surface
-
-These mirror the gateway's write/query RPCs and are mostly **pending** (they
-print a "not wired yet" notice) — the gateway now returns signable txs for all
-of them, so they depend on the relayer (hermes fork) signing + submitting those
-txs and the packet worker.
-
-| Command | Status |
-|---|---|
-| `tx clients create` · `tx clients update` | pending |
-| `tx msg register-counterparty <stellar\|cosmos>` | delegates to `clients counterparty` (pending) |
-| `tx msg recv` · `tx msg ack` · `tx msg timeout` | pending |
-| `tx query commitment` · `receipt` · `ack` · `header` | pending |
-
----
-
 ## Typical workflows
 
 First run from a clean machine:
@@ -321,19 +270,18 @@ interstellar check               # docker/stellar/cargo present? .env filled?
 interstellar start                # images, chains, contracts, wasm, keys
 interstellar status               # everything green?
 
-interstellar clients cosmos       # Cosmos client on Stellar
-interstellar clients stellar      # Stellar client on Cosmos
-interstellar clients list
+interstellar tx clients create    # create both clients (Cosmos on Stellar, Stellar on Cosmos)
+interstellar query --clients      # read client states on both networks
 ```
 
 Day-to-day:
 
 ```sh
-interstellar up                          # bring the stack up
-interstellar api restart --pull          # pull latest + recreate just the api
-interstellar contracts deploy-all --force   # redeploy contracts, rewrite .env
-interstellar gateway restart --pull      # pull latest + pick up the new ROUTER_CONTRACT_ADDRESS
-interstellar down                        # stop the stack
+interstellar up                              # bring the stack up
+interstellar api restart --pull              # pull latest + recreate just the api
+interstellar tx contracts deploy --stellar --force   # redeploy contracts, rewrite .env
+interstellar gateway restart --pull          # pull latest + pick up the new ROUTER_CONTRACT_ADDRESS
+interstellar down                            # stop the stack
 ```
 
 ---
@@ -375,19 +323,24 @@ eureka/src/
   config.rs          base Config: cosmos · stellar · hermes · api · gateway · deployment
   repo.rs            repo-root discovery
   run.rs             process helpers (command / capture / compose / piped)
+  tools.rs           typed wrappers over run (stellar · gaiad · docker)
   probe.rs           http / tcp health probes
   logger.rs          TTY-aware status logger
-  shared.rs          print_clients / env_upsert / pending / check helpers
+  shared.rs          chain_of · print_clients · env_upsert · check helpers
   ops/               install · check · status · stack (up/down) · start · config
   cosmos/            cosmos (simd-1) chain config + lifecycle (keygen/start/stop/status)
   stellar/           stellar chain config + lifecycle
-  clients/           cosmos · stellar · counterparty · list · config
-  transfer/          ICS-20 transfer origination (stellar → cosmos)
+  tx/                write operations grouped under `tx`
+    mod.rs           tx command tree (clients · contracts · transfer) + side routing
+    clients/         create (cosmos/stellar) · counterparty · config
+    contracts/       upload · deploy_one · deploy_all · invoke · wasm · build · config
+    transfer/        ICS-20 transfer origination (stellar → cosmos)
+  query/             client-state reads (stellar router + cosmos REST)
+  balances/          address-routed balance reads
   hermes/            container (start/stop/restart) · keys · config
   gateway/           container · query · config
   api/               container
-  contracts/         build · upload · deploy · invoke · deploy_all · wasm · config
-  tx/                clients · msg · query
+  test/              ICS integration flows (interstellar test)
 ```
 
 ## Makefile

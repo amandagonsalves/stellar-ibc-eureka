@@ -1,27 +1,50 @@
 use std::path::Path;
 
-use anyhow::Result;
+use anyhow::{bail, Result};
 
 use crate::config::Config;
-use crate::{logger, probe, tools};
+use crate::shared::Chain;
+use crate::{logger, probe, shared, tools};
 
 #[derive(clap::Args)]
 pub struct BalancesArgs {
-    #[arg(long, default_value = "stake", help = "Token denom to read")]
+    #[arg(
+        long,
+        help = "Address to read balances for (cosmos or stellar — chain inferred)"
+    )]
+    pub address: String,
+    #[arg(
+        long,
+        default_value = "stake",
+        help = "Token denom to read on the Stellar side"
+    )]
     pub denom: String,
 }
 
-pub async fn run(cfg: &Config, root: &Path, http: &reqwest::Client, denom: &str) -> Result<()> {
-    logger::banner(&format!("balances ({denom})"));
+pub async fn run(
+    cfg: &Config,
+    root: &Path,
+    http: &reqwest::Client,
+    address: &str,
+    denom: &str,
+) -> Result<()> {
+    match shared::chain_of(address) {
+        Some(Chain::Cosmos) => {
+            cosmos_balances(cfg, http, address).await;
 
-    stellar_side(cfg, root, denom);
-    cosmos_side(cfg, http).await;
+            Ok(())
+        }
+        Some(Chain::Stellar) => {
+            stellar_balances(cfg, root, address, denom);
 
-    Ok(())
+            Ok(())
+        }
+        None => bail!("could not classify {address:?} as a cosmos or stellar address"),
+    }
 }
 
-fn stellar_side(cfg: &Config, root: &Path, denom: &str) {
-    logger::step("Stellar (ibc-transfer) — sender debited, escrow locks the sent denom");
+fn stellar_balances(cfg: &Config, root: &Path, address: &str, denom: &str) {
+    logger::banner(&format!("balances — stellar {address} ({denom})"));
 
     let transfer = cfg.deployment.transfer_app.as_str();
 
@@ -31,38 +54,17 @@ fn stellar_side(cfg: &Config, root: &Path, denom: &str) {
         return;
     }
 
-    let sender = cfg.accounts.stellar_sender_address.as_str();
-
-    if !sender.is_empty() {
-        logger::ok(&format!("sender {sender}"));
-        logger::detail(&format!(
-            "balance: {} {denom}",
-            balance_of(cfg, root, sender, denom)
-        ));
-    }
-
-    logger::ok(&format!("escrow {transfer} (ibc-transfer)"));
-    logger::detail(&format!(
-        "balance: {} {denom}  (locked on-chain)",
-        balance_of(cfg, root, transfer, denom)
+    logger::ok(&format!(
+        "balance: {} {denom}",
+        balance_of(cfg, root, address, denom)
     ));
 }
 
-async fn cosmos_side(cfg: &Config, http: &reqwest::Client) {
-    logger::step("Cosmos (receiver bank balances) — the ibc/… voucher lands here");
-
-    let receiver = cfg.accounts.cosmos_receiver_address.as_str();
-
-    if receiver.is_empty() {
-        logger::warn("COSMOS_RECEIVER_ADDRESS unset — run `interstellar start` first");
-
-        return;
-    }
-
-    logger::ok(&format!("receiver {receiver}"));
+async fn cosmos_balances(cfg: &Config, http: &reqwest::Client, address: &str) {
+    logger::banner(&format!("balances — cosmos {address}"));
 
     let url = format!(
-        "{}/cosmos/bank/v1beta1/balances/{receiver}",
+        "{}/cosmos/bank/v1beta1/balances/{address}",
         cfg.cosmos.rest_url
     );
 
@@ -75,7 +77,7 @@ async fn cosmos_side(cfg: &Config, http: &reqwest::Client) {
                     logger::detail(&format!("{amount} {coin_denom}"));
                 }
             }
-            _ => logger::detail("(no balances yet — no voucher for this route)"),
+            _ => logger::detail("(no balances)"),
         },
         None => logger::warn(&format!("could not query {url}")),
     }

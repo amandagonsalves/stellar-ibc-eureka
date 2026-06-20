@@ -2,8 +2,9 @@ use std::path::Path;
 
 use anyhow::{bail, Result};
 
-use crate::clients::config::ClientsConfig;
 use crate::config::Config;
+use crate::query::{self, QueryArgs};
+use crate::tx::clients::config::ClientsConfig;
 use crate::{logger, probe};
 
 pub async fn run(cfg: &Config, _root: &Path, http: &reqwest::Client) -> Result<()> {
@@ -27,5 +28,24 @@ pub async fn run(cfg: &Config, _root: &Path, http: &reqwest::Client) -> Result<(
 
     logger::ok("cosmos /status ok");
 
-    Ok(())
+    let client_states = format!("{}/ibc/core/client/v1/client_states", cfg.cosmos.rest_url);
+    match probe::get_json(http, &client_states).await {
+        Some(value) if value.get("client_states").is_some() => {
+            logger::ok("cosmos client_states ok")
+        }
+        Some(_) => bail!("unexpected client_states response shape from {client_states}"),
+        None => bail!("could not read {client_states}"),
+    }
+
+    query::run(
+        cfg,
+        http,
+        QueryArgs {
+            clients: true,
+            stellar: false,
+            cosmos: false,
+            client_id: None,
+        },
+    )
+    .await
 }

@@ -2,7 +2,7 @@ use std::path::Path;
 
 use anyhow::{bail, Result};
 
-use crate::clients::config::ClientsConfig;
+use crate::tx::clients::config::ClientsConfig;
 use crate::{logger, run};
 
 pub fn run(cfg: &ClientsConfig, root: &Path, side: &str) -> Result<()> {

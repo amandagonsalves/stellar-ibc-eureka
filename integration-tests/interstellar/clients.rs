@@ -2,15 +2,15 @@ use std::path::Path;
 
 use anyhow::{bail, Result};
 
-use crate::clients::config::ClientsConfig;
 use crate::config::Config;
 use crate::logger;
+use crate::tx::clients::config::ClientsConfig;
 
 pub async fn run(cfg: &Config, root: &Path, http: &reqwest::Client) -> Result<()> {
     let cc = ClientsConfig::from(cfg);
 
-    let cosmos_client = crate::clients::cosmos::run(&cc, root, http, true).await?;
-    let stellar_client = crate::clients::stellar::run(&cc, root, http, true).await?;
+    let cosmos_client = crate::tx::clients::cosmos::run(&cc, root, http, true).await?;
+    let stellar_client = crate::tx::clients::stellar::run(&cc, root, http, true).await?;
 
     expect_prefix(&cosmos_client, "07-tendermint")?;
     expect_prefix(&stellar_client, "08-wasm")?;
