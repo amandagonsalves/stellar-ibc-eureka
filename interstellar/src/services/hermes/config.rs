@@ -6,13 +6,14 @@ pub struct HermesConfig {
     pub image: ImageRef,
     pub config: String,
     pub config_path: String,
-    pub repo: String,
     pub repo_url: String,
     pub branch: String,
 }
 
 impl HermesConfig {
     pub fn from_env(root: &Path) -> Self {
+        let branch = get("HERMES_BRANCH", "main");
+
         Self {
             image: ImageRef {
                 image: get("HERMES_IMAGE", "amandagonsalvesx/stellar-hermes-cardano"),
@@ -21,9 +22,12 @@ impl HermesConfig {
             },
             config: root.join("hermes-config.toml").display().to_string(),
             config_path: get("HERMES_CONFIG_PATH", "/home/hermes/.hermes/config.toml"),
-            repo: get("HERMES_REPO", "../hermes-relayer"),
             repo_url: get("HERMES_REPO_URL", ""),
-            branch: get("HERMES_BRANCH", "main"),
+            branch: if branch.trim().is_empty() {
+                "main".to_string()
+            } else {
+                branch
+            },
         }
     }
 }

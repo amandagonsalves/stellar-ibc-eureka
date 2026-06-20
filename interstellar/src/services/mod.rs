@@ -238,24 +238,32 @@ fn build_image(
 
 fn ensure_hermes_repo(cfg: &Config, root: &Path) -> Result<String> {
     let hermes = &cfg.hermes;
-    let repo_path = root.join(&hermes.repo);
-    let repo = repo_path.display().to_string();
 
-    if !repo_path.exists() {
-        if hermes.repo_url.is_empty() {
-            bail!(
-                "hermes repo {repo} is missing and HERMES_REPO_URL is unset — set it to clone the relayer"
-            );
-        }
+    if hermes.repo_url.trim().is_empty() {
+        bail!("HERMES_REPO_URL is unset — set it to the hermes relayer repository to build hermes");
+    }
 
+    let checkout = root.join("target/hermes-relayer");
+    let repo = checkout.display().to_string();
+
+    if checkout.join(".git").is_dir() {
+        logger::step(&format!("updating hermes relayer in {repo}"));
+        tools::git::command(
+            &checkout,
+            &["remote", "set-url", "origin", &hermes.repo_url],
+        )?;
+    } else {
         logger::step(&format!("cloning hermes relayer from {}", hermes.repo_url));
         tools::git::command(root, &["clone", &hermes.repo_url, &repo])?;
     }
 
-    logger::step(&format!("checking out {} in {repo}", hermes.branch));
-    tools::git::command(&repo_path, &["fetch", "origin", &hermes.branch])?;
-    tools::git::command(&repo_path, &["checkout", &hermes.branch])?;
-    tools::git::command(&repo_path, &["pull", "--ff-only", "origin", &hermes.branch])?;
+    logger::step(&format!("checking out {}", hermes.branch));
+    tools::git::command(&checkout, &["fetch", "origin", &hermes.branch])?;
+    tools::git::command(&checkout, &["checkout", &hermes.branch])?;
+    tools::git::command(
+        &checkout,
+        &["reset", "--hard", &format!("origin/{}", hermes.branch)],
+    )?;
 
     Ok(repo)
 }
