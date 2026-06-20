@@ -79,8 +79,6 @@ const ALL: [Service; 4] = [
     Service::Hermes,
     Service::Cosmos,
 ];
-const BUILDX_BUILDER: &str = "interstellar-multiarch";
-const PLATFORMS: &str = "linux/amd64,linux/arm64";
 
 fn selected(args: &ServiceArgs) -> Vec<Service> {
     let mut picked = Vec::new();
@@ -206,34 +204,17 @@ fn build_image(
 ) -> Result<()> {
     let image = service.image(cfg);
 
-    if !push {
-        logger::step("docker build (host arch)");
+    logger::step("docker build (host arch)");
+    tools::docker::command(root, &["build", "-t", &image, "-f", dockerfile, context])?;
 
-        return tools::docker::command(root, &["build", "-t", &image, "-f", dockerfile, context]);
+    if !push {
+        return Ok(());
     }
 
     docker_login(root)?;
-    ensure_builder(root);
 
-    logger::step(&format!("buildx build --push ({PLATFORMS})"));
-
-    tools::docker::command(
-        root,
-        &[
-            "buildx",
-            "build",
-            "--builder",
-            BUILDX_BUILDER,
-            "--platform",
-            PLATFORMS,
-            "-t",
-            &image,
-            "--push",
-            "-f",
-            dockerfile,
-            context,
-        ],
-    )
+    logger::step("docker push");
+    tools::docker::command(root, &["push", &image])
 }
 
 fn ensure_hermes_repo(cfg: &Config, root: &Path) -> Result<String> {
@@ -281,8 +262,4 @@ fn docker_login(root: &Path) -> Result<()> {
     logger::step("docker login");
 
     tools::docker::piped(root, &["login", "-u", &user, "--password-stdin"], &token)
-}
-
-fn ensure_builder(root: &Path) {
-    let _ = tools::docker::command(root, &["buildx", "create", "--name", BUILDX_BUILDER]);
 }

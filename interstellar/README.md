@@ -242,14 +242,19 @@ One namespace for the `api`, `gateway`, `hermes`, and `cosmos` services. A
 | `up` | pull then `docker compose up -d` |
 | `restart` | remove the existing container(s) (`rm -s -f`) then `up` |
 | `down` | stop + remove the container(s) (`rm -s -f`) |
-| `build` | build the image(s) locally (`docker build`); hermes builds multi-arch (see below) |
-| `push` | build + push the image(s) multi-arch (`buildx --push`) |
+| `build` | `docker build` the image(s) for the host arch |
+| `push` | `docker build` + `docker push` for the host arch |
 
 `build` / `push` cover the three custom images only — `--cosmos` is an upstream
 image and is rejected for build/push. **hermes** is built from a separate repo:
 the CLI clones `HERMES_REPO_URL` into `target/hermes-relayer` (or updates it),
-checks out `HERMES_BRANCH`, then builds from there. As for api/gateway, `build`
-is a host-arch `docker build` and `push` is a multi-arch `buildx --push`.
+checks out `HERMES_BRANCH`, then builds from there.
+
+Both build for the **host architecture only** — multi-arch (amd64 + arm64)
+manifests are published by the CD workflows (`api-cd` / `gateway-cd` /
+`hermes-cd`), which build each arch on a native runner. Building amd64 locally on
+an arm64 host would cross-compile under QEMU (slow, and the hermes relayer's
+proving-key download times out), so it is intentionally left to CI.
 
 ---
 
