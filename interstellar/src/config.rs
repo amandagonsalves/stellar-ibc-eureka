@@ -166,7 +166,13 @@ pub struct Config {
 }
 
 pub fn get(key: &str, default: &str) -> String {
-    env::var(key).unwrap_or_else(|_| default.to_string())
+    match env::var(key) {
+        Ok(value) => value
+            .trim()
+            .trim_matches(|c| c == '"' || c == '\'')
+            .to_string(),
+        Err(_) => default.to_string(),
+    }
 }
 
 impl Config {
