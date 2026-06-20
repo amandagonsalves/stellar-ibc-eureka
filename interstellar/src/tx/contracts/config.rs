@@ -3,7 +3,6 @@ use crate::config::{ClientTypes, Config};
 pub struct ContractsConfig {
     pub rpc_url: String,
     pub network_passphrase: String,
-    pub cli_identity: String,
     pub signing_key: String,
     pub deployer_address: String,
     pub ibc_router: String,
@@ -19,7 +18,6 @@ impl From<&Config> for ContractsConfig {
         Self {
             rpc_url: cfg.stellar.rpc_url.clone(),
             network_passphrase: cfg.stellar.network_passphrase.clone(),
-            cli_identity: cfg.stellar.cli_identity.clone(),
             signing_key: cfg.stellar.signing_key.clone(),
             deployer_address: cfg.deployment.deployer_address.clone(),
             ibc_router: cfg.deployment.ibc_router.clone(),

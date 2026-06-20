@@ -13,7 +13,7 @@ pub fn run(cfg: &ContractsConfig, root: &Path, wasm: &str) -> Result<()> {
         "contract".into(),
         "upload".into(),
         "--source".into(),
-        cfg.cli_identity.clone(),
+        cfg.signing_key.clone(),
     ];
     args.extend(cfg.net_flags());
     args.push("--wasm".into());

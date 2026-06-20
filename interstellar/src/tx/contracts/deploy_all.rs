@@ -4,7 +4,7 @@ use anyhow::{bail, Result};
 
 use crate::config::ClientTypes;
 use crate::tx::contracts::config::ContractsConfig;
-use crate::{logger, shared, tools};
+use crate::{logger, shared};
 
 /// Returns `true` if contracts were (re)deployed, `false` if the existing
 /// deployment was kept — so callers know whether dependent services need to be
@@ -27,7 +27,7 @@ pub fn run(cfg: &ContractsConfig, root: &Path, force: bool, attestation: bool) -
 
     super::build::run(root)?;
 
-    let deployer = deployer_address(cfg, root)?;
+    let deployer = deployer_address(cfg)?;
     logger::detail(&format!("deployer: {deployer}"));
 
     let wasm_dir = root.join("contracts/soroban/target/wasm32v1-none/contract");
@@ -150,20 +150,32 @@ pub fn run(cfg: &ContractsConfig, root: &Path, force: bool, attestation: bool) -
     Ok(true)
 }
 
-pub(crate) fn deployer_address(cfg: &ContractsConfig, root: &Path) -> Result<String> {
+pub(crate) fn deployer_address(cfg: &ContractsConfig) -> Result<String> {
     if !cfg.deployer_address.is_empty() {
         return Ok(cfg.deployer_address.clone());
     }
 
-    let out = tools::stellar::capture(root, &["keys", "public-key", cfg.cli_identity.as_str()])?;
-    let addr = super::last_line(&out);
+    address_from_secret(&cfg.signing_key)
+}
 
-    if addr.is_empty() {
-        bail!(
-            "could not resolve deployer address for identity '{}'",
-            cfg.cli_identity
-        );
+fn address_from_secret(secret: &str) -> Result<String> {
+    let private = stellar_strkey::ed25519::PrivateKey::from_string(secret)
+        .map_err(|e| anyhow::anyhow!("invalid STELLAR_SIGNING_KEY: {e}"))?;
+    let signing = ed25519_dalek::SigningKey::from_bytes(&private.0);
+    let public = stellar_strkey::ed25519::PublicKey(signing.verifying_key().to_bytes());
+
+    Ok(String::from(public.to_string().as_str()))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::address_from_secret;
+
+    #[test]
+    fn derives_the_stellar_address_from_the_secret() {
+        let secret = "SCY47WDEEXHWBUD42ZYYG3DPIVX52RLQULF6KRPEEHLRU5TIWDKIJTGH";
+        let address = "GCSWETSPE54NXRXLEXXI2FBIL2KRGOMF6JEJQ62OAGSXXOJVKO6WDAVO";
+
+        assert_eq!(address_from_secret(secret).unwrap(), address);
     }
-
-    Ok(addr)
 }
