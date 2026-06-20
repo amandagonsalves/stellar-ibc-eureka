@@ -32,7 +32,8 @@ init_chain () {
 
     jq -r '.accounts | keys[]' "$CONFIG_JSON" |
     while read -r name; do
-        mnemonic="$(mnemonic_for "$name")"
+        mnemonic="$(mnemonic_for "$name" | tr -d "\"'\r")"
+        mnemonic="$(printf '%s' "$mnemonic" | awk '{$1=$1};1')"
         coins="$(jq -r --arg n "$name" '.accounts[$n]' "$CONFIG_JSON")"
         if [ -z "$mnemonic" ]; then
             echo "error: no mnemonic in env for account '$name' — set COSMOS_VALIDATOR_MNEMONIC / COSMOS_RELAYER_MNEMONIC" >&2

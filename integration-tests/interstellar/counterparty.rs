@@ -7,17 +7,14 @@ use crate::tx::clients::{self, config::ClientsConfig};
 use crate::{logger, probe};
 
 pub async fn run(cfg: &Config, root: &Path, http: &reqwest::Client) -> Result<()> {
+    if cfg.deployment.cosmos_client_id.is_empty() || cfg.deployment.stellar_client_id.is_empty() {
+        bail!("client ids are empty — run the ics02-clients flow first");
+    }
+
     let cc = ClientsConfig::from(cfg);
 
-    clients::bootstrap(&cc, root, http, false).await?;
-
-    let fresh = Config::load(root);
-    let cc = ClientsConfig::from(&fresh);
-
-    if fresh.deployment.cosmos_client_id.is_empty() || fresh.deployment.stellar_client_id.is_empty()
-    {
-        bail!("client ids are empty after bootstrap — counterparties cannot be paired");
-    }
+    clients::counterparty::run(&cc, root, "stellar")?;
+    clients::counterparty::run(&cc, root, "cosmos")?;
 
     let listed = registered_clients(&cc, http).await?;
     if listed.is_empty() {

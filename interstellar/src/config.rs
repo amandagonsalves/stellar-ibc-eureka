@@ -177,7 +177,7 @@ pub fn get(key: &str, default: &str) -> String {
 
 impl Config {
     pub fn load(root: &Path) -> Self {
-        let _ = dotenvy::from_path(root.join(".env"));
+        let _ = dotenvy::from_path_override(root.join(".env"));
 
         Self {
             cosmos: CosmosConfig::devnet(),
