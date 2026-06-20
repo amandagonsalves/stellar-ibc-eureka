@@ -3,9 +3,10 @@ use std::path::Path;
 use anyhow::Result;
 
 use crate::config::Config;
+use crate::services::hermes;
 use crate::tx::clients::{self, config::ClientsConfig};
 use crate::tx::transfer::{self, TransferParams};
-use crate::{balances, hermes, logger, logs, ops};
+use crate::{balances, logger, logs, ops};
 
 #[derive(clap::Args)]
 pub struct DemoArgs {

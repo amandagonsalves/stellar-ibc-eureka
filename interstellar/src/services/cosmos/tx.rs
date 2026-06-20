@@ -14,7 +14,7 @@ use ibc_proto::ibc::lightclients::wasm::v1::MsgStoreCode;
 use prost::Message;
 use serde_json::Value;
 
-use crate::cosmos::config::CosmosConfig;
+use crate::services::cosmos::config::CosmosConfig;
 
 struct Account {
     key: SigningKey,

@@ -2,22 +2,14 @@ use std::path::Path;
 
 use anyhow::Result;
 
-use crate::hermes::config::HermesConfig;
 use crate::service::Service;
+use crate::services::hermes::config::HermesConfig;
 use crate::tools;
 
 const SERVICE: Service = Service::new("hermes");
 
 pub fn start(cfg: &HermesConfig, root: &Path, pull: bool) -> Result<()> {
     SERVICE.start(root, &cfg.image, pull)
-}
-
-pub fn stop(root: &Path) -> Result<()> {
-    SERVICE.stop(root)
-}
-
-pub fn restart(cfg: &HermesConfig, root: &Path, pull: bool) -> Result<()> {
-    SERVICE.restart(root, &cfg.image, pull)
 }
 
 pub fn exec(root: &Path, config_path: &str, args: &[&str]) -> Result<String> {

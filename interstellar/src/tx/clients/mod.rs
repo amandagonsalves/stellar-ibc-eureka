@@ -63,7 +63,7 @@ pub(crate) async fn create(
         "hermes create client --host-chain {} --reference-chain {}",
         spec.host_chain, spec.reference_chain
     ));
-    let output = crate::hermes::container::exec(
+    let output = crate::services::hermes::container::exec(
         root,
         cfg.hermes_config_path.as_str(),
         &[

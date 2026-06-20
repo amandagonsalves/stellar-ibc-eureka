@@ -54,7 +54,7 @@ pub fn register(
         "hermes create counterparty --chain {chain} --client {client} --counterparty-client {counterparty} --commitment-prefix '{commitment_prefix}'"
     ));
 
-    let output = crate::hermes::container::exec(
+    let output = crate::services::hermes::container::exec(
         root,
         cfg.hermes_config_path.as_str(),
         &[

@@ -4,7 +4,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use anyhow::{bail, Result};
 
 use crate::config::Config;
-use crate::cosmos::config::COMPOSE_SERVICE;
+use crate::services::cosmos::config::COMPOSE_SERVICE;
 use crate::tx::contracts::{self, config::ContractsConfig};
 use crate::{logger, shared, tools};
 

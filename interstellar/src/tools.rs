@@ -40,6 +40,14 @@ pub mod gaiad {
     }
 }
 
+pub mod git {
+    use super::*;
+
+    pub fn command(root: &Path, args: &[&str]) -> Result<()> {
+        run::command(root, "git", args)
+    }
+}
+
 pub mod docker {
     use super::*;
 

@@ -1,11 +1,7 @@
 mod accounts;
-mod api;
 mod balances;
 mod config;
-mod cosmos;
 mod demo;
-mod gateway;
-mod hermes;
 mod logger;
 mod logs;
 mod ops;
@@ -14,8 +10,8 @@ mod query;
 mod repo;
 mod run;
 mod service;
+mod services;
 mod shared;
-mod stellar;
 mod test;
 mod tools;
 mod tx;
@@ -25,16 +21,16 @@ use std::time::Duration;
 use anyhow::Result;
 use clap::{Parser, Subcommand};
 
-use api::ApiCmd;
 use balances::BalancesArgs;
 use config::Config;
-use cosmos::CosmosCmd;
 use demo::DemoArgs;
-use gateway::GatewayCmd;
-use hermes::HermesCmd;
 use logs::LogsArgs;
 use ops::{DownArgs, StartArgs, UpArgs};
 use query::QueryArgs;
+use services::cosmos::{self, CosmosCmd};
+use services::gateway::{self, GatewayCmd};
+use services::hermes::{self, HermesCmd};
+use services::ServicesCmd;
 use shared::Chain;
 use test::TestArgs;
 use tx::TxCmd;
@@ -79,20 +75,22 @@ enum Command {
         #[command(subcommand)]
         cmd: TxCmd,
     },
-    #[command(about = "Relayer (hermes): build image, import keys, start packet relay")]
+    #[command(
+        about = "Service lifecycle + images: pull/up/restart/down/build/push (api, gateway, hermes, cosmos)"
+    )]
+    Services {
+        #[command(subcommand)]
+        cmd: ServicesCmd,
+    },
+    #[command(about = "Relayer (hermes): import the relayer keys")]
     Hermes {
         #[command(subcommand)]
         cmd: HermesCmd,
     },
-    #[command(about = "Gateway service: build image, gRPC queries")]
+    #[command(about = "Gateway service: gRPC queries")]
     Gateway {
         #[command(subcommand)]
         cmd: GatewayCmd,
-    },
-    #[command(about = "API service: build image")]
-    Api {
-        #[command(subcommand)]
-        cmd: ApiCmd,
     },
     #[command(about = "Read client states on either or both networks")]
     Query(QueryArgs),
@@ -159,24 +157,14 @@ async fn main() -> Result<()> {
 
         Command::Tx { cmd } => tx::run(&cfg, root, &http, cmd).await?,
 
+        Command::Services { cmd } => services::run(&cfg, root, cmd)?,
+
         Command::Hermes { cmd } => match cmd {
-            HermesCmd::Start { pull } => hermes::container::start(&cfg.hermes, root, pull)?,
-            HermesCmd::Stop => hermes::container::stop(root)?,
-            HermesCmd::Restart { pull } => hermes::container::restart(&cfg.hermes, root, pull)?,
             HermesCmd::KeysImport => hermes::keys::import(&cfg, root)?,
         },
 
         Command::Gateway { cmd } => match cmd {
-            GatewayCmd::Start { pull } => gateway::container::start(&cfg.gateway, root, pull)?,
-            GatewayCmd::Stop => gateway::container::stop(root)?,
-            GatewayCmd::Restart { pull } => gateway::container::restart(&cfg.gateway, root, pull)?,
             GatewayCmd::Query => gateway::query::run()?,
-        },
-
-        Command::Api { cmd } => match cmd {
-            ApiCmd::Start { pull } => api::container::start(&cfg.api, root, pull)?,
-            ApiCmd::Stop => api::container::stop(root)?,
-            ApiCmd::Restart { pull } => api::container::restart(&cfg.api, root, pull)?,
         },
 
         Command::Query(args) => query::run(&cfg, &http, args).await?,
