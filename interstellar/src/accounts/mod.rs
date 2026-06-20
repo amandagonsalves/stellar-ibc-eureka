@@ -3,7 +3,7 @@ use std::path::Path;
 use anyhow::{bail, Result};
 
 use crate::config::Config;
-use crate::cosmos::config::COMPOSE_SERVICE;
+use crate::services::cosmos::config::COMPOSE_SERVICE;
 use crate::{logger, run, shared, tools};
 
 const COSMOS_HOME: &str = "/root/.simapp";

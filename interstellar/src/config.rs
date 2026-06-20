@@ -1,10 +1,10 @@
 use std::env;
 use std::path::Path;
 
-use crate::cosmos::config::CosmosConfig;
-use crate::gateway::config::GatewayConfig;
-use crate::hermes::config::HermesConfig;
-use crate::stellar::config::StellarConfig;
+use crate::services::cosmos::config::CosmosConfig;
+use crate::services::gateway::config::GatewayConfig;
+use crate::services::hermes::config::HermesConfig;
+use crate::services::stellar::config::StellarConfig;
 
 pub enum ChainId {
     Cosmos(String),

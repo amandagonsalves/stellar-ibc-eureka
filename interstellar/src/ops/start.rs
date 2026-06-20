@@ -4,8 +4,9 @@ use anyhow::{bail, Result};
 
 use crate::config::Config;
 use crate::ops::config::OpsConfig;
+use crate::services::{cosmos, hermes};
 use crate::tx::contracts::config::ContractsConfig;
-use crate::{cosmos, hermes, logger, probe, run, tools};
+use crate::{logger, probe, run, tools};
 
 const WAIT_TIMEOUT_SECS: u64 = 300;
 

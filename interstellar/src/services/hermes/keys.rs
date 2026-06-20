@@ -32,7 +32,7 @@ pub fn import(cfg: &Config, root: &Path) -> Result<()> {
         &cfg.cosmos.relayer_mnemonic,
     )?;
 
-    let testnet = crate::cosmos::config::CosmosConfig::testnet();
+    let testnet = crate::services::cosmos::config::CosmosConfig::testnet();
     let testnet_mnemonic = {
         let specific = crate::config::get("COSMOS_TESTNET_MNEMONIC", "");
         if specific.trim().is_empty() {

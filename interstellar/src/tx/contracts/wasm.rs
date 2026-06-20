@@ -5,7 +5,7 @@ use anyhow::{bail, Context, Result};
 use base64::Engine;
 use sha2::{Digest, Sha256};
 
-use crate::cosmos::tx::CosmosSigner;
+use crate::services::cosmos::tx::CosmosSigner;
 use crate::tx::contracts::config::ContractsConfig;
 use crate::{logger, run, tools};
 
@@ -42,7 +42,7 @@ pub async fn upload(
 
     let (bytes, local_sha) = build_wasm(root)?;
 
-    let cosmos = crate::cosmos::config::CosmosConfig::devnet();
+    let cosmos = crate::services::cosmos::config::CosmosConfig::devnet();
     let signer = CosmosSigner::from_config(&cosmos, http.clone())?;
 
     if !signer.node_info_ok().await {
@@ -107,7 +107,7 @@ pub async fn upload(
     logger::ok(&format!("wasm registered with checksum {local_sha}"));
 
     logger::step("patching wasm_checksum_hex in the hermes config");
-    if crate::hermes::patch_wasm_checksum(Path::new(&cfg.hermes_config), &local_sha)? {
+    if crate::services::hermes::patch_wasm_checksum(Path::new(&cfg.hermes_config), &local_sha)? {
         logger::ok(&format!("hermes config patched ({})", cfg.hermes_config));
     } else {
         logger::detail("hermes config already had this checksum");
@@ -172,7 +172,7 @@ fn build_wasm(root: &Path) -> Result<(Vec<u8>, String)> {
 fn prepare_testnet_proposal(root: &Path, from: Option<&str>) -> Result<()> {
     logger::banner("contracts upload-wasm --testnet (08-wasm store-code gov proposal)");
 
-    let testnet = crate::cosmos::config::CosmosConfig::testnet();
+    let testnet = crate::services::cosmos::config::CosmosConfig::testnet();
     let (bytes, sha) = build_wasm(root)?;
     let wasm_b64 = base64::engine::general_purpose::STANDARD.encode(&bytes);
 
@@ -257,7 +257,7 @@ fn prepare_testnet_proposal(root: &Path, from: Option<&str>) -> Result<()> {
 fn resolve_testnet_key(
     root: &Path,
     from: Option<&str>,
-    testnet: &crate::cosmos::config::CosmosConfig,
+    testnet: &crate::services::cosmos::config::CosmosConfig,
     keyring: &str,
 ) -> Result<Option<String>> {
     if let Some(key) = from {

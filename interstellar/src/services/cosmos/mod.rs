@@ -5,7 +5,7 @@ use std::path::Path;
 
 use anyhow::{bail, Result};
 
-use crate::cosmos::config::{CosmosConfig, COMPOSE_SERVICE};
+use crate::services::cosmos::config::{CosmosConfig, COMPOSE_SERVICE};
 use crate::{logger, probe, tools};
 
 const WAIT_TIMEOUT_SECS: u64 = 300;

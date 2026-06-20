@@ -56,9 +56,9 @@ interstellar <group> <command> --help
 | `tx transfer` | `--from --to --amount` (chain inferred from the addresses) |
 | `query` | `--clients [--stellar\|--cosmos] [--client-id]` |
 | `balances` | `--address [--denom]` (chain inferred from the address) |
-| `hermes` | `start` · `stop` · `restart` · `keys-import` |
-| `gateway` | `start` · `stop` · `restart` · `query` |
-| `api` | `start` · `stop` · `restart` |
+| `services` | `pull` · `up` · `restart` · `down` · `build` · `push` (`[--api\|--gateway\|--hermes\|--cosmos]`) |
+| `hermes` | `keys-import` |
+| `gateway` | `query` |
 
 ---
 
@@ -226,37 +226,52 @@ separate, independently re-runnable job.
 > only needs each image's name/tag/registry, which `interstellar status` shows
 > under **Images**.
 
+## `services` — service lifecycle + images
+
+```sh
+interstellar services <pull|up|restart|down|build|push> [--api|--gateway|--hermes|--cosmos]
+```
+
+One namespace for the `api`, `gateway`, `hermes`, and `cosmos` services. A
+`--api` / `--gateway` / `--hermes` / `--cosmos` flag selects the target;
+**omitting it acts on all**. Image tags resolve from `.env`.
+
+| Command | What it does |
+|---|---|
+| `pull` | `docker compose pull` the selected image(s) |
+| `up` | pull then `docker compose up -d` |
+| `restart` | remove the existing container(s) (`rm -s -f`) then `up` |
+| `down` | stop + remove the container(s) (`rm -s -f`) |
+| `build` | build the image(s) locally (`docker build`); hermes builds multi-arch (see below) |
+| `push` | build + push the image(s) multi-arch (`buildx --push`) |
+
+`build` / `push` cover the three custom images only — `--cosmos` is an upstream
+image and is rejected for build/push. **hermes** is built from a separate repo
+checkout: the CLI clones `HERMES_REPO_URL` into `HERMES_REPO` if missing,
+`git fetch` + `git checkout HERMES_BRANCH`, then `buildx --push` a multi-arch
+image (multi-arch can't be loaded locally, so hermes `build` and `push` both
+publish).
+
+---
+
 ## `hermes` — relayer
 
-| Command | Flags | What it does |
-|---|---|---|
-| `start` | `--pull` | `docker compose up -d hermes` (the relayer container); `--pull` fetches the latest image first |
-| `stop` | — | `docker compose stop hermes` |
-| `restart` | `--pull` | `docker compose restart hermes`, or with `--pull`: pull → `up -d --force-recreate` |
-| `keys-import` | — | import the cosmos relayer mnemonic + `STELLAR_SIGNING_KEY` into the `hermes-keys` volume (one-shot `docker compose run`) |
+| Command | What it does |
+|---|---|
+| `keys-import` | import the cosmos relayer mnemonic + `STELLAR_SIGNING_KEY` into the `hermes-keys` volume (one-shot `docker compose run`) |
 
 The relayer's Stellar key must equal the router admin key (`STELLAR_SIGNING_KEY`).
+Container lifecycle (start/stop/restart) lives under `services`.
 
 ---
 
 ## `gateway` — gateway service
 
-| Command | Flags | What it does |
-|---|---|---|
-| `start` | `--pull` | `docker compose up -d gateway` (`--pull` fetches the latest image first) |
-| `stop` | — | `docker compose stop gateway` |
-| `restart` | `--pull` | `docker compose restart gateway`, or with `--pull`: pull → `up -d --force-recreate` |
-| `query` | — | direct gateway gRPC reads — *pending* |
+| Command | What it does |
+|---|---|
+| `query` | direct gateway gRPC reads — *pending* |
 
----
-
-## `api` — api service
-
-| Command | Flags | What it does |
-|---|---|---|
-| `start` | `--pull` | `docker compose up -d api` (`--pull` fetches the latest image first) |
-| `stop` | — | `docker compose stop api` |
-| `restart` | `--pull` | `docker compose restart api`, or with `--pull`: pull → `up -d --force-recreate` |
+Container lifecycle lives under `services`.
 
 ---
 
@@ -278,9 +293,9 @@ Day-to-day:
 
 ```sh
 interstellar up                              # bring the stack up
-interstellar api restart --pull              # pull latest + recreate just the api
+interstellar services restart --api          # pull latest + recreate just the api
 interstellar tx contracts deploy --stellar --force   # redeploy contracts, rewrite .env
-interstellar gateway restart --pull          # pull latest + pick up the new ROUTER_CONTRACT_ADDRESS
+interstellar services restart --gateway      # recreate the gateway to pick up the new ROUTER_CONTRACT_ADDRESS
 interstellar down                            # stop the stack
 ```
 
@@ -310,8 +325,9 @@ Read from `stellar-ibc/.env` (shell env overrides). Defaults shown.
 | `GATEWAY_IMAGE` / `GATEWAY_TAG` / `GATEWAY_REGISTRY` | `amandagonsalvesx/stellar-eureka-gateway` / `latest` / _(none)_ | gateway image to pull/run |
 | `HERMES_IMAGE` / `HERMES_TAG` / `HERMES_REGISTRY` | `amandagonsalvesx/stellar-hermes-cardano` / `latest` / _(none)_ | hermes image to pull/run |
 
-> `HERMES_REPO` / `DOCKER_USERNAME` / `DOCKER_TOKEN` are only used by the
-> Makefile `push-*` targets (building + pushing images), not by the CLI.
+> `HERMES_REPO` / `HERMES_REPO_URL` / `HERMES_BRANCH` locate the relayer source
+> for `services build/push --hermes` (clone + checkout); `DOCKER_USERNAME` /
+> `DOCKER_TOKEN` authenticate the push.
 
 ---
 
@@ -328,18 +344,20 @@ eureka/src/
   logger.rs          TTY-aware status logger
   shared.rs          chain_of · print_clients · env_upsert · check helpers
   ops/               install · check · status · stack (up/down) · start · config
-  cosmos/            cosmos (simd-1) chain config + lifecycle (keygen/start/stop/status)
-  stellar/           stellar chain config + lifecycle
   tx/                write operations grouped under `tx`
     mod.rs           tx command tree (clients · contracts · transfer) + side routing
     clients/         create (cosmos/stellar) · counterparty · config
     contracts/       upload · deploy_one · deploy_all · invoke · wasm · build · config
     transfer/        ICS-20 transfer origination (stellar → cosmos)
+  services/          service lifecycle + images grouped under `services`
+    mod.rs           pull/up/restart/down/build/push (api · gateway · hermes · cosmos)
+    cosmos/          cosmos (simd-1) chain config + lifecycle (keygen/start/stop/status)
+    stellar/         stellar chain config + lifecycle
+    gateway/         gRPC query · config
+    hermes/          container (start + exec) · keys · config
   query/             client-state reads (stellar router + cosmos REST)
   balances/          address-routed balance reads
-  hermes/            container (start/stop/restart) · keys · config
-  gateway/           container · query · config
-  api/               container
+  service.rs         shared docker-compose start wrapper
   test/              ICS integration flows (interstellar test)
 ```
 
