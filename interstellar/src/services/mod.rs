@@ -184,7 +184,7 @@ fn build_one(cfg: &Config, root: &Path, service: Service, push: bool) -> Result<
         Service::Api => ("crates/api/Dockerfile".to_string(), ".".to_string()),
         Service::Gateway => ("crates/gateway/Dockerfile".to_string(), ".".to_string()),
         Service::Hermes => {
-            let repo = ensure_hermes_repo(cfg, root)?;
+            let repo = hermes_repo(cfg, root)?;
 
             (format!("{repo}/ci/release/hermes.Dockerfile"), repo)
         }
@@ -217,7 +217,7 @@ fn build_image(
     tools::docker::command(root, &["push", &image])
 }
 
-fn ensure_hermes_repo(cfg: &Config, root: &Path) -> Result<String> {
+fn hermes_repo(cfg: &Config, root: &Path) -> Result<String> {
     let hermes = &cfg.hermes;
 
     if hermes.repo_url.trim().is_empty() {
