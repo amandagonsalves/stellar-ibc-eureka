@@ -57,6 +57,12 @@ jobs:
             echo "API_TAG=${{ vars.API_TAG || 'latest' }}"
             echo "HERMES_IMAGE=${{ vars.HERMES_IMAGE }}"
             echo "HERMES_TAG=${{ vars.HERMES_TAG || 'latest' }}"
+            echo "ROUTER_CONTRACT_ADDRESS=${{ vars.ROUTER_CONTRACT_ADDRESS }}"
+            echo "TRANSFER_CONTRACT_ADDRESS=${{ vars.TRANSFER_CONTRACT_ADDRESS }}"
+            echo "DEPLOYER_ADDRESS=${{ vars.DEPLOYER_ADDRESS }}"
+            echo "MOCK_LC_CONTRACT_ID=${{ vars.MOCK_LC_CONTRACT_ID }}"
+            echo "ATTESTATION_LC_CONTRACT_ID=${{ vars.ATTESTATION_LC_CONTRACT_ID }}"
+            echo "TENDERMINT_LC_CONTRACT_ID=${{ vars.TENDERMINT_LC_CONTRACT_ID }}"
           } >> .env
 
       - name: bring up the stack
