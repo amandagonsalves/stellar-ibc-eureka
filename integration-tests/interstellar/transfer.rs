@@ -3,31 +3,24 @@ use std::path::Path;
 use anyhow::{bail, Result};
 
 use crate::config::Config;
-use crate::tx::clients::config::ClientsConfig;
 use crate::tx::{self, TransferTx, TxCmd};
 use crate::{logger, logs, probe};
 
 pub async fn run(cfg: &Config, root: &Path, http: &reqwest::Client) -> Result<()> {
-    let cc = ClientsConfig::from(cfg);
-
-    tx::clients::bootstrap(&cc, root, http, false).await?;
-
-    let fresh = Config::load(root);
-
-    let sender = fresh.accounts.stellar_sender_address.clone();
+    let sender = cfg.accounts.stellar_sender_address.clone();
     if sender.is_empty() {
         bail!("STELLAR_SENDER_ADDRESS is unset — run `interstellar start` first");
     }
 
-    let receiver = fresh.accounts.cosmos_receiver_address.clone();
+    let receiver = cfg.accounts.cosmos_receiver_address.clone();
     if receiver.is_empty() {
         bail!("COSMOS_RECEIVER_ADDRESS is unset — run `interstellar start` first");
     }
 
-    let before = voucher_total(&fresh, http, &receiver).await;
+    let before = voucher_total(cfg, http, &receiver).await;
 
     tx::run(
-        &fresh,
+        cfg,
         root,
         http,
         TxCmd::Transfer(TransferTx {
@@ -46,7 +39,7 @@ pub async fn run(cfg: &Config, root: &Path, http: &reqwest::Client) -> Result<()
         bail!("relay round trip did not close within the watch window");
     }
 
-    let after = voucher_total(&fresh, http, &receiver).await;
+    let after = voucher_total(cfg, http, &receiver).await;
     if after <= before {
         bail!("cosmos receiver voucher did not increase (before={before}, after={after})");
     }
