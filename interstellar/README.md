@@ -112,8 +112,7 @@ skippable; the chain/service steps are idempotent (probe first, start if down).
 ## `cosmos` — local Cosmos devnet
 
 Lifecycle for the `simd-1` chain (the `cosmos` compose service —
-`ghcr.io/cosmos/ibc-go-wasm-simd:v11.0.0`, ibc-go v11 + `08-wasm`). On
-`COSMOS_NETWORK=testnet` the start/stop become reachability checks / no-ops.
+`ghcr.io/cosmos/ibc-go-wasm-simd:v11.0.0`, ibc-go v11 + `08-wasm`).
 
 | Command | Flags | What it does |
 |---|---|---|

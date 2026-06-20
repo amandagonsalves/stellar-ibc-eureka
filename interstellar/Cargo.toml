@@ -25,3 +25,5 @@ indicatif = "0.17.8"
 cosmrs = { workspace = true }
 ibc-proto = { workspace = true }
 prost = "0.13"
+stellar-strkey = { workspace = true }
+ed25519-dalek = "2"

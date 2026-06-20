@@ -30,6 +30,8 @@ jobs:
 
       - name: setup rust
         uses: dtolnay/rust-toolchain@1.91.1
+        with:
+          targets: wasm32v1-none, wasm32-unknown-unknown
 
       - name: cache cargo
         uses: Swatinem/rust-cache@v2

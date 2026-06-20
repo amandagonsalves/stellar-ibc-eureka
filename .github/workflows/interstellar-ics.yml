@@ -23,6 +23,10 @@ jobs:
     timeout-minutes: 45
     env:
       STELLAR_SIGNING_KEY: ${{ secrets.STELLAR_SIGNING_KEY }}
+      COSMOS_VALIDATOR_MNEMONIC: ${{ secrets.COSMOS_VALIDATOR_MNEMONIC }}
+      COSMOS_RELAYER_MNEMONIC: ${{ secrets.COSMOS_RELAYER_MNEMONIC }}
+      COSMOS_PROPOSER_PRIVATE_KEY: ${{ secrets.COSMOS_PROPOSER_PRIVATE_KEY }}
+      COSMOS_FUNDER_PRIVATE_KEY: ${{ secrets.COSMOS_FUNDER_PRIVATE_KEY }}
 
     steps:
       - name: checkout
@@ -30,6 +34,8 @@ jobs:
 
       - name: setup rust
         uses: dtolnay/rust-toolchain@1.91.1
+        with:
+          targets: wasm32v1-none, wasm32-unknown-unknown
 
       - name: cache cargo
         uses: Swatinem/rust-cache@v2

@@ -51,7 +51,7 @@ pub fn deploy_one(cfg: &ContractsConfig, root: &Path, name: &str) -> Result<Stri
 
     build::run(root)?;
 
-    let deployer = deploy_all::deployer_address(cfg, root)?;
+    let deployer = deploy_all::deployer_address(cfg)?;
     let wasm = wasm_path(root, name);
 
     let ctor: Vec<String> = match name {
@@ -90,7 +90,7 @@ pub(crate) fn last_line(out: &str) -> String {
 }
 
 fn stellar_base(cfg: &ContractsConfig, sub: &str) -> Vec<String> {
-    stellar_base_as(cfg, sub, &cfg.cli_identity)
+    stellar_base_as(cfg, sub, &cfg.signing_key)
 }
 
 fn stellar_base_as(cfg: &ContractsConfig, sub: &str, source: &str) -> Vec<String> {
@@ -126,7 +126,7 @@ pub(crate) fn deploy(
 }
 
 pub(crate) fn invoke(cfg: &ContractsConfig, root: &Path, id: &str, call: &[&str]) -> Result<()> {
-    invoke_as(cfg, root, id, call, &cfg.cli_identity)
+    invoke_as(cfg, root, id, call, &cfg.signing_key)
 }
 
 pub(crate) fn invoke_as(
