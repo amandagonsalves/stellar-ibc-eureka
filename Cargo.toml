@@ -1,11 +1,8 @@
 [workspace]
 members = [
     "interstellar",
-    "crates/api",
-    "crates/core",
-    "crates/gateway",
-    "integration-tests/crates",
     "contracts/cosmwasm/light-client",
+    "crates/*"
 ]
 resolver = "2"
 

@@ -1,18 +1,18 @@
 mod accounts;
-mod balances;
+mod check;
 mod config;
-mod demo;
+mod install;
 mod logger;
 mod logs;
-mod ops;
 mod probe;
-mod query;
 mod repo;
 mod run;
 mod service;
 mod services;
 mod shared;
-mod test;
+mod stack;
+mod start;
+mod tests;
 mod tools;
 mod tx;
 
@@ -21,19 +21,16 @@ use std::time::Duration;
 use anyhow::Result;
 use clap::{Parser, Subcommand};
 
-use balances::BalancesArgs;
 use config::Config;
-use demo::DemoArgs;
 use logs::LogsArgs;
-use ops::{DownArgs, StartArgs, UpArgs};
-use query::QueryArgs;
 use services::cosmos::{self, CosmosCmd};
 use services::gateway::{self, GatewayCmd};
 use services::hermes::{self, HermesCmd};
 use services::ServicesCmd;
-use shared::Chain;
-use test::TestArgs;
+use tests::TestArgs;
 use tx::TxCmd;
+
+use crate::shared::{DownArgs, StartArgs, UpArgs};
 
 #[derive(Parser)]
 #[command(
@@ -55,8 +52,6 @@ enum Command {
     Install,
     #[command(about = "Check prerequisites, configuration, and service health")]
     Check,
-    #[command(about = "Show chain/service health, deployed contracts, and created clients")]
-    Status,
     #[command(about = "Bring the stack up via docker compose (cosmos + api + gateway)")]
     Up(UpArgs),
     #[command(about = "Stop the stack via docker compose")]
@@ -92,20 +87,7 @@ enum Command {
         #[command(subcommand)]
         cmd: GatewayCmd,
     },
-    #[command(about = "Read client states on either or both networks")]
-    Query(QueryArgs),
-    #[command(
-        about = "End-to-end demo: start, client bootstrap, balances before, transfer, balances after"
-    )]
-    Demo(DemoArgs),
-    #[command(
-        about = "Run the ICS integration flows (clients, counterparty, transfer, query) against a running stack"
-    )]
     Test(TestArgs),
-    #[command(about = "Show the dedicated sender + receiver accounts on each chain")]
-    Accounts,
-    #[command(about = "Read balances for an address (cosmos or stellar — chain inferred)")]
-    Balances(BalancesArgs),
     #[command(about = "Show the staged round-trip relay lines from the gateway + hermes logs")]
     Logs(LogsArgs),
 }
@@ -122,13 +104,12 @@ async fn main() -> Result<()> {
         .build()?;
 
     match cli.command {
-        Command::Install => ops::install::run(root)?,
-        Command::Check => ops::check::run(root, &ops::config::OpsConfig::from(&cfg), &http).await?,
-        Command::Status => ops::status::run(&ops::config::OpsConfig::from(&cfg)).await?,
-        Command::Up(args) => ops::stack::up(root, args.cosmos, args.stellar)?,
-        Command::Down(args) => ops::stack::down(root, args.volumes)?,
+        Command::Install => install::run(root)?,
+        Command::Check => check::run(root, &cfg, &http).await?,
+        Command::Up(args) => stack::up(root, args.cosmos, args.stellar)?,
+        Command::Down(args) => stack::down(root, args.volumes)?,
         Command::Start(args) => {
-            ops::start::run(
+            start::run(
                 &cfg,
                 root,
                 &http,
@@ -150,7 +131,7 @@ async fn main() -> Result<()> {
                 let tcfg = cosmos::config::CosmosConfig::testnet();
                 match balance {
                     Some(address) => cosmos::balance(&tcfg, &http, &address).await?,
-                    None => cosmos::check(&tcfg, &http).await?,
+                    _ => cosmos::check(&tcfg, &http).await?,
                 }
             }
         },
@@ -167,42 +148,7 @@ async fn main() -> Result<()> {
             GatewayCmd::Query => gateway::query::run()?,
         },
 
-        Command::Query(args) => query::run(&cfg, &http, args).await?,
-
-        Command::Demo(args) => {
-            if !args.transfer {
-                logger::warn("no scenario flag given — running the default --transfer scenario");
-            }
-
-            let ta = tx::transfer::TransferParams {
-                denom: args.denom,
-                amount: args.amount,
-                receiver: args.receiver,
-                sender: String::new(),
-                memo: args.memo,
-                timeout_secs: args.timeout_secs,
-                mint: !args.no_mint,
-            };
-
-            demo::run(
-                root,
-                &http,
-                demo::DemoParams {
-                    from_cosmos: matches!(args.from, Chain::Cosmos),
-                    skip_start: args.skip_start,
-                    force_redeploy: args.force_redeploy,
-                    wait_secs: args.wait_secs,
-                    transfer: ta,
-                },
-            )
-            .await?
-        }
-
-        Command::Test(args) => test::run(root, &http, args).await?,
-        Command::Accounts => accounts::show(&cfg),
-        Command::Balances(args) => {
-            balances::run(&cfg, root, &http, &args.address, &args.denom).await?
-        }
+        Command::Test(args) => tests::run(root, &http, args).await?,
         Command::Logs(args) => logs::run(root, &args.since)?,
     }
 
