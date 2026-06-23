@@ -60,7 +60,9 @@ jobs:
         run: cargo test --locked
 
       - name: build contracts (wasm32v1-none, contract profile)
-        run: cargo build --locked --profile contract --target wasm32v1-none
+        run: >
+          cargo build --locked --profile contract --target wasm32v1-none
+          --workspace --exclude soroban-contracts-tests
 
       - name: list wasm artifacts
         run: ls -la target/wasm32v1-none/contract/*.wasm
