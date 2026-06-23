@@ -10,12 +10,16 @@ concurrency:
   group: interstellar-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  CI: true
+  CARGO_TERM_COLOR: always
+
 jobs:
-  setup:
-    name: setup environment
+  test:
+    name: interstellar ics flows
     runs-on: ubuntu-24.04-arm
     environment: staging
-    timeout-minutes: 45
+    timeout-minutes: 60
     env:
       STELLAR_SIGNING_KEY: ${{ secrets.STELLAR_SIGNING_KEY }}
       COSMOS_VALIDATOR_MNEMONIC: ${{ secrets.COSMOS_VALIDATOR_MNEMONIC }}
@@ -53,32 +57,32 @@ jobs:
         env:
           VARS_JSON: ${{ toJSON(vars) }}
         run: echo "$VARS_JSON" | jq -r 'to_entries[] | "\(.key)=\(.value)"' >> "$GITHUB_ENV"
-  
-  start:
-    needs: setup
-    name: start interstellar
-    run: make install
 
-  test-ics02-clients:
-    needs: start
-    run: interstellar test --type ics02-clients
+      - name: bring up the stack
+        run: cargo run --locked -p interstellar -- start
 
-  test-ics02-counterparty:
-    needs: start
-    run: interstellar test --type ics02-counterparty
+      - name: test ics02-clients
+        run: cargo run --locked -p interstellar -- test --ics ics02-clients
 
-  test-ics02-query:
-    needs: start
-    run: interstellar test --type ics02-query
+      - name: test ics02-counterparty
+        run: cargo run --locked -p interstellar -- test --ics ics02-counterparty
 
-  test-ics20-transfer:
-    needs: start
-    run: interstellar test --type ics20-transfer
-    
-  logs:
-    needs: [test-ics02-clients, test-ics02-counterparty, test-ics02-query, test-ics20-transfer]
-    run: interstellar logs --since 900s
+      - name: test ics20-transfer
+        run: cargo run --locked -p interstellar -- test --ics ics20-transfer
 
-  down:
-    needs: [test-ics02-clients, test-ics02-counterparty, test-ics02-query, test-ics20-transfer]
-    run: interstellar down --volumes
+      - name: test ics02-query
+        run: cargo run --locked -p interstellar -- test --ics ics02-query
+
+      - name: stack logs on failure
+        if: failure()
+        run: |
+          docker compose --profile local --profile hermes ps -a || true
+          docker compose --profile local --profile hermes logs --no-color --tail 400 || true
+
+      - name: relay logs on failure
+        if: failure()
+        run: cargo run --locked -p interstellar -- logs --since 900s || true
+
+      - name: tear down
+        if: always()
+        run: cargo run --locked -p interstellar -- down --volumes || true
