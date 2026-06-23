@@ -90,27 +90,6 @@ pub(crate) async fn create(
     Ok(client_id)
 }
 
-pub async fn bootstrap(
-    cfg: &ClientsConfig,
-    root: &Path,
-    http: &reqwest::Client,
-    force: bool,
-) -> Result<()> {
-    logger::banner("clients bootstrap (create both clients + register both counterparties)");
-
-    let cosmos_client = cosmos::run(cfg, root, http, force).await?;
-    let stellar_client = stellar::run(cfg, root, http, force).await?;
-
-    counterparty::register(cfg, root, "stellar", &cosmos_client, &stellar_client)?;
-    counterparty::register(cfg, root, "cosmos", &cosmos_client, &stellar_client)?;
-
-    logger::ok(&format!(
-        "bootstrap complete: cosmos={cosmos_client} stellar={stellar_client} (counterparties paired)"
-    ));
-
-    Ok(())
-}
-
 fn extract_client_id(output: &str, prefix: &str) -> Option<String> {
     let needle = format!("{prefix}-");
 
