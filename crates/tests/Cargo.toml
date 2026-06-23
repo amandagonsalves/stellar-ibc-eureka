@@ -1,0 +1,27 @@
+[package]
+name = "integration-tests"
+version = "0.1.0"
+edition = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
+rust-version = { workspace = true }
+description = "Cross-crate integration tests for the Stellar IBC stack"
+publish = false
+
+[dependencies]
+
+[dev-dependencies]
+stellar-api = { workspace = true }
+stellar-hermes-gateway = { workspace = true }
+stellar-ibc-core = { workspace = true }
+soroban-client = { workspace = true }
+stellar-strkey = { workspace = true }
+ibc = { workspace = true }
+ibc-proto = { version = "0.51", default-features = false, features = ["std"] }
+tonic = { workspace = true }
+tokio = { workspace = true }
+axum = { workspace = true }
+reqwest = { workspace = true }
+serde_json = { workspace = true }
+hex = { workspace = true }
+anyhow = { workspace = true }
