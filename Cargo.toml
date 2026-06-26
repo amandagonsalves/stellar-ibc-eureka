@@ -76,7 +76,7 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 stellar-ibc-core = { path = "crates/core" }
 stellar-hermes-gateway = { path = "crates/gateway" }
 stellar-api = { path = "crates/api" }
-stellar-mock-light-client = { path = "contracts/light-clients/mock" }
+stellar-mock-light-client = { path = "contracts/soroban/light-clients/mock" }
 
 [workspace.lints.rust]
 unsafe_code = "forbid"

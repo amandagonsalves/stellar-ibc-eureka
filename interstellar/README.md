@@ -6,7 +6,7 @@ deploys the Soroban contracts, uploads the light client, creates clients,
 registers counterparties, and reports status — driving **docker**, the
 **`stellar`** CLI, and **`stellar-api`** directly. There are no shell scripts.
 
-It lives at the repo root (`stellar-ibc/eureka/`) as a workspace member.
+It lives at the repo root (`stellar-ibc/interstellar/`) as a workspace member.
 
 ## How it works
 
@@ -29,7 +29,7 @@ cargo run -p interstellar -- <command>
 
 # install the `interstellar` binary (either of these)
 cargo run -p interstellar -- install   # self-install to the cargo bin dir
-cargo install --path eureka
+cargo install --path interstellar
 
 # then, from anywhere:
 interstellar <command>
@@ -49,34 +49,31 @@ interstellar <group> <command> --help
 
 | Group | Commands |
 |---|---|
-| ops | `install` · `check` · `status` · `up` · `down` · `start` |
-| `cosmos` | `keygen [--force]` · `start [--fresh]` · `stop` · `status` |
-| `tx clients` | `create [--cosmos\|--stellar]` · `counterparty [--cosmos\|--stellar]` |
-| `tx contracts` | `upload` · `deploy [--stellar\|--cosmos]` · `invoke` |
-| `tx transfer` | `--from --to --amount` (chain inferred from the addresses) |
-| `query` | `--clients [--stellar\|--cosmos] [--client-id]` |
-| `balances` | `--address [--denom]` (chain inferred from the address) |
+| ops | `install` · `check` · `up` · `down` · `start` |
+| `cosmos` | `start` · `stop` · `status` · `testnet [--balance <addr>]` |
+| `tx clients` | `create [--cosmos\|--stellar] [--force]` · `counterparty [--cosmos\|--stellar]` |
+| `tx contracts` | `upload` · `deploy [--stellar\|--cosmos] [--contract <name>] [--force] [--attestation]` · `invoke` |
+| `tx transfer` | `--from --to --amount [--denom --timeout-secs --no-mint]` (chain inferred from the addresses) |
+| `tx query` | `--clients [--stellar\|--cosmos] [--client-id]` · `--address [--denom]` (balance reads) |
 | `services` | `pull` · `up` · `restart` · `down` · `build` · `push` (`[--api\|--gateway\|--hermes\|--cosmos]`) |
 | `hermes` | `keys-import` |
 | `gateway` | `query` |
+| `test` | `[--ics ics02-clients\|ics02-counterparty\|ics20-transfer\|ics02-query]` |
 
 ---
 
 ## Top-level (ops) commands
 
 ### `interstellar install`
-Installs the `interstellar` binary to the cargo bin dir (`cargo install --path eureka
---force`) and reports whether that dir is on your `PATH`.
+Installs the `interstellar` binary to the cargo bin dir (`cargo install --path
+interstellar --force`) and reports whether that dir is on your `PATH`.
 
 ### `interstellar check`
 Checks prerequisites and configuration, then probes service health. Reports:
 toolchain (`docker`, `stellar`, `cargo`), `.env` presence, key config vars
-(`STELLAR_SIGNING_KEY`, `ROUTER_CONTRACT_ADDRESS`, …), and the live state of
-the `cosmos` (`simd-1`) chain, `stellar-api`, and the gateway gRPC port. Always exits 0.
-
-### `interstellar status`
-Probes chains/services, prints the configured endpoints, the deployed contract
-ids (from `.env`), and the clients created on the router (`GET /stellar/clients`).
+(`STELLAR_SIGNING_KEY`, `ROUTER_CONTRACT_ADDRESS`, …), the configured endpoints,
+the deployed contract ids (from `.env`), and the live state of the `cosmos`
+(`simd-1`) chain, `stellar-api`, and the gateway gRPC port. Always exits 0.
 
 ### `interstellar up [--cosmos | --stellar]`
 Brings the stack up via `docker compose up -d`.
@@ -96,15 +93,17 @@ Stops the stack via `docker compose down`.
 
 ### `interstellar start`
 Full start: pull images → start `cosmos` → start `api` + `gateway` → deploy
-contracts → upload the light-client wasm → import relayer keys. Each step is
-skippable; the chain/service steps are idempotent (probe first, start if down).
+contracts → upload the light-client wasm → import relayer keys → provision the
+sender + receiver accounts. Each step is skippable; the chain/service steps are
+idempotent (probe first, start if down).
 
 | Flag | Effect |
 |---|---|
-| `--skip-images` | skip building the docker images |
+| `--skip-images` | skip pulling the docker images |
 | `--skip-contracts` | skip the Soroban contract deploy |
 | `--skip-wasm` | skip the light-client-wasm upload |
 | `--skip-keys` | skip importing the hermes relayer keys |
+| `--skip-accounts` | skip provisioning the sender + receiver accounts |
 | `--force-redeploy` | redeploy contracts even if `ROUTER_CONTRACT_ADDRESS` is set |
 
 ---
@@ -116,12 +115,13 @@ Lifecycle for the `simd-1` chain (the `cosmos` compose service —
 
 | Command | Flags | What it does |
 |---|---|---|
-| `keygen` | `--force` | generate the validator + relayer accounts and write **all four** vars to `.env` — the two mnemonics plus the matching hex signer keys (skips when the mnemonic is already set; `--force` regenerates). Uses the simd image — no local `simd` needed |
-| `start` | `--fresh` | `docker compose up -d cosmos` + wait for the first block; `--fresh` wipes the `cosmos-home` volume and rebuilds genesis |
+| `start` | — | `docker compose up -d cosmos` + wait for the first block |
 | `stop` | — | `docker compose stop cosmos` |
 | `status` | — | probe RPC + print network/endpoints |
+| `testnet` | `--balance <addr>` | probe the public cosmos-testnet (Cosmos Hub `provider`) — health + node/app version; with `--balance` read an account's balance |
 
-The two genesis accounts each map to two `.env` vars:
+The two genesis accounts each map to two `.env` vars, set on a fresh checkout
+before `start`:
 
 | Account | Mnemonic var | Hex signer var | Used by |
 |---|---|---|---|
@@ -130,10 +130,9 @@ The two genesis accounts each map to two `.env` vars:
 
 `docker-compose.yml` passes the mnemonics into the cosmos container and
 `setup.sh` recovers + funds those accounts at genesis; the api signs gov
-messages (store-code proposal during `upload-wasm`) with the hex keys. Because
-the hex key is just the mnemonic's private key, `keygen` writes both together so
-they never drift — `keygen` is the one-command way to populate all four on a
-fresh checkout.
+messages (store-code proposal during `upload-wasm`) with the hex keys. The hex
+key is just the mnemonic's private key, so each account's two vars must stay in
+sync.
 
 ---
 
@@ -181,15 +180,18 @@ Stellar→Cosmos is wired, Cosmos→Stellar is pending (M4). `--denom` defaults 
 
 ---
 
-## `query` — read client states
+## `tx query` — read client states + balances
 
 ```sh
-interstellar query --clients [--stellar | --cosmos] [--client-id <id>]
+interstellar tx query --clients [--stellar | --cosmos] [--client-id <id>]
+interstellar tx query --address <addr> [--denom <denom>]
 ```
 
-Reads client states. With `--stellar` / `--cosmos` it scopes to one network
-(Stellar via the api `/stellar/clients`, Cosmos via the IBC REST `client_states`);
-with neither it reads both. `--client-id` restricts to a single client.
+`--clients` reads client states: with `--stellar` / `--cosmos` it scopes to one
+network (Stellar via the api `/stellar/clients`, Cosmos via the IBC REST
+`client_states`), with neither it reads both, and `--client-id` restricts to a
+single client. `--address` reads an account's balances (the chain is inferred
+from the address); `--denom` filters to a single denom.
 
 ---
 
@@ -213,17 +215,11 @@ under Eureka; token transfer is ICS-20.
 | `ics20-transfer` | originates a Stellar→Cosmos ICS-20 transfer, waits for the relay round trip to close, and checks the Cosmos voucher increased |
 | `ics02-query` | checks the api `/health` + `/stellar/clients` reads and the Cosmos `client_states` read |
 
-The flow bodies live in `integration-tests/interstellar/` (one file per ICS).
-CI runs them per-milestone via the `interstellar.yml` workflow — each ICS is a
-separate, independently re-runnable job.
+The flow bodies live in `interstellar/src/tests/` (one file per ICS). CI runs
+them per-milestone via the `interstellar.yml` workflow — each ICS is a separate,
+independently re-runnable job.
 
 ---
-
-> The CLI only **pulls and runs** images — it never builds or pushes them.
-> Building + pushing images is done via the Makefile
-> (`make build SERVICE=<gateway|hermes|api>` / `make push SERVICE=<…>`). Config
-> only needs each image's name/tag/registry, which `interstellar status` shows
-> under **Images**.
 
 ## `services` — service lifecycle + images
 
@@ -283,13 +279,12 @@ Container lifecycle lives under `services`.
 First run from a clean machine:
 
 ```sh
-cargo install --path eureka        # install the interstellar binary
-interstellar check               # docker/stellar/cargo present? .env filled?
-interstellar start                # images, chains, contracts, wasm, keys
-interstellar status               # everything green?
+cargo install --path interstellar   # install the interstellar binary
+interstellar check                # docker/stellar/cargo present? .env filled? everything green?
+interstellar start                # images, chains, contracts, wasm, keys, accounts
 
 interstellar tx clients create    # create both clients (Cosmos on Stellar, Stellar on Cosmos)
-interstellar query --clients      # read client states on both networks
+interstellar tx query --clients   # read client states on both networks
 ```
 
 Day-to-day:
@@ -337,7 +332,7 @@ Read from `stellar-ibc/.env` (shell env overrides). Defaults shown.
 ## Source layout
 
 ```
-eureka/src/
+interstellar/src/
   main.rs            clap command tree + dispatch
   config.rs          base Config: cosmos · stellar · hermes · api · gateway · deployment
   repo.rs            repo-root discovery
@@ -346,36 +341,31 @@ eureka/src/
   probe.rs           http / tcp health probes
   logger.rs          TTY-aware status logger
   shared.rs          chain_of · print_clients · env_upsert · check helpers
-  ops/               install · check · status · stack (up/down) · start · config
+  install.rs         install command (self-install to the cargo bin dir)
+  check.rs           prerequisites + config + service-health check
+  stack.rs           up / down (docker compose)
+  start.rs           full bring-up orchestration
+  service.rs         shared docker-compose start wrapper
+  accounts/          sender + receiver account provisioning (stellar + cosmos)
   tx/                write operations grouped under `tx`
-    mod.rs           tx command tree (clients · contracts · transfer) + side routing
+    mod.rs           tx command tree (clients · contracts · transfer · query) + side routing
     clients/         create (cosmos/stellar) · counterparty · config
-    contracts/       upload · deploy_one · deploy_all · invoke · wasm · build · config
+    contracts/       upload · deploy_all · wasm · build · config (+ deploy_one/invoke)
     transfer/        ICS-20 transfer origination (stellar → cosmos)
+    query/           client-state reads (clients.rs) + address-routed balances (balances.rs)
   services/          service lifecycle + images grouped under `services`
     mod.rs           pull/up/restart/down/build/push (api · gateway · hermes · cosmos)
-    cosmos/          cosmos (simd-1) chain config + lifecycle (keygen/start/stop/status)
-    stellar/         stellar chain config + lifecycle
+    cosmos/          cosmos (simd-1) chain config + lifecycle (start/stop/status/testnet)
+    stellar/         stellar chain config
     gateway/         gRPC query · config
     hermes/          container (start + exec) · keys · config
-  query/             client-state reads (stellar router + cosmos REST)
-  balances/          address-routed balance reads
-  service.rs         shared docker-compose start wrapper
-  test/              ICS integration flows (interstellar test)
+  tests/             ICS integration flows (interstellar test)
 ```
 
 ## Makefile
 
-The root `Makefile` is only for **image build + push** (everything else runs
-through the CLI directly). Both targets take a `SERVICE=<gateway|hermes|api>`:
-
-```sh
-make build SERVICE=gateway   # -> interstellar services build --gateway
-make push  SERVICE=gateway   # -> interstellar services push  --gateway
-```
-
-`build` / `push` (and `push-all`) delegate to `interstellar services`, which
-resolves image refs from `.env` and clones the hermes source per
-`HERMES_REPO_URL` / `HERMES_BRANCH`. The Makefile also keeps `make fmt`
-(`cargo fmt --all`), `make test` (`cargo test --locked`), and `make cargo-build`
-(`cargo build`).
+The root `Makefile` carries a single convenience target — `make install`, which
+runs `cargo run -p interstellar -- install`. Everything else runs through the CLI
+directly: image build + push is `interstellar services build` / `services push`
+(which resolve image refs from `.env` and clone the hermes source per
+`HERMES_REPO_URL` / `HERMES_BRANCH`).
