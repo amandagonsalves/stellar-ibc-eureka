@@ -3,7 +3,6 @@ mod check;
 mod config;
 mod install;
 mod logger;
-mod logs;
 mod probe;
 mod repo;
 mod run;
@@ -22,7 +21,6 @@ use anyhow::Result;
 use clap::{Parser, Subcommand};
 
 use config::Config;
-use logs::LogsArgs;
 use services::cosmos::{self, CosmosCmd};
 use services::gateway::{self, GatewayCmd};
 use services::hermes::{self, HermesCmd};
@@ -88,8 +86,6 @@ enum Command {
         cmd: GatewayCmd,
     },
     Test(TestArgs),
-    #[command(about = "Show the staged round-trip relay lines from the gateway + hermes logs")]
-    Logs(LogsArgs),
 }
 
 #[tokio::main]
@@ -149,7 +145,6 @@ async fn main() -> Result<()> {
         },
 
         Command::Test(args) => tests::run(root, &http, args).await?,
-        Command::Logs(args) => logs::run(root, &args.since)?,
     }
 
     Ok(())

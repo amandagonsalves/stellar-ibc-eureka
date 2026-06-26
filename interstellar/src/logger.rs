@@ -81,12 +81,6 @@ pub fn detail(text: &str) {
     emit(format!("    {}", paint("2", text)));
 }
 
-/// A plain (undimmed) indented line — for dumping captured output such as relay
-/// log lines above the running spinner.
-pub fn plain(text: &str) {
-    emit(format!("    {text}"));
-}
-
 pub fn hint(text: &str) {
     emit(format!("\n{} {}", paint("1;35", "→"), text));
 }
