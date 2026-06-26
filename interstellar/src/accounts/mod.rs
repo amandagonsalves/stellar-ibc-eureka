@@ -70,7 +70,7 @@ fn provision_stellar(cfg: &Config, root: &Path, force: bool) -> Result<()> {
     logger::ok(&format!("stellar receiver {receiver_id} → {receiver_addr}"));
 
     shared::env_upsert(
-        &root.join(".env"),
+        root.join(".env").as_path(),
         &[
             ("STELLAR_SENDER_IDENTITY", sender_id),
             ("STELLAR_SENDER_ADDRESS", sender_addr.as_str()),
@@ -186,7 +186,7 @@ fn provision_cosmos(cfg: &Config, root: &Path, force: bool) -> Result<()> {
     ));
 
     shared::env_upsert(
-        &root.join(".env"),
+        root.join(".env").as_path(),
         &[
             ("COSMOS_SENDER_KEY_NAME", sender_name),
             ("COSMOS_SENDER_ADDRESS", sender_addr.as_str()),
