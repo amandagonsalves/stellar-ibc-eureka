@@ -15,13 +15,9 @@ use crate::state::AppState;
 
 #[derive(Deserialize, Debug, Default, IntoParams)]
 pub struct EventsQuery {
-    /// Soroban contract id to read events from (required).
     pub contract_id: Option<String>,
-    /// Opaque pagination cursor from a previous page.
     pub cursor: Option<String>,
-    /// Start ledger to read from when no cursor is given (must be > 0).
     pub start_ledger: Option<u32>,
-    /// Max events to return.
     pub limit: Option<u32>,
 }
 

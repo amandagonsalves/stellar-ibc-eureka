@@ -14,34 +14,26 @@ const BASE_FEE: u32 = 1_000;
 
 #[derive(Deserialize, ToSchema)]
 pub struct PrepareRequest {
-    /// Stellar address (G…) used as the tx source account; falls back to the
-    /// api's configured account when empty.
     #[serde(default)]
     pub signer: String,
-    /// Router contract method to invoke.
     pub method: String,
-    /// Hex-encoded ScVal XDR arguments, in order.
     #[serde(default)]
     pub args_xdr: Vec<String>,
 }
 
 #[derive(Serialize, ToSchema)]
 pub struct PrepareResponse {
-    /// Hex-encoded unsigned transaction envelope XDR.
     pub tx_xdr: String,
 }
 
 #[derive(Deserialize, ToSchema)]
 pub struct SubmitSignedTxRequest {
-    /// Hex-encoded signed transaction envelope XDR.
     pub tx_xdr: String,
 }
 
 #[derive(Serialize, ToSchema)]
 pub struct SubmitSignedTxResponse {
-    /// Submitted transaction hash.
     pub hash: String,
-    /// Hex-encoded ScVal XDR return value (empty when none).
     pub return_value_xdr: String,
 }
 

@@ -141,12 +141,8 @@ impl State {
 
     fn apply(&mut self, change: LedgerEntryChange) -> bool {
         match change {
-            LedgerEntryChange::Created(e) => {
-                self.apply_contract_data_write(e.data, /* is_update */ false)
-            }
-            LedgerEntryChange::Updated(e) => {
-                self.apply_contract_data_write(e.data, /* is_update */ true)
-            }
+            LedgerEntryChange::Created(e) => self.apply_contract_data_write(e.data, false),
+            LedgerEntryChange::Updated(e) => self.apply_contract_data_write(e.data, true),
             LedgerEntryChange::Removed(LedgerKey::ContractData(key)) => {
                 if !self.matches(&key.contract) {
                     return false;

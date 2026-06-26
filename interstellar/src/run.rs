@@ -66,7 +66,6 @@ fn command_streaming(
         }
     });
 
-    // Drains until both reader threads drop their senders (child pipes closed).
     for line in rx {
         let trimmed = line.trim();
         if !trimmed.is_empty() {

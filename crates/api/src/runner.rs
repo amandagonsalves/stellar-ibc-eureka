@@ -12,8 +12,6 @@ use utoipa_swagger_ui::SwaggerUi;
 use crate::rpc::RpcClient;
 use crate::{config::ApiConfig, services, AppState};
 
-/// OpenAPI document for the full api surface. Served as JSON at
-/// `/api-docs/openapi.json` and rendered as Swagger UI at `/docs`.
 #[derive(OpenApi)]
 #[openapi(
     info(
