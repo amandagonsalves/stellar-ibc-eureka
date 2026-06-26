@@ -3,11 +3,11 @@ use std::path::Path;
 use anyhow::{bail, Result};
 
 use crate::config::Config;
-use crate::query::{self, QueryArgs};
 use crate::tx::clients::config::ClientsConfig;
+use crate::tx::query::{self, QueryArgs};
 use crate::{logger, probe};
 
-pub async fn run(cfg: &Config, _root: &Path, http: &reqwest::Client) -> Result<()> {
+pub async fn run(cfg: &Config, root: &Path, http: &reqwest::Client) -> Result<()> {
     let cc = ClientsConfig::from(cfg);
 
     if !probe::http_ok(http, &cc.api_health_url()).await {
@@ -34,17 +34,20 @@ pub async fn run(cfg: &Config, _root: &Path, http: &reqwest::Client) -> Result<(
             logger::ok("cosmos client_states ok")
         }
         Some(_) => bail!("unexpected client_states response shape from {client_states}"),
-        None => bail!("could not read {client_states}"),
+        _ => bail!("could not read {client_states}"),
     }
 
     query::run(
         cfg,
+        root,
         http,
         QueryArgs {
-            clients: true,
+            clients: Some(true),
             stellar: false,
             cosmos: false,
             client_id: None,
+            address: None,
+            denom: None,
         },
     )
     .await

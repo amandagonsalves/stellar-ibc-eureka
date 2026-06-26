@@ -64,22 +64,6 @@ impl ClientTypes {
     }
 }
 
-pub enum StellarAddresses {
-    IbcRouter,
-    Transfer,
-    Deployer,
-}
-
-impl StellarAddresses {
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            Self::IbcRouter => "router",
-            Self::Transfer => "transfer-app",
-            Self::Deployer => "deployer",
-        }
-    }
-}
-
 pub struct ImageRef {
     pub image: String,
     pub tag: String,
@@ -109,17 +93,6 @@ pub struct DeploymentConfig {
 }
 
 impl DeploymentConfig {
-    pub fn addresses(&self) -> Vec<(StellarAddresses, String)> {
-        [
-            (StellarAddresses::IbcRouter, &self.ibc_router),
-            (StellarAddresses::Transfer, &self.transfer_app),
-            (StellarAddresses::Deployer, &self.deployer_address),
-        ]
-        .into_iter()
-        .filter_map(|(kind, value)| non_empty(value).map(|v| (kind, v)))
-        .collect()
-    }
-
     pub fn cosmos_client(&self) -> Option<ClientId> {
         non_empty(&self.cosmos_client_id).map(ClientId::Cosmos)
     }
@@ -202,6 +175,10 @@ impl Config {
             },
             accounts: AccountsConfig::from_env(),
         }
+    }
+
+    pub fn api_health_url(&self) -> String {
+        format!("{}/health", self.stellar.api_url)
     }
 }
 

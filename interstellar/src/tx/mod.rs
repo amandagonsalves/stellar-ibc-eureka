@@ -7,10 +7,12 @@ use crate::shared::{self, Chain};
 
 pub mod clients;
 pub mod contracts;
+pub mod query;
 pub mod transfer;
 
 use clients::config::ClientsConfig;
 use contracts::config::ContractsConfig;
+use query::QueryArgs;
 use transfer::TransferParams;
 
 #[derive(clap::Subcommand)]
@@ -27,6 +29,8 @@ pub enum TxCmd {
     },
     #[command(about = "Originate an ICS-20 transfer, routed by the from/to address")]
     Transfer(TransferTx),
+    #[command(about = "Start a query transaction")]
+    Query(QueryArgs),
 }
 
 #[derive(clap::Subcommand)]
@@ -131,6 +135,7 @@ pub async fn run(cfg: &Config, root: &Path, http: &reqwest::Client, cmd: TxCmd) 
         TxCmd::Clients { cmd } => clients_tx(cfg, root, http, cmd).await,
         TxCmd::Contracts { cmd } => contracts_tx(cfg, root, http, cmd).await,
         TxCmd::Transfer(args) => transfer_tx(cfg, root, args),
+        TxCmd::Query(args) => query_tx(cfg, root, http, args).await,
     }
 }
 
@@ -187,7 +192,7 @@ async fn contracts_tx(
 
             match args.contract {
                 Some(name) => contracts::deploy_one(&cc, root, &name).map(|_| ()),
-                None => {
+                _ => {
                     contracts::deploy_all::run(&cc, root, args.force, args.attestation).map(|_| ())
                 }
             }
@@ -225,4 +230,13 @@ fn transfer_tx(cfg: &Config, root: &Path, args: TransferTx) -> Result<()> {
             to.as_str()
         ),
     }
+}
+
+async fn query_tx(
+    cfg: &Config,
+    root: &Path,
+    http: &reqwest::Client,
+    args: QueryArgs,
+) -> Result<()> {
+    query::run(cfg, root, http, args).await
 }

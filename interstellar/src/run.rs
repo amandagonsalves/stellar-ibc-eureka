@@ -13,12 +13,9 @@ fn log_cmd(program: &str, args: &[&str]) {
 }
 
 pub fn command(root: &Path, program: &str, args: &[&str]) -> Result<()> {
-    // When a spinner is running, stream the child's output into it (caribic
-    // style) so its latest line shows as the spinner message instead of
-    // clobbering the in-place repaint. Otherwise inherit stdio.
     match logger::current_bar() {
         Some(bar) => command_streaming(root, program, args, &bar),
-        None => command_inherit(root, program, args),
+        _ => command_inherit(root, program, args),
     }
 }
 

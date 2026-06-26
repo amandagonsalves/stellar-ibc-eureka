@@ -10,27 +10,79 @@ concurrency:
   group: interstellar-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  CI: true
+  CARGO_TERM_COLOR: always
+
 jobs:
-  ics02-clients:
-    uses: ./.github/workflows/interstellar-ics.yml
-    secrets: inherit
-    with:
-      ics: ics02-clients
+  test:
+    name: interstellar ics flows
+    runs-on: ubuntu-24.04-arm
+    environment: staging
+    timeout-minutes: 60
+    env:
+      STELLAR_SIGNING_KEY: ${{ secrets.STELLAR_SIGNING_KEY }}
+      COSMOS_VALIDATOR_MNEMONIC: ${{ secrets.COSMOS_VALIDATOR_MNEMONIC }}
+      COSMOS_RELAYER_MNEMONIC: ${{ secrets.COSMOS_RELAYER_MNEMONIC }}
+      COSMOS_PROPOSER_PRIVATE_KEY: ${{ secrets.COSMOS_PROPOSER_PRIVATE_KEY }}
+      COSMOS_FUNDER_PRIVATE_KEY: ${{ secrets.COSMOS_FUNDER_PRIVATE_KEY }}
 
-  ics02-counterparty:
-    uses: ./.github/workflows/interstellar-ics.yml
-    secrets: inherit
-    with:
-      ics: ics02-counterparty
+    steps:
+      - name: checkout
+        uses: actions/checkout@v5
 
-  ics20-transfer:
-    uses: ./.github/workflows/interstellar-ics.yml
-    secrets: inherit
-    with:
-      ics: ics20-transfer
+      - name: setup rust
+        uses: dtolnay/rust-toolchain@1.91.1
+        with:
+          targets: wasm32v1-none, wasm32-unknown-unknown
 
-  ics02-query:
-    uses: ./.github/workflows/interstellar-ics.yml
-    secrets: inherit
-    with:
-      ics: ics02-query
+      - name: cache cargo
+        uses: Swatinem/rust-cache@v2
+
+      - name: install protoc
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y protobuf-compiler
+
+      - name: install stellar cli
+        uses: stellar/stellar-cli@v27.0.0
+
+      - name: docker login
+        uses: docker/login-action@v4
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_TOKEN }}
+
+      - name: load repo variables into env
+        env:
+          VARS_JSON: ${{ toJSON(vars) }}
+        run: echo "$VARS_JSON" | jq -r 'to_entries[] | "\(.key)=\(.value)"' >> "$GITHUB_ENV"
+
+      - name: bring up the stack
+        run: cargo run --locked -p interstellar -- start
+
+      - name: test ics02-clients
+        run: cargo run --locked -p interstellar -- test --ics ics02-clients
+
+      - name: test ics02-counterparty
+        run: cargo run --locked -p interstellar -- test --ics ics02-counterparty
+
+      - name: test ics20-transfer
+        run: cargo run --locked -p interstellar -- test --ics ics20-transfer
+
+      - name: test ics02-query
+        run: cargo run --locked -p interstellar -- test --ics ics02-query
+
+      - name: stack logs on failure
+        if: failure()
+        run: |
+          docker compose --profile local --profile hermes ps -a || true
+          docker compose --profile local --profile hermes logs --no-color --tail 400 || true
+
+      - name: relay logs on failure
+        if: failure()
+        run: cargo run --locked -p interstellar -- logs --since 900s || true
+
+      - name: tear down
+        if: always()
+        run: cargo run --locked -p interstellar -- down --volumes || true

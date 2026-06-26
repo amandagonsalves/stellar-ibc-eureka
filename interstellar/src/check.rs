@@ -2,13 +2,13 @@ use std::path::Path;
 
 use anyhow::Result;
 
-use crate::ops::config::OpsConfig;
-use crate::{logger, probe, run, shared};
+use crate::config::Config;
+use crate::{accounts, logger, probe, run, shared};
 
-pub async fn run(root: &Path, cfg: &OpsConfig, http: &reqwest::Client) -> Result<()> {
-    logger::banner("doctor — prerequisites & configuration");
+pub async fn run(root: &Path, cfg: &Config, http: &reqwest::Client) -> Result<()> {
+    logger::banner("check — prerequisites & configuration");
 
-    logger::step("Toolchain");
+    logger::step("toolchain");
     shared::check(
         "docker",
         run::has("docker"),
@@ -25,7 +25,7 @@ pub async fn run(root: &Path, cfg: &OpsConfig, http: &reqwest::Client) -> Result
         "builds the wasm light client + this CLI",
     );
 
-    logger::step("Repository");
+    logger::step("repository");
     logger::ok(&format!("repo root: {}", root.display()));
 
     let env_file = root.join(".env");
@@ -36,42 +36,41 @@ pub async fn run(root: &Path, cfg: &OpsConfig, http: &reqwest::Client) -> Result
         logger::fail(".env missing — copy .env.example and fill it in");
     }
 
-    logger::step("Configuration");
+    logger::step("configuration");
     shared::flag(
         "STELLAR_SIGNING_KEY",
-        !cfg.stellar_signing_key.is_empty(),
+        !cfg.stellar.signing_key.is_empty(),
         "needed to deploy + sign on Stellar",
     );
     shared::flag(
         "ROUTER_CONTRACT_ADDRESS",
-        !cfg.ibc_router.is_empty(),
+        !cfg.stellar.ibc_router.is_empty(),
         "router address (set by `interstellar contracts deploy-all`)",
     );
     shared::flag(
         "TRANSFER_CONTRACT_ADDRESS",
-        !cfg.transfer_app.is_empty(),
+        !cfg.stellar.transfer_app.is_empty(),
         "transfer-app address",
     );
-    shared::flag(
-        "STELLAR_CLIENT_ID",
-        !cfg.stellar_client_id.is_empty(),
-        "08-wasm client id (set by `interstellar clients stellar`)",
-    );
 
-    logger::step("Services");
+    logger::step("services");
 
-    let cosmos = probe::http_ok(http, &format!("{}/cosmos", cfg.cosmos_rest_url)).await;
-    logger::status_line(&cfg.cosmos_chain_id, cosmos, &cfg.cosmos_rest_url);
+    let cosmos = probe::http_ok(http, &format!("{}/cosmos", cfg.cosmos.rest_url)).await;
+    logger::status_line(cfg.cosmos.chain_id.as_str(), cosmos, &cfg.cosmos.rest_url);
 
-    let api = probe::http_ok(http, &format!("{}/health", cfg.api_url)).await;
-    logger::status_line("stellar-api", api, &cfg.api_url);
+    let api = probe::http_ok(http, &format!("{}/health", cfg.stellar.api_url)).await;
+    logger::status_line("stellar-api", api, &cfg.stellar.api_url);
 
-    let gateway = probe::tcp_ok(&cfg.gateway_url);
-    logger::status_line("gateway-grpc", gateway, &cfg.gateway_url);
+    let gateway = probe::tcp_ok(&cfg.stellar.gateway_url);
+    logger::status_line("gateway-grpc", gateway, &cfg.stellar.gateway_url);
 
     if !cosmos || !api {
         logger::hint("bring the stack up with: interstellar up");
     }
+
+    logger::step("accounts");
+
+    accounts::show(cfg);
 
     Ok(())
 }

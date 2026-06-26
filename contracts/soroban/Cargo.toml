@@ -2,7 +2,8 @@
 members = [
     "light-clients/*",
     "ibc-transfer",
-    "ibc-router"
+    "ibc-router",
+    "tests"
 ]
 resolver = "2"
 

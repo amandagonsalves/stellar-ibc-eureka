@@ -5,13 +5,9 @@ use anyhow::{bail, Result};
 use crate::config::Config;
 use crate::logger;
 
-#[path = "../../../integration-tests/interstellar/clients.rs"]
 mod clients;
-#[path = "../../../integration-tests/interstellar/counterparty.rs"]
 mod counterparty;
-#[path = "../../../integration-tests/interstellar/query.rs"]
 mod query;
-#[path = "../../../integration-tests/interstellar/transfer.rs"]
 mod transfer;
 
 #[derive(clap::Args)]

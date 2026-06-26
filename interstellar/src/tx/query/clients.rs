@@ -1,55 +1,16 @@
-use anyhow::{bail, Result};
-
 use crate::config::Config;
 use crate::tx::clients::config::ClientsConfig;
 use crate::{logger, probe, shared};
 
-#[derive(clap::Args)]
-pub struct QueryArgs {
-    #[arg(long, help = "Query client states")]
-    pub clients: bool,
-    #[arg(long, help = "Scope to the Stellar network")]
-    pub stellar: bool,
-    #[arg(long, help = "Scope to the Cosmos network")]
-    pub cosmos: bool,
-    #[arg(long, value_name = "ID", help = "Restrict to a single client id")]
-    pub client_id: Option<String>,
+fn client_type(state: Option<&serde_json::Value>) -> String {
+    state
+        .and_then(|s| s.get("@type"))
+        .and_then(|v| v.as_str())
+        .unwrap_or("?")
+        .to_string()
 }
 
-enum Scope {
-    Cosmos,
-    Stellar,
-    Both,
-}
-
-fn scope(cosmos: bool, stellar: bool) -> Scope {
-    match (cosmos, stellar) {
-        (true, false) => Scope::Cosmos,
-        (false, true) => Scope::Stellar,
-        _ => Scope::Both,
-    }
-}
-
-pub async fn run(cfg: &Config, http: &reqwest::Client, args: QueryArgs) -> Result<()> {
-    if !args.clients {
-        bail!("nothing to query — pass --clients");
-    }
-
-    let scope = scope(args.cosmos, args.stellar);
-    let id = args.client_id.as_deref();
-
-    if matches!(scope, Scope::Stellar | Scope::Both) {
-        stellar_clients(cfg, http, id).await;
-    }
-
-    if matches!(scope, Scope::Cosmos | Scope::Both) {
-        cosmos_clients(cfg, http, id).await;
-    }
-
-    Ok(())
-}
-
-async fn stellar_clients(cfg: &Config, http: &reqwest::Client, client_id: Option<&str>) {
+pub async fn stellar_clients(cfg: &Config, http: &reqwest::Client, client_id: Option<&str>) {
     logger::banner("query clients — stellar router");
 
     let cc = ClientsConfig::from(cfg);
@@ -62,11 +23,11 @@ async fn stellar_clients(cfg: &Config, http: &reqwest::Client, client_id: Option
 
     match probe::get_json(http, &cc.clients_url()).await {
         Some(value) => shared::print_clients(&value, client_id),
-        None => logger::warn("could not read /stellar/clients"),
+        _ => logger::warn("could not read /stellar/clients"),
     }
 }
 
-async fn cosmos_clients(cfg: &Config, http: &reqwest::Client, client_id: Option<&str>) {
+pub async fn cosmos_clients(cfg: &Config, http: &reqwest::Client, client_id: Option<&str>) {
     logger::banner("query clients — cosmos");
 
     let base = format!("{}/ibc/core/client/v1/client_states", cfg.cosmos.rest_url);
@@ -104,12 +65,4 @@ async fn cosmos_clients(cfg: &Config, http: &reqwest::Client, client_id: Option<
     } else {
         logger::warn("unexpected client_states response shape");
     }
-}
-
-fn client_type(state: Option<&serde_json::Value>) -> String {
-    state
-        .and_then(|s| s.get("@type"))
-        .and_then(|v| v.as_str())
-        .unwrap_or("?")
-        .to_string()
 }

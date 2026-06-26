@@ -5,13 +5,11 @@ on:
     branches: [main]
     paths:
       - "contracts/**"
-      - "integration-tests/contracts/**"
       - ".github/workflows/contracts-ci.yml"
   push:
     branches: [main]
     paths:
       - "contracts/**"
-      - "integration-tests/contracts/**"
       - ".github/workflows/contracts-ci.yml"
   workflow_dispatch:
 
@@ -62,44 +60,12 @@ jobs:
         run: cargo test --locked
 
       - name: build contracts (wasm32v1-none, contract profile)
-        run: cargo build --locked --profile contract --target wasm32v1-none
+        run: >
+          cargo build --locked --profile contract --target wasm32v1-none
+          --workspace --exclude soroban-contracts-tests
 
       - name: list wasm artifacts
         run: ls -la target/wasm32v1-none/contract/*.wasm
-
-  soroban-e2e:
-    name: soroban contract e2e
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    defaults:
-      run:
-        working-directory: integration-tests/contracts
-    steps:
-      - name: checkout
-        uses: actions/checkout@v4
-
-      - name: setup rust
-        uses: dtolnay/rust-toolchain@1.91.1
-        with:
-          components: rustfmt, clippy
-
-      - name: cache cargo
-        uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: integration-tests/contracts
-
-      - name: check formatting
-        run: cargo fmt --check
-
-      - name: lint
-        run: >
-          cargo clippy --locked --all-targets --
-          -D warnings
-          -A clippy::too_many_arguments
-          -A clippy::manual_is_multiple_of
-
-      - name: test
-        run: cargo test --locked
 
   cosmwasm-light-client:
     name: cosmwasm light-client

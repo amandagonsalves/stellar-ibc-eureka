@@ -3,7 +3,6 @@ use std::path::Path;
 use anyhow::{bail, Result};
 
 use crate::config::Config;
-use crate::ops::config::OpsConfig;
 use crate::services::{cosmos, hermes};
 use crate::tx::contracts::config::ContractsConfig;
 use crate::{logger, probe, run, tools};
@@ -27,8 +26,6 @@ pub async fn run(
         bail!("docker not found in PATH — required to bring up the stack");
     }
 
-    let ops = OpsConfig::from(cfg);
-
     if skip_images {
         logger::detail("skip image pull");
     } else {
@@ -40,12 +37,12 @@ pub async fn run(
     cosmos::start(&cfg.cosmos, root, http).await?;
 
     logger::step("Step 2: ensuring api + gateway are up");
-    if probe::http_ok(http, &ops.api_health_url()).await {
+    if probe::http_ok(http, &cfg.api_health_url()).await {
         logger::ok("api already reachable");
     } else {
         tools::docker::compose(root, &["up", "-d", "api", "gateway"])?;
 
-        if !probe::wait_http(http, &ops.api_health_url(), WAIT_TIMEOUT_SECS).await {
+        if !probe::wait_http(http, &cfg.api_health_url(), WAIT_TIMEOUT_SECS).await {
             bail!(
                 "api not reachable within {WAIT_TIMEOUT_SECS}s (docker compose logs api gateway)"
             );
@@ -68,7 +65,7 @@ pub async fn run(
         if deployed {
             logger::step("recreating api + gateway to pick up ROUTER_CONTRACT_ADDRESS");
             tools::docker::compose(root, &["up", "-d", "--force-recreate", "api", "gateway"])?;
-            let _ = probe::wait_http(http, &ops.api_health_url(), WAIT_TIMEOUT_SECS).await;
+            let _ = probe::wait_http(http, &cfg.api_health_url(), WAIT_TIMEOUT_SECS).await;
         } else {
             logger::detail("contracts already deployed — skipping api + gateway recreate");
         }
