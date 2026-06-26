@@ -51,7 +51,7 @@ Already built and demonstrably working, tracked against the Interchain Standards
 - **ICS-24 (Host requirements) — done.** Packet commitment, receipt, and acknowledgement paths live in a deterministic fixed-depth-64, Cardano-compatible Sparse Merkle Tree whose root is the consensus root counterparty clients verify against.
 - **ICS-02 (Client semantics) — done, verification proven on-chain.** A `07-tendermint` client on the Stellar router, and a Stellar `08-wasm` client on Cosmos (the Stellar LC compiled to wasm and gov-uploaded via `MsgStoreCode`); the `08-wasm` client runs `VerifyClientMessage` (SCP quorum) → `UpdateState` on-chain.
 - **ICS-23 (Vector commitments) — membership proven on-chain.** The `08-wasm` LC runs `VerifyMembership` (ICS-23 over the SMT) on-chain for `recv`; non-membership (for `timeout`) is implemented.
-- **ICS-20 (Fungible token transfer) — Stellar→Cosmos proven on-chain.** `interstellar transfer` escrows + emits a `SendPacket`; the relayer fetches the commitment proof and submits `MsgRecvPacket`; on-chain verification passes and Cosmos mints an `ibc/<hash>` voucher with a success acknowledgement. The reverse direction (Cosmos→Stellar) is next.
+- **ICS-20 (Fungible token transfer) — Stellar→Cosmos proven on-chain.** `interstellar tx transfer` escrows + emits a `SendPacket`; the relayer fetches the commitment proof and submits `MsgRecvPacket`; on-chain verification passes and Cosmos mints an `ibc/<hash>` voucher with a success acknowledgement. The reverse direction (Cosmos→Stellar) is next.
 - **IBC v2 relayer on the shared Hermes fork:** `StellarChainEndpoint`, `ics10_stellar` types, and a custom v2/Eureka packet-relay worker drive ICS-04 packet semantics (`send` + `recv` + `acknowledge` verified end-to-end, closing the Stellar→Cosmos round trip on-chain; `timeout` implemented).
 
 **From the demo video**
@@ -86,7 +86,7 @@ Contracts:
 **Goal:** Close the Stellar↔Cosmos ICS-20 loop in both directions, with on-chain proof verification on both sides, on the devnet where the forward leg is already proven.
 
 **Deliverable 1 — Full ICS-04 + ICS-20 round-trip, both directions (Stellar↔Cosmos).**
-- *Description:* Complete ICS-04 packet semantics (`send` / `recv` / `acknowledge` / `timeout`) end-to-end via the Hermes v2 packet-relay worker for the Stellar endpoint — relay `SendPacket`→`RecvPacket`, `WriteAcknowledgement`→`AckPacket`, and timeout handling — closing the ICS-20 transfer loop. Deliver `stellar→cosmos` (escrow → received → acknowledged) and the reverse `cosmos→stellar` (`MsgTransfer` → credited/minted on Stellar → acknowledged), driven by `interstellar transfer`.
+- *Description:* Complete ICS-04 packet semantics (`send` / `recv` / `acknowledge` / `timeout`) end-to-end via the Hermes v2 packet-relay worker for the Stellar endpoint — relay `SendPacket`→`RecvPacket`, `WriteAcknowledgement`→`AckPacket`, and timeout handling — closing the ICS-20 transfer loop. Deliver `stellar→cosmos` (escrow → received → acknowledged) and the reverse `cosmos→stellar` (`MsgTransfer` → credited/minted on Stellar → acknowledged), driven by `interstellar tx transfer`.
 - *Completion criteria:* A single command runs a full round-trip in each direction on the devnet; relayer logs show ack relayed back and the source commitment cleared; screen recording + GitHub commit range.
 - *Estimated completion:* 4 weeks after approval.
 - *Budget:* $19,000.
