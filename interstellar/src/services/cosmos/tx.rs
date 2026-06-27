@@ -48,13 +48,6 @@ struct BroadcastResult {
     raw_log: String,
 }
 
-/// Direct Cosmos signer + broadcaster: REST queries plus signed-tx building over
-/// `cosmrs`/`ibc-proto`, talking straight to the chain (no stellar-api hop).
-///
-/// Holds up to two secp256k1 signers, both optional:
-/// - `proposer` — signs `MsgSubmitProposal`.
-/// - `funder` — signs `MsgSend`, and votes when present so the vote carries the
-///   genesis validator's stake (typically the validator on localnets).
 pub struct CosmosSigner {
     http: reqwest::Client,
     rest_url: String,
@@ -112,7 +105,6 @@ impl CosmosSigner {
         matches!(self.http.get(&url).send().await, Ok(r) if r.status().is_success())
     }
 
-    /// On-chain checksums registered for the 08-wasm client type.
     pub async fn checksums(&self) -> Result<Vec<String>> {
         let url = self.rest("/ibc/lightclients/wasm/v1/checksums");
         let body: Value = self
@@ -286,8 +278,6 @@ impl CosmosSigner {
         })
     }
 
-    /// `MsgSend` from the funder. When `skip_if_exists` is set and the recipient
-    /// already has an on-chain account, the send is skipped.
     pub async fn fund_account(
         &self,
         to: &str,
@@ -326,9 +316,6 @@ impl CosmosSigner {
         Ok(true)
     }
 
-    /// `MsgSubmitProposal` wrapping `ibc.lightclients.wasm.v1.MsgStoreCode`,
-    /// signed by the proposer. Waits for the tx to land, then returns the
-    /// extracted proposal id.
     pub async fn submit_store_code(
         &self,
         wasm_bytes: Vec<u8>,
@@ -401,8 +388,6 @@ impl CosmosSigner {
         })
     }
 
-    /// Cast a vote, signed by the funder when present (so it carries stake),
-    /// otherwise the proposer.
     pub async fn vote(
         &self,
         proposal_id: u64,
@@ -410,7 +395,11 @@ impl CosmosSigner {
         gas_limit: u64,
         fee_amount: u128,
     ) -> Result<()> {
-        let voter = self.funder().or_else(|_| self.proposer())?;
+        let voter = match self.funder() {
+            Ok(funder) if self.account_exists(&funder.address).await? => funder,
+            _ => self.proposer()?,
+        };
+
         let msg = MsgVote {
             proposal_id,
             voter: voter.address.clone(),
