@@ -21,8 +21,6 @@ use anyhow::Result;
 use clap::{Parser, Subcommand};
 
 use config::Config;
-use services::cosmos::{self, CosmosCmd};
-use services::gateway::{self, GatewayCmd};
 use services::hermes::{self, HermesCmd};
 use services::ServicesCmd;
 use tests::TestArgs;
@@ -58,11 +56,6 @@ enum Command {
         about = "Full start: pull images, start chains, deploy contracts, upload wasm, import keys"
     )]
     Start(StartArgs),
-    #[command(about = "Cosmos chain: start/stop the local devnet or point at a testnet")]
-    Cosmos {
-        #[command(subcommand)]
-        cmd: CosmosCmd,
-    },
     #[command(about = "Write operations: clients (create, counterparty), contracts, transfer")]
     Tx {
         #[command(subcommand)]
@@ -79,11 +72,6 @@ enum Command {
     Hermes {
         #[command(subcommand)]
         cmd: HermesCmd,
-    },
-    #[command(about = "Gateway service: gRPC queries")]
-    Gateway {
-        #[command(subcommand)]
-        cmd: GatewayCmd,
     },
     Test(TestArgs),
 }
@@ -119,29 +107,12 @@ async fn main() -> Result<()> {
             .await?
         }
 
-        Command::Cosmos { cmd } => match cmd {
-            CosmosCmd::Start => cosmos::start(&cfg.cosmos, root, &http).await?,
-            CosmosCmd::Stop => cosmos::stop(&cfg.cosmos, root)?,
-            CosmosCmd::Status => cosmos::check(&cfg.cosmos, &http).await?,
-            CosmosCmd::Testnet { balance } => {
-                let tcfg = cosmos::config::CosmosConfig::testnet();
-                match balance {
-                    Some(address) => cosmos::balance(&tcfg, &http, &address).await?,
-                    _ => cosmos::check(&tcfg, &http).await?,
-                }
-            }
-        },
-
         Command::Tx { cmd } => tx::run(&cfg, root, &http, cmd).await?,
 
         Command::Services { cmd } => services::run(&cfg, root, cmd)?,
 
         Command::Hermes { cmd } => match cmd {
             HermesCmd::KeysImport => hermes::keys::import(&cfg, root)?,
-        },
-
-        Command::Gateway { cmd } => match cmd {
-            GatewayCmd::Query => gateway::query::run()?,
         },
 
         Command::Test(args) => tests::run(root, &http, args).await?,
