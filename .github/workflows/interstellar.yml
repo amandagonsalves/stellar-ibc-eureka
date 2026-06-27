@@ -46,7 +46,7 @@ jobs:
 
       - name: install binaryen (wasm-opt)
         run: |
-          ver=version_119
+          ver=version_129
           curl -sSfL "https://github.com/WebAssembly/binaryen/releases/download/${ver}/binaryen-${ver}-aarch64-linux.tar.gz" -o /tmp/binaryen.tar.gz
           sudo tar -xzf /tmp/binaryen.tar.gz -C /opt
           echo "/opt/binaryen-${ver}/bin" >> "$GITHUB_PATH"
