@@ -16,36 +16,35 @@ env:
 
 jobs:
   test:
-    name: interstellar ics flows
+    name: ${{ matrix.ics }}
     runs-on: ubuntu-24.04-arm
     environment: staging
-    timeout-minutes: 60
+    timeout-minutes: 30
+    strategy:
+      # Each ICS flow is its own job so a failed one can be re-run on its own.
+      # Sequential (max-parallel 1): the legs share one Stellar testnet account,
+      # so concurrent client-creation txs would collide on the account sequence.
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        ics:
+          - ics02-clients
+          - ics02-counterparty
+          - ics20-transfer
+          - ics02-query
     env:
       STELLAR_SIGNING_KEY: ${{ secrets.STELLAR_SIGNING_KEY }}
       COSMOS_VALIDATOR_MNEMONIC: ${{ secrets.COSMOS_VALIDATOR_MNEMONIC }}
       COSMOS_RELAYER_MNEMONIC: ${{ secrets.COSMOS_RELAYER_MNEMONIC }}
-      COSMOS_RELAYER_PRIVATE_KEY: ${{ secrets.COSMOS_RELAYER_PRIVATE_KEY }}
       COSMOS_VALIDATOR_PRIVATE_KEY: ${{ secrets.COSMOS_VALIDATOR_PRIVATE_KEY }}
+      COSMOS_RELAYER_PRIVATE_KEY: ${{ secrets.COSMOS_RELAYER_PRIVATE_KEY }}
 
     steps:
       - name: checkout
         uses: actions/checkout@v5
 
-      - name: setup rust
-        uses: dtolnay/rust-toolchain@1.91.1
-        with:
-          targets: wasm32v1-none, wasm32-unknown-unknown
-
-      - name: cache cargo
-        uses: Swatinem/rust-cache@v2
-
-      - name: install protoc
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y protobuf-compiler
-
-      - name: install stellar cli
-        uses: stellar/stellar-cli@v27.0.0
+      - name: setup
+        uses: ./.github/actions/setup-interstellar
 
       - name: docker login
         uses: docker/login-action@v4
@@ -61,17 +60,13 @@ jobs:
       - name: bring up the stack
         run: cargo run --locked -p interstellar -- start
 
-      - name: test ics02-clients
-        run: cargo run --locked -p interstellar -- test --ics ics02-clients
+      - name: bootstrap ibc clients + counterparties
+        run: |
+          cargo run --locked -p interstellar -- tx clients create
+          cargo run --locked -p interstellar -- tx clients counterparty
 
-      - name: test ics02-counterparty
-        run: cargo run --locked -p interstellar -- test --ics ics02-counterparty
-
-      - name: test ics20-transfer
-        run: cargo run --locked -p interstellar -- test --ics ics20-transfer
-
-      - name: test ics02-query
-        run: cargo run --locked -p interstellar -- test --ics ics02-query
+      - name: test ${{ matrix.ics }}
+        run: cargo run --locked -p interstellar -- test --ics ${{ matrix.ics }}
 
       - name: stack logs on failure
         if: failure()
