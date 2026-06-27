@@ -395,7 +395,11 @@ impl CosmosSigner {
         gas_limit: u64,
         fee_amount: u128,
     ) -> Result<()> {
-        let voter = self.funder().or_else(|_| self.proposer())?;
+        let voter = match self.funder() {
+            Ok(funder) if self.account_exists(&funder.address).await? => funder,
+            _ => self.proposer()?,
+        };
+
         let msg = MsgVote {
             proposal_id,
             voter: voter.address.clone(),
