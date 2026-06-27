@@ -125,8 +125,8 @@ before `start`:
 
 | Account | Mnemonic var | Hex signer var | Used by |
 |---|---|---|---|
-| validator | `COSMOS_VALIDATOR_MNEMONIC` | `COSMOS_FUNDER_PRIVATE_KEY` | genesis validator; the api's gov **funder/voter** (votes with stake) |
-| relayer | `COSMOS_RELAYER_MNEMONIC` | `COSMOS_PROPOSER_PRIVATE_KEY` | Hermes relayer key; the api's gov **proposer** |
+| validator | `COSMOS_VALIDATOR_MNEMONIC` | `COSMOS_VALIDATOR_PRIVATE_KEY` | genesis validator; funds accounts and casts the gov **vote** (carries stake) |
+| relayer | `COSMOS_RELAYER_MNEMONIC` | `COSMOS_RELAYER_PRIVATE_KEY` | Hermes relayer key; submits the gov store-code **proposal** |
 
 `docker-compose.yml` passes the mnemonics into the cosmos container and
 `setup.sh` recovers + funds those accounts at genesis; the api signs gov
