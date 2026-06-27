@@ -4,14 +4,8 @@ use std::time::Instant;
 
 use indicatif::ProgressBar;
 
-/// Process-start instant, set once on first use (or explicitly via [`init`]).
-/// The running spinner shows the elapsed time since this point as a single,
-/// continuously-advancing clock across all phases.
 static START: OnceLock<Instant> = OnceLock::new();
 
-/// The spinner currently running, if any. While set, finished log lines are
-/// printed *above* it (via `ProgressBar::println`) and subprocess output is fed
-/// into it as the live message — so nothing fights the in-place repaint.
 static CURRENT: OnceLock<Mutex<Option<ProgressBar>>> = OnceLock::new();
 
 fn start() -> Instant {
@@ -22,8 +16,6 @@ fn current() -> &'static Mutex<Option<ProgressBar>> {
     CURRENT.get_or_init(|| Mutex::new(None))
 }
 
-/// Anchor the running clock at process start (optional; the first log call does
-/// it lazily, but calling this early makes the clock exact).
 pub fn init() {
     let _ = start();
 }
@@ -40,7 +32,6 @@ fn paint(code: &str, text: &str) -> String {
     }
 }
 
-/// The spinner currently running, if any (a cheap `Arc` clone).
 pub fn current_bar() -> Option<ProgressBar> {
     current()
         .lock()
@@ -48,8 +39,6 @@ pub fn current_bar() -> Option<ProgressBar> {
         .and_then(|guard| guard.as_ref().cloned())
 }
 
-/// Print a finished line — above the active spinner if one is running so the
-/// spinner stays put, otherwise straight to stdout.
 fn emit(line: String) {
     match current_bar() {
         Some(bar) => bar.println(line),

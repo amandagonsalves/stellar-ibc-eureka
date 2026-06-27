@@ -348,7 +348,6 @@ mod tests {
         let stale = smt.generate_membership_proof(b"k").expect("present");
         smt.update(b"k", b"v2");
         let root = smt.root();
-        // The stale proof was for v1; it must NOT verify against the post-update root.
         assert!(!Smt::verify_membership(&root, &stale, b"k", b"v1"));
         let fresh = smt.generate_membership_proof(b"k").expect("present");
         assert!(Smt::verify_membership(&root, &fresh, b"k", b"v2"));
@@ -415,7 +414,6 @@ mod cardano_byte_compat {
         );
 
         let proof = smt.generate_membership_proof(b"a").expect("present");
-        // All 64 siblings empty: the only leaf is the queried one, no peers to hash against.
         assert_sibling_layout("single_leaf_membership/a", &proof.siblings, &[]);
     }
 

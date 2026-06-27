@@ -20,6 +20,38 @@ mnemonic_for () {
     esac
 }
 
+add_account () {
+    name="$1"
+    strict="$2"
+
+    mnemonic="$(mnemonic_for "$name" | tr -d "\"'\r")"
+    mnemonic="$(printf '%s' "$mnemonic" | awk '{$1=$1};1')"
+
+    if [ -z "$mnemonic" ]; then
+        echo "error: no mnemonic in env for account '$name' — set COSMOS_VALIDATOR_MNEMONIC / COSMOS_RELAYER_MNEMONIC" >&2
+        exit 1
+    fi
+
+    coins="$(jq -r --arg n "$name" '.accounts[$n]' "$CONFIG_JSON")"
+
+    if ! echo "$mnemonic" | simd keys add "$name" --recover $KEYRING 2>&1; then
+        if [ "$strict" = "strict" ]; then
+            echo "error: failed to import key for account '$name'" >&2
+            exit 1
+        fi
+
+        echo "warning: skipping account '$name' — its mnemonic duplicates an account already imported (validator and relayer share a mnemonic)" >&2
+
+        return 0
+    fi
+
+    address="$(simd keys show "$name" -a $KEYRING)"
+
+    if ! simd genesis add-genesis-account "$address" "$coins" --home "$HOME_DIR" 2>&1; then
+        echo "warning: genesis account $address for '$name' already present — skipping duplicate" >&2
+    fi
+}
+
 init_chain () {
     ensure_jq
 
@@ -30,18 +62,13 @@ init_chain () {
 
     simd init "$MONIKER" --chain-id "$CHAIN_ID" --home "$HOME_DIR" -o
 
+    add_account "$GENTX_KEY" strict
+
     jq -r '.accounts | keys[]' "$CONFIG_JSON" |
     while read -r name; do
-        mnemonic="$(mnemonic_for "$name" | tr -d "\"'\r")"
-        mnemonic="$(printf '%s' "$mnemonic" | awk '{$1=$1};1')"
-        coins="$(jq -r --arg n "$name" '.accounts[$n]' "$CONFIG_JSON")"
-        if [ -z "$mnemonic" ]; then
-            echo "error: no mnemonic in env for account '$name' — set COSMOS_VALIDATOR_MNEMONIC / COSMOS_RELAYER_MNEMONIC" >&2
-            exit 1
-        fi
-        echo "$mnemonic" | simd keys add "$name" --recover $KEYRING
-        address="$(simd keys show "$name" -a $KEYRING)"
-        simd genesis add-genesis-account "$address" "$coins" --home "$HOME_DIR"
+        [ "$name" = "$GENTX_KEY" ] && continue
+
+        add_account "$name"
     done
 
     simd genesis gentx "$GENTX_KEY" "$GENTX_AMOUNT" --chain-id "$CHAIN_ID" $KEYRING
