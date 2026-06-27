@@ -221,8 +221,6 @@ fn provable_paths_are_keyed_by_distinct_discriminators() {
     assert!(router.has_packet_receipt(&client_id, &1));
 }
 
-// ---------- packet flow setup ----------
-
 struct PacketFlow {
     env: Env,
     router: IbcRouterClient<'static>,
@@ -271,8 +269,6 @@ fn mk_payload(env: &Env, port: &String, value: &[u8]) -> Payload {
         value: Bytes::from_slice(env, value),
     }
 }
-
-// ---------- send_packet ----------
 
 #[test]
 fn send_packet_mints_sequences_and_stores_commitment() {
@@ -327,8 +323,6 @@ fn send_packet_rejects_empty_payloads() {
         .try_send_packet(&f.client_id, &2_000, &vec![&f.env]);
     assert_eq!(result, Err(Ok(Error::PayloadsEmpty.into())));
 }
-
-// ---------- recv_packet ----------
 
 fn recv_packet_for(f: &PacketFlow, sequence: u64, value: &[u8]) -> Packet {
     let payload = mk_payload(&f.env, &f.port_id, value);
@@ -398,8 +392,6 @@ fn recv_packet_rejects_wrong_counterparty() {
     assert_eq!(result, Err(Ok(Error::PacketCounterpartyMismatch.into())));
 }
 
-// ---------- write_acknowledgement (standalone) ----------
-
 #[test]
 fn write_acknowledgement_after_recv_rejects_duplicate() {
     let f = setup_packet_flow();
@@ -407,7 +399,6 @@ fn write_acknowledgement_after_recv_rejects_duplicate() {
     f.router
         .recv_packet(&packet, &Bytes::from_slice(&f.env, b"proof"), &10);
 
-    // recv_packet wrote the ack; a second direct call must reject.
     let result = f.router.try_write_acknowledgement(
         &f.client_id,
         &1,
@@ -426,8 +417,6 @@ fn write_acknowledgement_rejects_when_no_receipt() {
     );
     assert_eq!(result, Err(Ok(Error::NoReceiptForSequence.into())));
 }
-
-// ---------- acknowledge_packet ----------
 
 #[test]
 fn acknowledge_packet_clears_commitment() {
@@ -472,8 +461,6 @@ fn acknowledge_packet_rejects_when_no_commitment() {
     assert_eq!(result, Err(Ok(Error::NoCommitmentForSequence.into())));
 }
 
-// ---------- timeout_packet ----------
-
 #[test]
 fn timeout_packet_clears_commitment_when_elapsed() {
     let f = setup_packet_flow();
@@ -483,9 +470,6 @@ fn timeout_packet_clears_commitment_when_elapsed() {
         .send_packet(&f.client_id, &2_000, &vec![&f.env, payload.clone()]);
     assert!(f.router.packet_commitment(&f.client_id, &seq).is_some());
 
-    // Mock LC returns 0 for get_timestamp_at_height, so `proof_ts > timeout_timestamp`
-    // can never hold here — assert the not-yet-elapsed branch fires. A non-mock LC
-    // will exercise the elapsed branch once Phase C lands.
     let packet = Packet {
         sequence: seq,
         source_client: f.client_id.clone(),
@@ -497,7 +481,6 @@ fn timeout_packet_clears_commitment_when_elapsed() {
         .router
         .try_timeout_packet(&packet, &Bytes::from_slice(&f.env, b"proof"), &10);
     assert_eq!(result, Err(Ok(Error::TimeoutNotYetElapsed.into())));
-    // commitment still present (handler aborted before delete)
     assert!(f.router.packet_commitment(&f.client_id, &seq).is_some());
 }
 
