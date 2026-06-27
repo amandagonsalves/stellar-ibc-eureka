@@ -39,7 +39,7 @@ pub struct ServiceArgs {
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
-enum Service {
+pub enum Service {
     Api,
     Gateway,
     Hermes,
@@ -130,7 +130,7 @@ fn pull(root: &Path, services: &[Service]) -> Result<()> {
     tools::docker::compose(root, &argv)
 }
 
-fn up(root: &Path, services: &[Service]) -> Result<()> {
+pub fn up(root: &Path, services: &[Service]) -> Result<()> {
     pull(root, services)?;
 
     logger::banner(&format!("services up ({})", names(services).join(", ")));
