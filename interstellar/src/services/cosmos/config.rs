@@ -45,8 +45,8 @@ pub struct CosmosConfig {
     pub receiver_address: String,
     pub account_prefix: String,
     pub gas_denom: String,
-    pub proposer_key_hex: String,
-    pub funder_key_hex: String,
+    pub relayer_key_hex: String,
+    pub validator_key_hex: String,
 }
 
 impl CosmosConfig {
@@ -64,8 +64,8 @@ impl CosmosConfig {
             receiver_address: get("COSMOS_RECEIVER_ADDRESS", ""),
             account_prefix: get("COSMOS_ACCOUNT_PREFIX", DEFAULT_ACCOUNT_PREFIX),
             gas_denom: get("COSMOS_GAS_DENOM", DEFAULT_GAS_DENOM),
-            proposer_key_hex: get("COSMOS_PROPOSER_PRIVATE_KEY", ""),
-            funder_key_hex: get("COSMOS_FUNDER_PRIVATE_KEY", ""),
+            relayer_key_hex: get("COSMOS_RELAYER_PRIVATE_KEY", ""),
+            validator_key_hex: get("COSMOS_VALIDATOR_PRIVATE_KEY", ""),
         }
     }
 
@@ -83,8 +83,8 @@ impl CosmosConfig {
             receiver_address: get("COSMOS_TESTNET_RECEIVER_ADDRESS", ""),
             account_prefix: get("COSMOS_ACCOUNT_PREFIX", DEFAULT_ACCOUNT_PREFIX),
             gas_denom: get("COSMOS_TESTNET_GAS_DENOM", DEFAULT_TESTNET_GAS_DENOM),
-            proposer_key_hex: get("COSMOS_PROPOSER_PRIVATE_KEY", ""),
-            funder_key_hex: get("COSMOS_FUNDER_PRIVATE_KEY", ""),
+            relayer_key_hex: get("COSMOS_RELAYER_PRIVATE_KEY", ""),
+            validator_key_hex: get("COSMOS_VALIDATOR_PRIVATE_KEY", ""),
         }
     }
 
