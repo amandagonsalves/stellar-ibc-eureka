@@ -54,11 +54,11 @@ pub async fn upload(
         return Ok(());
     }
 
-    let proposer = signer.proposer_address()?.to_string();
-    logger::step(&format!("funding proposer {proposer}"));
+    let relayer = signer.relayer_address()?.to_string();
+    logger::step(&format!("funding relayer {relayer}"));
     if signer
         .fund_account(
-            &proposer,
+            &relayer,
             FUND_AMOUNT as u128,
             FUND_GAS_LIMIT,
             FUND_FEE_AMOUNT as u128,
@@ -66,9 +66,9 @@ pub async fn upload(
         )
         .await?
     {
-        logger::ok("proposer funded");
+        logger::ok("relayer funded");
     } else {
-        logger::detail("proposer already has an account, skipping funding");
+        logger::detail("relayer already has an account, skipping funding");
     }
 
     logger::step("submitting store-code proposal");

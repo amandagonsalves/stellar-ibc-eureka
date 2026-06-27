@@ -53,8 +53,8 @@ pub struct CosmosSigner {
     rest_url: String,
     chain_id: String,
     gas_denom: String,
-    proposer: Option<Account>,
-    funder: Option<Account>,
+    relayer: Option<Account>,
+    validator: Option<Account>,
 }
 
 impl CosmosSigner {
@@ -64,36 +64,36 @@ impl CosmosSigner {
             rest_url: cfg.rest_url.clone(),
             chain_id: cfg.chain_id.as_str().to_string(),
             gas_denom: cfg.gas_denom.clone(),
-            proposer: load_key(
-                &cfg.proposer_key_hex,
+            relayer: load_key(
+                &cfg.relayer_key_hex,
                 &cfg.account_prefix,
-                "COSMOS_PROPOSER_PRIVATE_KEY",
+                "COSMOS_RELAYER_PRIVATE_KEY",
             )?,
-            funder: load_key(
-                &cfg.funder_key_hex,
+            validator: load_key(
+                &cfg.validator_key_hex,
                 &cfg.account_prefix,
-                "COSMOS_FUNDER_PRIVATE_KEY",
+                "COSMOS_VALIDATOR_PRIVATE_KEY",
             )?,
         })
     }
 
-    pub fn proposer_address(&self) -> Result<&str> {
-        self.proposer
+    pub fn relayer_address(&self) -> Result<&str> {
+        self.relayer
             .as_ref()
             .map(|a| a.address.as_str())
-            .ok_or_else(|| anyhow!("COSMOS_PROPOSER_PRIVATE_KEY not configured"))
+            .ok_or_else(|| anyhow!("COSMOS_RELAYER_PRIVATE_KEY not configured"))
     }
 
-    fn proposer(&self) -> Result<&Account> {
-        self.proposer
+    fn relayer(&self) -> Result<&Account> {
+        self.relayer
             .as_ref()
-            .ok_or_else(|| anyhow!("COSMOS_PROPOSER_PRIVATE_KEY not configured"))
+            .ok_or_else(|| anyhow!("COSMOS_RELAYER_PRIVATE_KEY not configured"))
     }
 
-    fn funder(&self) -> Result<&Account> {
-        self.funder
+    fn validator(&self) -> Result<&Account> {
+        self.validator
             .as_ref()
-            .ok_or_else(|| anyhow!("COSMOS_FUNDER_PRIVATE_KEY not configured"))
+            .ok_or_else(|| anyhow!("COSMOS_VALIDATOR_PRIVATE_KEY not configured"))
     }
 
     fn rest(&self, path: &str) -> String {
@@ -290,9 +290,9 @@ impl CosmosSigner {
             return Ok(false);
         }
 
-        let funder = self.funder()?;
+        let validator = self.validator()?;
         let msg = MsgSend {
-            from_address: funder.address.clone(),
+            from_address: validator.address.clone(),
             to_address: to.to_string(),
             amount: vec![ProtoCoin {
                 denom: self.gas_denom.clone(),
@@ -304,7 +304,7 @@ impl CosmosSigner {
             value: msg.encode_to_vec(),
         };
         let result = self
-            .sign_and_broadcast(funder, msg_any, "bank-send", gas_limit, fee_amount)
+            .sign_and_broadcast(validator, msg_any, "bank-send", gas_limit, fee_amount)
             .await?;
         if result.code != 0 {
             bail!(
@@ -327,7 +327,7 @@ impl CosmosSigner {
         wait_timeout: Duration,
     ) -> Result<u64> {
         let gov_addr = self.gov_module_address().await?;
-        let proposer = self.proposer()?;
+        let relayer = self.relayer()?;
 
         let store_code = MsgStoreCode {
             signer: gov_addr,
@@ -342,7 +342,7 @@ impl CosmosSigner {
                 denom: self.gas_denom.clone(),
                 amount: deposit_amount.to_string(),
             }],
-            proposer: proposer.address.clone(),
+            proposer: relayer.address.clone(),
             metadata: String::new(),
             title,
             summary,
@@ -354,7 +354,7 @@ impl CosmosSigner {
         };
 
         let result = self
-            .sign_and_broadcast(proposer, msg_any, "upload-lc-wasm", gas_limit, fee_amount)
+            .sign_and_broadcast(relayer, msg_any, "upload-lc-wasm", gas_limit, fee_amount)
             .await?;
         if result.code != 0 {
             bail!(
@@ -395,11 +395,7 @@ impl CosmosSigner {
         gas_limit: u64,
         fee_amount: u128,
     ) -> Result<()> {
-        let voter = match self.funder() {
-            Ok(funder) if self.account_exists(&funder.address).await? => funder,
-            _ => self.proposer()?,
-        };
-
+        let voter = self.validator().or_else(|_| self.relayer())?;
         let msg = MsgVote {
             proposal_id,
             voter: voter.address.clone(),
