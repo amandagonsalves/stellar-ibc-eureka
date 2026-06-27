@@ -16,22 +16,10 @@ env:
 
 jobs:
   test:
-    name: ${{ matrix.ics }}
+    name: interstellar ics flows
     runs-on: ubuntu-24.04-arm
     environment: staging
-    timeout-minutes: 30
-    strategy:
-      # Each ICS flow is its own job so a failed one can be re-run on its own.
-      # Sequential (max-parallel 1): the legs share one Stellar testnet account,
-      # so concurrent client-creation txs would collide on the account sequence.
-      fail-fast: false
-      max-parallel: 1
-      matrix:
-        ics:
-          - ics02-clients
-          - ics02-counterparty
-          - ics20-transfer
-          - ics02-query
+    timeout-minutes: 60
     env:
       STELLAR_SIGNING_KEY: ${{ secrets.STELLAR_SIGNING_KEY }}
       COSMOS_VALIDATOR_MNEMONIC: ${{ secrets.COSMOS_VALIDATOR_MNEMONIC }}
@@ -60,13 +48,17 @@ jobs:
       - name: bring up the stack
         run: cargo run --locked -p interstellar -- start
 
-      - name: bootstrap ibc clients + counterparties
-        run: |
-          cargo run --locked -p interstellar -- tx clients create
-          cargo run --locked -p interstellar -- tx clients counterparty
+      - name: ics02-clients
+        run: cargo run --locked -p interstellar -- test --ics ics02-clients
 
-      - name: test ${{ matrix.ics }}
-        run: cargo run --locked -p interstellar -- test --ics ${{ matrix.ics }}
+      - name: ics02-counterparty
+        run: cargo run --locked -p interstellar -- test --ics ics02-counterparty
+
+      - name: ics20-transfer
+        run: cargo run --locked -p interstellar -- test --ics ics20-transfer
+
+      - name: ics02-query
+        run: cargo run --locked -p interstellar -- test --ics ics02-query
 
       - name: stack logs on failure
         if: failure()
