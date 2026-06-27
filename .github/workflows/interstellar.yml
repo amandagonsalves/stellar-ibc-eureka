@@ -79,10 +79,6 @@ jobs:
           docker compose --profile local --profile hermes ps -a || true
           docker compose --profile local --profile hermes logs --no-color --tail 400 || true
 
-      - name: relay logs on failure
-        if: failure()
-        run: cargo run --locked -p interstellar -- logs --since 900s || true
-
       - name: tear down
         if: always()
         run: cargo run --locked -p interstellar -- down --volumes || true
