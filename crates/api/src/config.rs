@@ -19,20 +19,34 @@ pub struct ApiConfig {
     pub network_passphrase: String,
 }
 
+fn env_or(key: &str, default: &str) -> String {
+    match std::env::var(key) {
+        Ok(value) => {
+            let cleaned = value
+                .trim()
+                .trim_matches(|c| c == '"' || c == '\'')
+                .trim()
+                .to_string();
+
+            if cleaned.is_empty() {
+                default.to_string()
+            } else {
+                cleaned
+            }
+        }
+        Err(_) => default.to_string(),
+    }
+}
+
 impl ApiConfig {
     pub fn from_env() -> Self {
         Self {
-            host: std::env::var("STELLAR_API_HOST").unwrap_or_else(|_| "0.0.0.0".to_string()),
-            port: std::env::var("STELLAR_API_PORT")
-                .ok()
-                .and_then(|v| v.parse().ok())
-                .unwrap_or(8101),
-            rpc_url: std::env::var("STELLAR_RPC_URL")
-                .unwrap_or_else(|_| "https://soroban-testnet.stellar.org".to_string()),
-            ibc_contract_id: std::env::var("ROUTER_CONTRACT_ADDRESS").unwrap_or_default(),
-            transfer_contract_id: std::env::var("TRANSFER_CONTRACT_ADDRESS").unwrap_or_default(),
-            network_passphrase: std::env::var("NETWORK_PASSPHRASE")
-                .unwrap_or_else(|_| "Test SDF Network ; September 2015".to_string()),
+            host: env_or("STELLAR_API_HOST", "0.0.0.0"),
+            port: env_or("STELLAR_API_PORT", "8101").parse().unwrap_or(8101),
+            rpc_url: env_or("STELLAR_RPC_URL", "https://soroban-testnet.stellar.org"),
+            ibc_contract_id: env_or("ROUTER_CONTRACT_ADDRESS", ""),
+            transfer_contract_id: env_or("TRANSFER_CONTRACT_ADDRESS", ""),
+            network_passphrase: env_or("NETWORK_PASSPHRASE", "Test SDF Network ; September 2015"),
         }
     }
 
@@ -40,5 +54,32 @@ impl ApiConfig {
         format!("{}:{}", self.host, self.port)
             .parse()
             .expect("invalid api address")
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::env_or;
+
+    #[test]
+    fn strips_surrounding_quotes_and_whitespace() {
+        std::env::set_var(
+            "API_CFG_TEST_QUOTED",
+            "  \"https://soroban-testnet.stellar.org\" ",
+        );
+        assert_eq!(
+            env_or("API_CFG_TEST_QUOTED", "default"),
+            "https://soroban-testnet.stellar.org"
+        );
+        std::env::remove_var("API_CFG_TEST_QUOTED");
+    }
+
+    #[test]
+    fn falls_back_to_default_when_empty_or_unset() {
+        std::env::set_var("API_CFG_TEST_EMPTY", "\"\"");
+        assert_eq!(env_or("API_CFG_TEST_EMPTY", "default"), "default");
+        std::env::remove_var("API_CFG_TEST_EMPTY");
+
+        assert_eq!(env_or("API_CFG_TEST_UNSET_KEY", "default"), "default");
     }
 }
