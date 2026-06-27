@@ -6,9 +6,6 @@ use crate::config::ClientTypes;
 use crate::tx::contracts::config::ContractsConfig;
 use crate::{logger, shared};
 
-/// Returns `true` if contracts were (re)deployed, `false` if the existing
-/// deployment was kept — so callers know whether dependent services need to be
-/// recreated to pick up a new `ROUTER_CONTRACT_ADDRESS`.
 pub fn run(cfg: &ContractsConfig, root: &Path, force: bool, attestation: bool) -> Result<bool> {
     logger::banner("contracts deploy-all (build + deploy + wire router + write .env)");
 

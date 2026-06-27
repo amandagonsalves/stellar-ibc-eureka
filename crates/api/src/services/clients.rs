@@ -15,7 +15,6 @@ const DEFAULT_CLIENT_TYPES: &[&str] = &["07-tendermint", "mock", "attestation", 
 
 #[derive(Deserialize, IntoParams)]
 pub struct ListClientsQuery {
-    /// Restrict the listing to a single client type (default: all known types).
     pub client_type: Option<String>,
 }
 

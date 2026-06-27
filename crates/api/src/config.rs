@@ -1,18 +1,8 @@
-//! Configuration loaded from environment variables.
-
 use std::net::SocketAddr;
 
-/// Top-level api configuration.
-///
-/// Loaded via [`ApiConfig::from_env`]. Every field has a sensible default so
-/// the service starts even with no env set (useful for local development).
 pub struct ApiConfig {
-    /// Bind host. Env: `STELLAR_API_HOST`. Default `0.0.0.0`.
     pub host: String,
-    /// Bind port. Env: `STELLAR_API_PORT`. Default `8101`.
     pub port: u16,
-    /// Stellar RPC URL. Env: `STELLAR_RPC_URL`.
-    /// Default `https://soroban-testnet.stellar.org`.
     pub rpc_url: String,
     pub ibc_contract_id: String,
     pub transfer_contract_id: String,
