@@ -6,104 +6,29 @@ on:
     paths:
       - "contracts/**"
       - ".github/workflows/contracts-ci.yml"
+      - ".github/workflows/ci.yml"
   push:
     branches: [main]
     paths:
       - "contracts/**"
       - ".github/workflows/contracts-ci.yml"
+      - ".github/workflows/ci.yml"
   workflow_dispatch:
 
 permissions:
   contents: read
 
-concurrency:
-  group: contracts-ci-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
-
-env:
-  CARGO_TERM_COLOR: always
-
 jobs:
   soroban:
-    name: soroban contracts
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    defaults:
-      run:
-        working-directory: contracts/soroban
-    steps:
-      - name: checkout
-        uses: actions/checkout@v4
-
-      - name: setup rust
-        uses: dtolnay/rust-toolchain@1.91.1
-        with:
-          components: rustfmt, clippy
-          targets: wasm32v1-none
-
-      - name: cache cargo
-        uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: contracts/soroban
-
-      - name: check formatting
-        run: cargo fmt --check
-
-      - name: lint
-        run: >
-          cargo clippy --locked --all-targets --
-          -D warnings
-          -A clippy::too_many_arguments
-          -A clippy::manual_is_multiple_of
-
-      - name: test
-        run: cargo test --locked
-
-      - name: build contracts (wasm32v1-none, contract profile)
-        run: >
-          cargo build --locked --profile contract --target wasm32v1-none
-          --workspace --exclude soroban-contracts-tests
-
-      - name: list wasm artifacts
-        run: ls -la target/wasm32v1-none/contract/*.wasm
+    uses: ./.github/workflows/ci.yml
+    with:
+      working-directory: contracts/soroban
+      targets: wasm32v1-none
+      build: cargo build --locked --profile contract --target wasm32v1-none --workspace --exclude soroban-contracts-tests
 
   cosmwasm-light-client:
-    name: cosmwasm light-client
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-
-    steps:
-      - name: checkout
-        uses: actions/checkout@v4
-
-      - name: setup rust
-        uses: dtolnay/rust-toolchain@1.91.1
-        with:
-          components: rustfmt, clippy
-          targets: wasm32-unknown-unknown
-
-      - name: cache cargo
-        uses: Swatinem/rust-cache@v2
-
-      - name: check formatting
-        run: cargo fmt -p light-client-wasm --check
-
-      - name: lint
-        run: >
-          cargo clippy --locked -p light-client-wasm --all-targets --
-          -D warnings
-          -A clippy::manual_is_multiple_of
-          -A clippy::too_many_arguments
-          -A clippy::result_large_err
-
-      - name: test
-        run: cargo test --locked -p light-client-wasm
-
-      - name: build wasm
-        run: cargo build --locked --target wasm32-unknown-unknown -p light-client-wasm --release
-
-      - name: log checksum
-        run: |
-          WASM=target/wasm32-unknown-unknown/release/light_client_wasm.wasm
-          sha256sum "$WASM"
-          echo "08-wasm sha256 (must match the store-code checksum): $(sha256sum "$WASM" | cut -d' ' -f1)"
+    uses: ./.github/workflows/ci.yml
+    with:
+      package: light-client-wasm
+      targets: wasm32-unknown-unknown
+      build: cargo build --locked --target wasm32-unknown-unknown -p light-client-wasm --release && sha256sum target/wasm32-unknown-unknown/release/light_client_wasm.wasm
