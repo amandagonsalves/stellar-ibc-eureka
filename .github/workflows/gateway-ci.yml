@@ -1,0 +1,25 @@
+name: gateway ci
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "crates/gateway/**"
+      - ".github/workflows/gateway-ci.yml"
+      - ".github/workflows/ci.yml"
+  push:
+    branches: [main]
+    paths:
+      - "crates/gateway/**"
+      - ".github/workflows/gateway-ci.yml"
+      - ".github/workflows/ci.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  gateway:
+    uses: ./.github/workflows/ci.yml
+    with:
+      package: stellar-hermes-gateway

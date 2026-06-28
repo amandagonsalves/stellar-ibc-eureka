@@ -1,0 +1,25 @@
+name: api ci
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "crates/api/**"
+      - ".github/workflows/api-ci.yml"
+      - ".github/workflows/ci.yml"
+  push:
+    branches: [main]
+    paths:
+      - "crates/api/**"
+      - ".github/workflows/api-ci.yml"
+      - ".github/workflows/ci.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  api:
+    uses: ./.github/workflows/ci.yml
+    with:
+      package: stellar-api

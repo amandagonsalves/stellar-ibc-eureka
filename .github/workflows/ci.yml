@@ -1,30 +1,56 @@
 name: ci
 
 on:
+  workflow_call:
+    inputs:
+      package:
+        description: "cargo package to check (-p NAME); empty = whole workspace"
+        type: string
+        default: ""
+      targets:
+        description: "extra rustup targets, e.g. wasm32v1-none"
+        type: string
+        default: ""
+      working-directory:
+        description: "directory to run cargo in (for separate workspaces)"
+        type: string
+        default: "."
+      build:
+        description: "optional extra build command to run after the tests"
+        type: string
+        default: ""
   pull_request:
     branches: [main]
+    paths-ignore:
+      - "crates/api/**"
+      - "crates/gateway/**"
+      - "contracts/**"
   push:
     branches: [main]
+    paths-ignore:
+      - "crates/api/**"
+      - "crates/gateway/**"
+      - "contracts/**"
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  group: ci-${{ inputs.package || inputs.working-directory || 'workspace' }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 env:
-  CI: true
-  npm_config_audit: false
-  npm_config_fund: false
   CARGO_TERM_COLOR: always
 
 jobs:
   rust:
-    name: rust
+    name: ${{ inputs.package || inputs.working-directory || 'workspace' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory || '.' }}
 
     steps:
       - name: checkout
@@ -34,16 +60,31 @@ jobs:
         uses: dtolnay/rust-toolchain@1.91.1
         with:
           components: rustfmt, clippy
+          targets: ${{ inputs.targets }}
 
       - name: cache cargo
         uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: ${{ inputs.working-directory || '.' }}
 
       - name: install protoc
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y protobuf-compiler
 
+      - name: resolve cargo scope
+        id: scope
+        run: |
+          if [ -z "${{ inputs.package }}" ]; then
+            echo "fmt=--all" >> "$GITHUB_OUTPUT"
+            echo "pkg=--workspace" >> "$GITHUB_OUTPUT"
+          else
+            echo "fmt=-p ${{ inputs.package }}" >> "$GITHUB_OUTPUT"
+            echo "pkg=-p ${{ inputs.package }}" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: cache cargo-audit binary
+        if: ${{ !inputs.package && !inputs.working-directory }}
         id: cache-cargo-audit
         uses: actions/cache@v4
         with:
@@ -51,10 +92,11 @@ jobs:
           key: ${{ runner.os }}-cargo-audit-latest-2
 
       - name: install cargo-audit
-        if: steps.cache-cargo-audit.outputs.cache-hit != 'true'
+        if: ${{ !inputs.package && !inputs.working-directory && steps.cache-cargo-audit.outputs.cache-hit != 'true' }}
         run: cargo install cargo-audit
 
       - name: audit rust dependencies
+        if: ${{ !inputs.package && !inputs.working-directory }}
         run: >
           cargo audit --file Cargo.lock
           --ignore RUSTSEC-2026-0104
@@ -64,15 +106,19 @@ jobs:
           --ignore RUSTSEC-2026-0009
 
       - name: check formatting
-        run: cargo fmt -- --check
+        run: cargo fmt ${{ steps.scope.outputs.fmt }} -- --check
 
       - name: lint
         run: >
-          cargo clippy --locked --all-targets --
+          cargo clippy --locked ${{ steps.scope.outputs.pkg }} --all-targets --
           -D warnings
           -A clippy::manual_is_multiple_of
           -A clippy::too_many_arguments
           -A clippy::result_large_err
 
       - name: test
-        run: cargo test --locked
+        run: cargo test --locked ${{ steps.scope.outputs.pkg }}
+
+      - name: build
+        if: ${{ inputs.build != '' }}
+        run: ${{ inputs.build }}
