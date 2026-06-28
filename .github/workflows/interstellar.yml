@@ -4,12 +4,8 @@ on:
   pull_request:
     paths:
       - 'interstellar/**'
-      - 'crates/**'
-      - 'contracts/**'
       - 'docker-compose.yml'
       - 'hermes-config.toml'
-      - 'Cargo.toml'
-      - 'Cargo.lock'
       - '.github/workflows/interstellar.yml'
       - '.github/actions/setup-interstellar/**'
   workflow_dispatch:
