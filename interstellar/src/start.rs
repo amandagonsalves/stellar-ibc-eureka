@@ -3,7 +3,7 @@ use std::path::Path;
 use anyhow::{bail, Result};
 
 use crate::config::Config;
-use crate::services::{cosmos, hermes};
+use crate::services::{self, hermes, Service};
 use crate::tx::contracts::config::ContractsConfig;
 use crate::{logger, probe, run, tools};
 
@@ -34,7 +34,8 @@ pub async fn run(
     }
 
     logger::step("Step 1: ensuring cosmos is up");
-    cosmos::start(&cfg.cosmos, root, http).await?;
+
+    services::up(root, &[Service::Cosmos])?;
 
     logger::step("Step 2: ensuring api + gateway are up");
     if probe::http_ok(http, &cfg.api_health_url()).await {
