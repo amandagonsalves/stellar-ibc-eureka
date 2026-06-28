@@ -144,5 +144,33 @@ pub(crate) fn invoke_as(
 
     let refs: Vec<&str> = args.iter().map(String::as_str).collect();
 
-    tools::stellar::command(root, &refs)
+    invoke_with_seq_retry(root, &refs)
+}
+
+fn invoke_with_seq_retry(root: &Path, refs: &[&str]) -> Result<()> {
+    const MAX_ATTEMPTS: u32 = 6;
+    const DELAY_SECS: u64 = 4;
+
+    let mut attempt = 1;
+
+    loop {
+        match tools::stellar::capture_all(root, refs) {
+            Ok(_) => return Ok(()),
+            Err(error) => {
+                let stale_sequence = format!("{error:#}").contains("TxBadSeq");
+
+                if stale_sequence && attempt < MAX_ATTEMPTS {
+                    logger::detail(&format!(
+                        "TxBadSeq — stale stellar sequence, retrying ({attempt}/{MAX_ATTEMPTS}) in {DELAY_SECS}s"
+                    ));
+                    std::thread::sleep(std::time::Duration::from_secs(DELAY_SECS));
+                    attempt += 1;
+
+                    continue;
+                }
+
+                return Err(error);
+            }
+        }
+    }
 }
